@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build 14-slide pre-demo presentation for 1С:Кабинет сотрудника (ГК Форус)."""
+"""Build pre-demo presentation for 1С:Кабинет сотрудника (ГК Форус)."""
 
 from __future__ import annotations
 
@@ -288,6 +288,68 @@ def build_slide_1(prs):
     return slide
 
 
+
+def build_slide_forus(prs):
+    """О группе компаний Форус — по данным forus.ru/about."""
+    slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
+    fill_title(slide, "О группе компаний «Форус»", 26)
+    clear_body_placeholders(slide)
+    add_subtitle(slide, "Переводим бизнес в «цифру»  ·  www.forus.ru")
+
+    stats = [
+        ("1992", "год основания\nопыт в ИТ"),
+        ("600+", "сотрудников\nв команде"),
+        ("10 000+", "клиентов\nна сопровождении"),
+        ("18", "регионов в России\nи офис в Монголии"),
+    ]
+    left0, top0 = emu(0.97), emu(1.75)
+    card_w, card_h, gap = emu(2.8), emu(1.85), emu(0.2)
+    for i, (num, label) in enumerate(stats):
+        left = left0 + i * (card_w + gap)
+        add_card(slide, left, top0, card_w, card_h, BLUE if i % 2 == 0 else CARD, 0.1)
+        add_textbox(
+            slide, left + emu(0.1), top0 + emu(0.25), card_w - emu(0.2), emu(0.55),
+            num, 26, True, WHITE, PP_ALIGN.CENTER,
+        )
+        add_textbox(
+            slide, left + emu(0.15), top0 + emu(0.95), card_w - emu(0.3), emu(0.7),
+            label, 12, False, WHITE, PP_ALIGN.CENTER,
+        )
+
+    pride = [
+        ("ТОП", "крупнейших ИТ-компаний России"),
+        ("1 место", "в сети «1С:БухОбслуживание» с 2017"),
+        ("ТОП-5", "дистрибьюторов 1С в России"),
+        ("Центр компетенции", "по кадровому ЭДО (1С)"),
+    ]
+    top2 = emu(3.85)
+    for i, (title, body) in enumerate(pride):
+        left = left0 + i * (card_w + gap)
+        add_card(slide, left, top2, card_w, emu(1.55), CARD, 0.1)
+        add_textbox(
+            slide, left + emu(0.12), top2 + emu(0.2), card_w - emu(0.24), emu(0.45),
+            title, 13, True, BLUE, PP_ALIGN.CENTER,
+        )
+        add_textbox(
+            slide, left + emu(0.12), top2 + emu(0.7), card_w - emu(0.24), emu(0.65),
+            body, 11, False, WHITE, PP_ALIGN.CENTER,
+        )
+
+    add_textbox(
+        slide,
+        emu(0.97),
+        emu(5.6),
+        emu(11.4),
+        emu(1.0),
+        "Внедряем ИТ-решения, цифровизируем процессы, помогаем компаниям развиваться.\n"
+        "Направления: внедрение и сопровождение 1С, цифровизация, облачные сервисы, ЭДО и КЭДО, обучение.",
+        12,
+        False,
+        SOFT,
+    )
+    return slide
+
+
 def build_slide_2(prs):
     """Почему компании переходят на КЭДО?"""
     slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
@@ -335,7 +397,10 @@ def build_slide_3(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[L_BG])
     fill_title(slide, "Что такое 1С:Кабинет сотрудника", 26)
     clear_body_placeholders(slide)
-    add_subtitle(slide, "Все кадровые процессы — в привычной системе 1С")
+    add_subtitle(
+        slide,
+        "Мобильное взаимодействие сотрудников и бухгалтерии по кадровым вопросам",
+    )
 
     steps = [
         ("Сотрудник", "Заявления, отпуска,\nсправки, подпись"),
@@ -404,11 +469,11 @@ def build_slide_3(prs):
     add_textbox(
         slide,
         emu(1.25),
-        emu(5.75),
+        emu(5.7),
         emu(10.9),
-        emu(0.5),
-        "Работа продолжается в привычной 1С. Сервис связывает сотрудника, руководителя, кадровика и бухгалтера в одном контуре.",
-        13,
+        emu(0.55),
+        "Работа продолжается в привычной 1С. Сотрудники получают расчётный лист, пишут заявления и заказывают справки с телефона или компьютера — без лишних обращений в отдел кадров.",
+        12,
         False,
         NEAR_BLACK,
     )
@@ -585,12 +650,12 @@ def build_slide_9(prs):
         "Что получает ИТ-специалист",
         "Простое сопровождение без новых систем",
         [
-            "Встроено в 1С",
-            "Не нужно обучать новой программе",
-            "Не требуется отдельная база",
-            "Поддержка облачной и локальной версии",
+            "Встроено в 1С — без отдельной HR-платформы",
+            "Не нужны доп. клиентские лицензии 1С",
+            "Нет прямой нагрузки на базу 1С",
+            "Нет прямого доступа сотрудников к ИБ 1С",
+            "Облачная и локальная версия",
             "Хранение документов внутри 1С",
-            "Минимальная нагрузка на сопровождение",
         ],
     )
 
@@ -693,11 +758,12 @@ def build_slide_11(prs):
     add_textbox(
         slide,
         emu(0.97),
-        emu(5.7),
+        emu(5.55),
         emu(11.4),
-        emu(0.9),
-        "Стоимость — от 21 до 30 ₽/мес. на сотрудника (в зависимости от числа кабинетов и периода).\n"
-        "Пример: 10 сотрудников — 3 360 ₽/год · 25 — 8 400 ₽/год · 50 — 16 800 ₽/год · 100 — 33 600 ₽/год.",
+        emu(1.15),
+        "Стоимость — от 21 до 30 ₽/мес. на сотрудника (forus.ru). "
+        "10 кабинетов — 280 ₽/мес. · 25 — 700 ₽ · 50 — 1 400 ₽ · 100 — 2 800 ₽ при оплате за год.\n"
+        "Кейсы: «Фанат Байкала» полностью ушёл от бумаги; DNS переводит 40 000 сотрудников на КЭДО.",
         12,
         False,
         SOFT,
@@ -831,7 +897,7 @@ def build_slide_14(prs):
                 p.add_run(),
                 "Открытый вопрос помогает перейти к демонстрации\n"
                 "исходя из реальных потребностей вашей компании.\n\n"
-                "+7 (3952) 78-23-08  ·  otdel-its@forus.ru",
+                "8 (3952) 78-00-00  ·  www.forus.ru/produkty-1c/servisy/1c-kabinet-sotrudnika/",
                 13,
                 False,
                 SOFT,
@@ -854,6 +920,7 @@ def main():
 
     builders = [
         build_slide_1,
+        build_slide_forus,
         build_slide_2,
         build_slide_3,
         build_slide_4,
