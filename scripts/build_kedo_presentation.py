@@ -22,6 +22,7 @@ OUT = OUT_DIR / "1С_Кабинет_сотрудника_Преддемонст�
 OUT_COPY = ROOT / "presentation" / "1С_Кабинет_сотрудника_Преддемонстрация.pptx"
 ICONS = ROOT / "presentation" / "assets" / "icons"
 SCREENS = ROOT / "presentation" / "assets" / "screens"
+FUNC = SCREENS / "func"
 
 # Brand colors (ГК Форус — тёмный шаблон)
 BLUE = RGBColor(0x26, 0xA6, 0xE0)
@@ -152,6 +153,8 @@ def add_icon(slide, name: str, left, top, width, height):
 def add_picture(slide, name: str, left, top, width=None, height=None):
     path = SCREENS / name
     if not path.exists():
+        path = FUNC / name
+    if not path.exists():
         return None
     kwargs = {}
     if width is not None:
@@ -281,7 +284,9 @@ def build_slide_1(prs):
                 False,
                 SOFT,
             )
-    if (SCREENS / "devices_full.png").exists():
+    if (FUNC / "devices_laptop_phone.png").exists():
+        add_picture(slide, "devices_laptop_phone.png", emu(7.6), emu(2.0), width=emu(5.0))
+    elif (SCREENS / "devices_full.png").exists():
         add_picture(slide, "devices_full.png", emu(7.6), emu(2.0), width=emu(5.0))
     elif (SCREENS / "phone_brand.png").exists():
         add_picture(slide, "phone_brand.png", emu(10.2), emu(1.8), height=emu(4.8))
@@ -523,10 +528,11 @@ def build_slide_4(prs):
             anchor=MSO_ANCHOR.MIDDLE,
         )
 
-    if (SCREENS / "devices_full.png").exists():
-        add_picture(slide, "devices_full.png", emu(8.2), emu(1.7), width=emu(4.4))
-    elif (SCREENS / "phones_pair.png").exists():
-        add_picture(slide, "phones_pair.png", emu(8.2), emu(2.0), width=emu(4.3))
+    # Real screenshots of the mobile app
+    if (FUNC / "mobile_home_salary.png").exists():
+        add_picture(slide, "mobile_home_salary.png", emu(8.15), emu(1.65), height=emu(4.85))
+    if (FUNC / "mobile_vacation_request.png").exists():
+        add_picture(slide, "mobile_vacation_request.png", emu(10.55), emu(1.65), height=emu(4.85))
     return slide
 
 
@@ -537,10 +543,10 @@ def build_slide_5(prs):
     clear_body_placeholders(slide)
     add_subtitle(slide, "Все кадровые вопросы — со смартфона")
 
-    if (SCREENS / "phone_mockup.png").exists():
+    if (FUNC / "mobile_home_salary.png").exists():
+        add_picture(slide, "mobile_home_salary.png", emu(0.95), emu(1.65), height=emu(4.55))
+    elif (SCREENS / "phone_mockup.png").exists():
         add_picture(slide, "phone_mockup.png", emu(0.85), emu(1.7), height=emu(4.5))
-    elif (SCREENS / "phone_brand.png").exists():
-        add_picture(slide, "phone_brand.png", emu(1.2), emu(1.8), height=emu(4.3))
 
     items = [
         "Посмотреть расчётный листок",
@@ -827,12 +833,106 @@ def build_slide_12(prs):
     return slide
 
 
+
+def build_slide_screens_employee(prs):
+    """Скриншоты: сервис глазами сотрудника — для быстрого показа менеджером."""
+    slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
+    fill_title(slide, "Сервис глазами сотрудника", 26)
+    clear_body_placeholders(slide)
+    add_subtitle(slide, "Покажите клиенту экраны мобильного приложения до демо")
+
+    shots = [
+        ("mobile_home_salary.png", "Главный экран:\nзарплата и отсутствия"),
+        ("mobile_vacation_request.png", "Заявление\nна отпуск"),
+        ("mobile_vacation_wishes.png", "Пожелания\nк графику отпусков"),
+        ("mobile_manager.png", "Раздел\nруководителя"),
+    ]
+    left0, top0 = emu(0.55), emu(1.7)
+    card_w, gap = emu(3.0), emu(0.2)
+    for i, (img, caption) in enumerate(shots):
+        left = left0 + i * (card_w + gap)
+        add_card(slide, left, top0, card_w, emu(5.0), CARD, 0.08)
+        path = FUNC / img
+        if path.exists():
+            # Fit image inside card
+            add_picture(slide, img, left + emu(0.25), top0 + emu(0.2), height=emu(3.85))
+        add_textbox(
+            slide,
+            left + emu(0.1),
+            top0 + emu(4.15),
+            card_w - emu(0.2),
+            emu(0.7),
+            caption,
+            11,
+            True,
+            WHITE,
+            PP_ALIGN.CENTER,
+        )
+    return slide
+
+
+def build_slide_screens_hr(prs):
+    """Скриншоты: работа кадровика в 1С."""
+    slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
+    fill_title(slide, "Работа кадровика прямо в 1С", 26)
+    clear_body_placeholders(slide)
+    add_subtitle(slide, "Заявления превращаются в задачи и документы без двойного ввода")
+
+    # Top row: 2 wider 1C screenshots
+    top_shots = [
+        ("1c_vacation_task.png", "Задача по заявлению на отпуск"),
+        ("1c_transfer_to_cabinet.png", "Кнопка «Передать в 1С:Кабинет сотрудника»"),
+    ]
+    left0, top0 = emu(0.7), emu(1.7)
+    card_w, card_h, gap = emu(5.9), emu(2.55), emu(0.25)
+    for i, (img, caption) in enumerate(top_shots):
+        left = left0 + i * (card_w + gap)
+        add_card(slide, left, top0, card_w, card_h, CARD, 0.08)
+        if (FUNC / img).exists():
+            add_picture(slide, img, left + emu(0.15), top0 + emu(0.12), width=emu(5.6))
+        add_textbox(
+            slide,
+            left + emu(0.15),
+            top0 + emu(2.1),
+            card_w - emu(0.3),
+            emu(0.35),
+            caption,
+            12,
+            True,
+            BLUE,
+        )
+
+    # Bottom row
+    bot_shots = [
+        ("1c_kedo_documents.png", "Журнал документов кадрового ЭДО"),
+        ("1c_hire_print_forms.png", "Печатные формы при приёме → в КС"),
+    ]
+    top1 = emu(4.45)
+    for i, (img, caption) in enumerate(bot_shots):
+        left = left0 + i * (card_w + gap)
+        add_card(slide, left, top1, card_w, emu(2.2), CARD, 0.08)
+        if (FUNC / img).exists():
+            add_picture(slide, img, left + emu(0.15), top1 + emu(0.12), width=emu(5.6))
+        add_textbox(
+            slide,
+            left + emu(0.15),
+            top1 + emu(1.75),
+            card_w - emu(0.3),
+            emu(0.35),
+            caption,
+            12,
+            True,
+            BLUE,
+        )
+    return slide
+
+
 def build_slide_13(prs):
     """Что покажем на демонстрации."""
     slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
     fill_title(slide, "Что покажем на демонстрации", 26)
     clear_body_placeholders(slide)
-    add_subtitle(slide, "Предлагаем посмотреть сервис на ваших процессах")
+    add_subtitle(slide, "После экранов выше — живая демонстрация на ваших процессах")
 
     items = [
         ("icon_55.png", "Оформление отпуска"),
@@ -932,6 +1032,8 @@ def main():
         build_slide_10,
         build_slide_11,
         build_slide_12,
+        build_slide_screens_employee,
+        build_slide_screens_hr,
         build_slide_13,
         build_slide_14,
     ]
