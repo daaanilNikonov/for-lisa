@@ -302,7 +302,15 @@ def enrich_clients(wb, sschr: dict, okved: dict) -> dict:
                 if c not in seen:
                     seen.append(c)
             ws.cell(r, 10).value = "; ".join(seen)
-            ws.cell(r, 18).value = "ЕГРЮЛ / egrul.nalog.ru (выписка)"
+            src = (item.get("source") or "egrul").lower()
+            if src == "rsmp_fns":
+                ws.cell(r, 18).value = "РСМП ФНС (открытые данные МСП)"
+            elif src == "sbis":
+                ws.cell(r, 18).value = "SBIS / публичная карточка"
+            elif src == "list_org":
+                ws.cell(r, 18).value = "list-org.com"
+            else:
+                ws.cell(r, 18).value = "ЕГРЮЛ / egrul.nalog.ru (выписка)"
             style_input(ws.cell(r, 9))
             style_input(ws.cell(r, 10))
 
@@ -531,7 +539,7 @@ def rebuild_instruction(wb):
     ws["A31"].font = SECTION_FONT
     steps = [
         "1. Откройте «01_Исходные_данные» — проверьте тариф, оклады, премии, конверсии.",
-        "2. На «05_База_клиентов» фильтруйте приоритеты; горячие автоматически на листе «06_Горячие_клиенты».",
+        "2. На «05_База_клиентов» — вся база; «05a_Целевая_база_ОКВЭД» — только ICP; горячие — «06_Горячие_клиенты».",
         "3. Заполните факт на «08_Факт_воронка» (зелёные поля) — обновятся KPI, P&L, ДДС, Dashboard.",
         "4. Для инвестора используйте «11_Dashboard» и «03_TAM_SAM_SOM».",
         "5. Не копируйте конверсии вручную на другие листы — они тянутся формулами.",
@@ -1091,6 +1099,86 @@ def rebuild_hot_clients(wb):
     )
     return out_r - 5
 
+
+def rebuild_target_okved_base(wb):
+    """База клиентов с подтверждённым целевым ОКВЭД (ICP)."""
+    name = "05a_Целевая_база_ОКВЭД"
+    if name in wb.sheetnames:
+        del wb[name]
+    ws = wb.create_sheet(name)
+    ws["A1"] = "Целевая база по ОКВЭД (ICP)"
+    ws["A1"].font = TITLE_FONT
+    ws["A2"] = (
+        "Отбор: основной/доп. ОКВЭД входит в целевые префиксы (торговля 45–47, производство 10–33, "
+        "строительство 41–43, транспорт/склад 49/52, HoReCa 55–56, недвижимость 68, персонал/админ 78/80–82, "
+        "финансы 64–66, IT/телеком 61–63, образование 85, здравоохранение 86). "
+        "Горячие = целевой ОКВЭД + 22+ или 50+. КП: пилот 10 каб. = 3 360 ₽/год."
+    )
+
+    headers = [
+        "ИНН",
+        "Компания",
+        "Основной ОКВЭД",
+        "Все ОКВЭД",
+        "ССЧР",
+        "Целевой ОКВЭД?",
+        "Приоритет",
+        "Сегмент",
+        "Потенциал пилота ₽/год",
+        "Источник ОКВЭД",
+        "Статус проверки",
+    ]
+    for c, h in enumerate(headers, 1):
+        ws.cell(4, c).value = h
+    style_header_row(ws, 4, len(headers))
+
+    src = wb["Данные клиентов"] if "Данные клиентов" in wb.sheetnames else wb["05_База_клиентов"]
+    out_r = 5
+    for r in range(5, src.max_row + 1):
+        if src.cell(r, 19).value != 1:
+            continue
+        if src.cell(r, 12).value != "Да":
+            continue
+        ws.cell(out_r, 1).value = src.cell(r, 4).value
+        ws.cell(out_r, 2).value = src.cell(r, 2).value
+        ws.cell(out_r, 3).value = src.cell(r, 9).value
+        ws.cell(out_r, 4).value = src.cell(r, 10).value
+        ws.cell(out_r, 5).value = src.cell(r, 7).value
+        ws.cell(out_r, 6).value = src.cell(r, 12).value
+        ws.cell(out_r, 7).value = src.cell(r, 20).value
+        ws.cell(out_r, 8).value = src.cell(r, 21).value
+        ws.cell(out_r, 9).value = src.cell(r, 14).value
+        if ws.cell(out_r, 9).value not in (None, ""):
+            ws.cell(out_r, 9).number_format = "#,##0"
+        ws.cell(out_r, 10).value = src.cell(r, 18).value
+        ws.cell(out_r, 11).value = src.cell(r, 16).value
+        for c in range(1, 12):
+            style_formula(ws.cell(out_r, c))
+        out_r += 1
+
+    count = out_r - 5
+    ws.cell(2, 6).value = f"Уникальных ИНН: {count}"
+    style_control(ws.cell(2, 6))
+    ws.freeze_panes = "A5"
+    if out_r > 5:
+        ws.auto_filter.ref = f"A4:K{out_r - 1}"
+    set_col_widths(
+        ws,
+        {
+            "A": 14,
+            "B": 36,
+            "C": 12,
+            "D": 28,
+            "E": 10,
+            "F": 12,
+            "G": 18,
+            "H": 22,
+            "I": 14,
+            "J": 28,
+            "K": 28,
+        },
+    )
+    return count
 
 
 def rebuild_sales_plan(wb):
@@ -1837,7 +1925,7 @@ def rebuild_methodology(wb):
     ws["A18"] = "Источники обогащения этой версии"
     ws["A18"].font = SECTION_FONT
     ws["A19"] = "1) ССЧР: https://www.nalog.gov.ru/opendata/7707329152-sshr2019/ (данные за 2025, ДатаСост 31.12.2025)."
-    ws["A20"] = "2) ОКВЭД: выписки ЕГРЮЛ с egrul.nalog.ru для приоритетного сегмента 22+."
+    ws["A20"] = "2) ОКВЭД: РСМП ФНС (МСП) + выписки ЕГРЮЛ/ЕГРИП; целевая база — лист 05a_Целевая_база_ОКВЭД."
     ws["A21"] = "3) Тарифы: партнёрский прайс «1С:Кабинет сотрудника» (розница/дилер)."
     ws["A22"] = "Пересборка: python3 scripts/build_investment_model.py"
     set_col_widths(ws, {"A": 22, "B": 28, "C": 40, "D": 12, "E": 22})
@@ -1857,6 +1945,7 @@ def reorder_sheets(wb):
         "03_TAM_SAM_SOM",
         "04_Сегменты_базы",
         "05_База_клиентов",
+        "05a_Целевая_база_ОКВЭД",
         "06_Горячие_клиенты",
         "07_План_продаж",
         "08_Факт_воронка",
@@ -1974,6 +2063,8 @@ def main():
     rebuild_market(wb)
     rebuild_base_summary(wb, stats)
     hot_count = rebuild_hot_clients(wb)
+    target_count = rebuild_target_okved_base(wb)
+    print(f"  target OKVED base rows={target_count}")
     rebuild_sales_plan(wb)
     rebuild_fact(wb)
     rebuild_pnl(wb)
