@@ -209,8 +209,8 @@ def enrich_clients(wb, sschr: dict, okved: dict) -> dict:
         10: "Все ОКВЭД",
         11: "Подходит по численности ≥22?",
         12: "Подходит по целевому ОКВЭД?",
-        13: "Пакет КС",
-        14: "Потенциальная выручка/год, ₽",
+        13: "Пакет апселла (по ССЧР)",
+        14: "Потенциал пилота КП, ₽/год (10 каб. = 3360)",
         15: "Категория по численности",
         16: "Статус проверки",
         17: "Источник ССЧР",
@@ -327,11 +327,11 @@ def enrich_clients(wb, sschr: dict, okved: dict) -> dict:
         ws.cell(r, 12).value = target
         ws.cell(r, 22).value = target
 
-        pkg, revenue = package_for_headcount(g)
-        # Potential revenue: nearest package if headcount known; else starter
+        pkg, upsell = package_for_headcount(g)
+        # Commercial offer is always pilot 10 cabinets = 3360
+        ws.cell(r, 13).value = pkg if pkg else "Пилот 10 каб."
+        ws.cell(r, 14).value = 3360
         if g not in (None, ""):
-            ws.cell(r, 13).value = pkg
-            ws.cell(r, 14).value = revenue if revenue is not None else None
             try:
                 gn = float(g)
                 if gn <= 15:
@@ -352,8 +352,6 @@ def enrich_clients(wb, sschr: dict, okved: dict) -> dict:
             except Exception:
                 ws.cell(r, 15).value = ""
         else:
-            ws.cell(r, 13).value = ""
-            ws.cell(r, 14).value = ""
             ws.cell(r, 15).value = ""
 
         prio1 = target == "Да" and ge22
@@ -505,7 +503,8 @@ def rebuild_instruction(wb):
         "Количество менеджеров и оклады",
         "Размер премии по сценариям",
         "Плановые конверсии воронки (гипотезы)",
-        "Целевые продажи на менеджера (4 / 6 / 9)",
+        "План продаж на менеджера (3 / 5 / 7)",
+        "Плановые конверсии воронки",
         "Маркетинг и прочие расходы",
         "Факт воронки: обработано → переговоры → демо → сделка → оплата",
         "Уточнение ССЧР / ОКВЭД в базе (если есть свежие данные)",
@@ -575,7 +574,7 @@ def rebuild_params(wb, stats: dict):
     ws["A4"] = "A. Продукт и unit-экономика"
     ws["A4"].font = SECTION_FONT
     rows_a = [
-        (5, "Цена годовой подписки (старт до 10)", 3360, "₽/год", "Розница; стартовый пакет"),
+        (5, "КП: 10 кабинетов (пилот КЭДО), ₽/год", 3360, "₽/год", "Пилотное подключение + дальнейшее расширение"),
         (6, "Закупка 1С (партнёрская)", 1680, "₽/год", "Дилерская цена"),
         (7, "Маржинальный доход / клиент", "=B5-B6", "₽/год", "Цена − закупка"),
         (8, "Маржинальность до продажных расходов", "=IF(B5=0,0,B7/B5)", "%", "Маржа / цена"),
@@ -596,19 +595,22 @@ def rebuild_params(wb, stats: dict):
     # B. Funnel hypotheses
     ws["A12"] = "B. Воронка и планы (гипотезы — не факт)"
     ws["A12"].font = SECTION_FONT
-    headers = ["Показатель", "Малый", "Средний", "Большой", "Ед.", "Комментарий"]
+    headers = ["Показатель", "Малый", "Средний", "Перевыполнение", "Ед.", "Комментарий"]
     for c, h in enumerate(headers, 1):
         ws.cell(13, c).value = h
     style_header_row(ws, 13, 6)
 
     funnel = [
-        (14, "Лиды / менеджер / месяц", 150, 150, 150, "шт.", "Гипотеза загрузки"),
-        (15, "Обработка → переговоры", 0.25, 0.30, 0.35, "%", "Гипотеза; факт — на листе воронки"),
-        (16, "Переговоры → демо", 0.40, 0.45, 0.50, "%", "Гипотеза"),
-        (17, "Демо → сделка", 0.45, 0.50, 0.55, "%", "Гипотеза"),
-        (18, "Сделка → оплата", 0.80, 0.85, 0.90, "%", "Гипотеза"),
-        (19, "Общая конверсия лид → оплата", "=B15*B16*B17*B18", "=C15*C16*C17*C18", "=D15*D16*D17*D18", "%", "Автоматический расчёт"),
-        (20, "Целевые продажи / менеджер / месяц", 4, 6, 9, "шт.", "Коммерческий план 4/6/9"),
+        (14, "Мощность обработки / менеджер / мес.", 150, 150, 150, "шт.", "Максимум, который менеджер может обработать"),
+        (15, "Обработка → переговоры", 0.25, 0.30, 0.35, "%", "Плановая конверсия; факт — на листе воронки"),
+        (16, "Переговоры → демо", 0.40, 0.45, 0.50, "%", "Плановая конверсия"),
+        (17, "Демо → сделка", 0.45, 0.50, 0.55, "%", "Плановая конверсия"),
+        (18, "Сделка → оплата", 0.80, 0.85, 0.90, "%", "Плановая конверсия"),
+        (19, "Общая конверсия обработка → оплата", "=B15*B16*B17*B18", "=C15*C16*C17*C18", "=D15*D16*D17*D18", "%", "Автоматический расчёт"),
+        (20, "План продаж / менеджер / месяц", 3, 5, 7, "шт.", "План: малый / средний / перевыполнение"),
+        (21, "Требуемая обработка для плана", "=IF(B19=0,0,ROUNDUP(B20/B19,0))", "=IF(C19=0,0,ROUNDUP(C20/C19,0))", "=IF(D19=0,0,ROUNDUP(D20/D19,0))", "шт.", "Сколько клиентов нужно обработать при плановых конверсиях"),
+        (22, "Прогноз оплат при требуемой обработке", "=B21*B19", "=C21*C19", "=D21*D19", "шт.", "Всегда ≥ плана за счёт ROUNDUP"),
+        (23, "Контроль: прогноз ≥ план", '=IF(B22>=B20,"OK","МАЛО")', '=IF(C22>=C20,"OK","МАЛО")', '=IF(D22>=D20,"OK","МАЛО")', "—", "Красный = прогноз ниже плана"),
     ]
     for r, label, b, c, d, unit, note in funnel:
         ws.cell(r, 1).value = label
@@ -621,13 +623,20 @@ def rebuild_params(wb, stats: dict):
             cell = ws.cell(r, col)
             if isinstance(cell.value, str) and str(cell.value).startswith("="):
                 style_formula(cell)
-                cell.number_format = "0.00%"
+                if r == 19:
+                    cell.number_format = "0.00%"
+                elif r in (21, 22):
+                    cell.number_format = "0.00"
+                elif r == 23:
+                    style_control(cell)
             else:
                 style_input(cell)
                 if r in (15, 16, 17, 18):
                     cell.number_format = "0%"
     for col in (2, 3, 4):
         ws.cell(19, col).number_format = "0.00%"
+        style_control(ws.cell(21, col))
+        style_control(ws.cell(22, col))
 
     # Conditional formatting for extreme conversions
     ws.conditional_formatting.add(
@@ -638,115 +647,115 @@ def rebuild_params(wb, stats: dict):
         "B15:D18",
         CellIsRule(operator="lessThan", formula=["0.02"], fill=ORANGE),
     )
+    ws.conditional_formatting.add(
+        "B23:D23",
+        FormulaRule(formula=['B23="МАЛО"'], fill=RED),
+    )
 
     # C. Bonuses
-    ws["A22"] = "C. Премии (% от маржинального дохода)"
-    ws["A22"].font = SECTION_FONT
-    for c, h in enumerate(["Показатель", "Малый", "Средний", "Большой", "Ед.", "Комментарий"], 1):
-        ws.cell(23, c).value = h
-    style_header_row(ws, 23, 6)
-    ws["A24"] = "Премия от маржи"
-    ws["B24"] = 0.20
-    ws["C24"] = 0.30
-    ws["D24"] = 0.35
-    ws["E24"] = "%"
-    ws["F24"] = "От маржинального дохода, не от выручки"
+    ws["A25"] = "C. Премии (% от маржинального дохода)"
+    ws["A25"].font = SECTION_FONT
+    for c, h in enumerate(["Показатель", "Малый", "Средний", "Перевыполнение", "Ед.", "Комментарий"], 1):
+        ws.cell(26, c).value = h
+    style_header_row(ws, 26, 6)
+    ws["A27"] = "Премия от маржи"
+    ws["B27"] = 0.20
+    ws["C27"] = 0.30
+    ws["D27"] = 0.35
+    ws["E27"] = "%"
+    ws["F27"] = "От маржинального дохода, не от выручки"
     for col in (2, 3, 4):
-        style_input(ws.cell(24, col))
-        ws.cell(24, col).number_format = "0%"
+        style_input(ws.cell(27, col))
+        ws.cell(27, col).number_format = "0%"
 
     # D. Team
-    ws["A26"] = "D. Команда и расходы"
-    ws["A26"].font = SECTION_FONT
+    ws["A29"] = "D. Команда и расходы"
+    ws["A29"].font = SECTION_FONT
     for c, h in enumerate(["Менеджер", "Оклад ₽/мес.", "Активен", "Примечание"], 1):
-        ws.cell(27, c).value = h
-    style_header_row(ws, 27, 4)
+        ws.cell(30, c).value = h
+    style_header_row(ws, 30, 4)
     managers = [("Оглоблина", 50400), ("Юнусова", 50400), ("Кургузов", 51200)]
     for i, (m, sal) in enumerate(managers):
-        r = 28 + i
+        r = 31 + i
         ws.cell(r, 1).value = m
         ws.cell(r, 2).value = sal
         ws.cell(r, 3).value = "Да"
         style_input(ws.cell(r, 2))
         style_input(ws.cell(r, 3))
-        ws.cell(r, 2).number_format = '#,##0'
-    ws["A31"] = "Количество активных менеджеров"
-    ws["B31"] = '=COUNTIF(C28:C30,"Да")'
-    style_formula(ws["B31"])
-    style_control(ws["B31"])
-    ws["A32"] = "Сумма окладов активных"
-    ws["B32"] = '=SUMIF(C28:C30,"Да",B28:B30)'
-    style_formula(ws["B32"])
-    ws["B32"].number_format = '#,##0'
-    ws["A33"] = "Маркетинг и реклама, ₽/мес."
-    ws["B33"] = 0
-    style_input(ws["B33"])
-    ws["A34"] = "Техподдержка / сопровождение, ₽/мес."
-    ws["B34"] = 0
-    style_input(ws["B34"])
-    ws["A35"] = "Прочие расходы, ₽/мес."
-    ws["B35"] = 0
-    style_input(ws["B35"])
+        ws.cell(r, 2).number_format = "#,##0"
+    ws["A34"] = "Количество активных менеджеров"
+    ws["B34"] = '=COUNTIF(C31:C33,"Да")'
+    style_formula(ws["B34"])
+    style_control(ws["B34"])
+    ws["A35"] = "Сумма окладов активных"
+    ws["B35"] = '=SUMIF(C31:C33,"Да",B31:B33)'
+    style_formula(ws["B35"])
+    ws["B35"].number_format = "#,##0"
+    ws["A36"] = "Маркетинг и реклама, ₽/мес."
+    ws["B36"] = 0
+    style_input(ws["B36"])
+    ws["A37"] = "Техподдержка / сопровождение, ₽/мес."
+    ws["B37"] = 0
+    style_input(ws["B37"])
+    ws["A38"] = "Прочие расходы, ₽/мес."
+    ws["B38"] = 0
+    style_input(ws["B38"])
 
     # E. Market & base quality — linked stats
-    ws["A37"] = "E. Рынок и качество клиентской базы (автоиз базы + ручные рыночные вводы)"
-    ws["A37"].font = SECTION_FONT
+    ws["A40"] = "E. Рынок и качество клиентской базы (автоиз базы + ручные рыночные вводы)"
+    ws["A40"].font = SECTION_FONT
     for c, h in enumerate(["Показатель", "Значение", "Ед.", "Источник / статус"], 1):
-        ws.cell(38, c).value = h
-    style_header_row(ws, 38, 4)
+        ws.cell(41, c).value = h
+    style_header_row(ws, 41, 4)
 
     market_rows = [
-        (39, "Все организации РФ (ориентир)", 3_139_000, "шт.", "Верхняя граница; НЕ целевой TAM продукта", False),
-        (40, "Записей с ИНН в нашей базе", stats.get("with_inn", 0), "шт.", "Факт базы", True),
-        (41, "Уникальных ИНН", stats.get("unique_inn", 0), "шт.", "Дедупликация", True),
-        (42, "Уникальных ИНН с ССЧР", stats.get("sschr", 0), "шт.", "ФНС открытые данные", True),
-        (43, "Уникальных ИНН с ОКВЭД", stats.get("okved", 0), "шт.", "ЕГРЮЛ", True),
-        (44, "Целевой ОКВЭД (подтверждено)", stats.get("target_okved", 0), "шт.", "По списку ICP", True),
-        (45, "Численность ≥22", stats.get("ge22", 0), "шт.", "Порог из B9", True),
-        (46, "Численность ≥50", stats.get("ge50", 0), "шт.", "Порог из B10", True),
-        (47, "Горячие к обработке (ОКВЭД+22+ или 50+)", 0, "шт.", "Лист «Горячие клиенты»", True),
-        (48, "Только целевой ОКВЭД (без 22+)", 0, "шт.", "Сегмент 2", True),
-        (49, "Только 22+ без целевого ОКВЭД", 0, "шт.", "Сегмент 3", True),
-        (50, "ИТОГО подтверждённая целевая база", 0, "шт.", "Горячие ∪ сегмент2 ∪ сегмент3", True),
-        (51, "Покрытие ССЧР", None, "доля", "ССЧР / уникальные ИНН", True),
-        (52, "Покрытие ОКВЭД", None, "доля", "ОКВЭД / уникальные ИНН", True),
-        (53, "SAM: компании РФ с целевыми ОКВЭД", "", "шт.", "Введите после федерального среза", False),
-        (54, "SAM: целевые ОКВЭД + 22+", "", "шт.", "Введите после cross-join", False),
+        (42, "Все организации РФ (ориентир)", 3_139_000, "шт.", "Верхняя граница; НЕ целевой TAM продукта", False),
+        (43, "Записей с ИНН в нашей базе", stats.get("with_inn", 0), "шт.", "Факт базы", True),
+        (44, "Уникальных ИНН", stats.get("unique_inn", 0), "шт.", "Дедупликация", True),
+        (45, "Уникальных ИНН с ССЧР", stats.get("sschr", 0), "шт.", "ФНС открытые данные", True),
+        (46, "Уникальных ИНН с ОКВЭД", stats.get("okved", 0), "шт.", "ЕГРЮЛ", True),
+        (47, "Целевой ОКВЭД (подтверждено)", stats.get("target_okved", 0), "шт.", "По списку ICP", True),
+        (48, "Численность ≥22", stats.get("ge22", 0), "шт.", "Порог из B9", True),
+        (49, "Численность ≥50", stats.get("ge50", 0), "шт.", "Порог из B10", True),
+        (50, "Горячие к обработке (ОКВЭД+22+ или 50+)", 0, "шт.", "Лист «Горячие клиенты»", True),
+        (51, "Только целевой ОКВЭД (без 22+)", 0, "шт.", "Сегмент 2", True),
+        (52, "Только 22+ без целевого ОКВЭД", 0, "шт.", "Сегмент 3", True),
+        (53, "ИТОГО подтверждённая целевая база", 0, "шт.", "Горячие ∪ сегмент2 ∪ сегмент3", True),
+        (54, "Покрытие ССЧР", None, "доля", "ССЧР / уникальные ИНН", True),
+        (55, "Покрытие ОКВЭД", None, "доля", "ОКВЭД / уникальные ИНН", True),
+        (56, "SAM: компании РФ с целевыми ОКВЭД", "", "шт.", "Введите после федерального среза", False),
+        (57, "SAM: целевые ОКВЭД + 22+", "", "шт.", "Введите после cross-join", False),
     ]
-    # Fix hot count: need actual intersection, not proxy
-    # stats['hot'] already computed as OKVED+22 or 50+
-    # For "Приоритет №1: ОКВЭД + 22+" we need a separate count - approximate from enrichment loop
-    # We'll set proper values below after computing
 
     market_values = {
-        39: 3_139_000,
-        40: stats.get("with_inn", 0),
-        41: stats.get("unique_inn", 0),
-        42: stats.get("sschr", 0),
-        43: stats.get("okved", 0),
-        44: stats.get("target_okved", 0),
-        45: stats.get("ge22", 0),
-        46: stats.get("ge50", 0),
-        47: stats.get("hot", 0),
-        48: stats.get("okved_only", 0),
-        49: stats.get("ge22_only", 0),
-        50: stats.get("target_base", 0),
-        51: "=IF(B41=0,0,B42/B41)",
-        52: "=IF(B41=0,0,B43/B41)",
-        53: "",
-        54: "",
+        42: 3_139_000,
+        43: stats.get("with_inn", 0),
+        44: stats.get("unique_inn", 0),
+        45: stats.get("sschr", 0),
+        46: stats.get("okved", 0),
+        47: stats.get("target_okved", 0),
+        48: stats.get("ge22", 0),
+        49: stats.get("ge50", 0),
+        50: stats.get("hot", 0),
+        51: stats.get("okved_only", 0),
+        52: stats.get("ge22_only", 0),
+        53: stats.get("target_base", 0),
+        54: "=IF(B44=0,0,B45/B44)",
+        55: "=IF(B44=0,0,B46/B44)",
+        56: "",
+        57: "",
     }
 
     for r, label, _default, unit, note, is_calc in market_rows:
         ws.cell(r, 1).value = label
         val = market_values.get(r, _default)
-        if r in (53, 54):
+        if r in (56, 57):
             ws.cell(r, 2).value = ""
             style_input(ws.cell(r, 2))
         elif isinstance(val, str) and val.startswith("="):
             ws.cell(r, 2).value = val
             style_formula(ws.cell(r, 2))
-            if r in (51, 52):
+            if r in (54, 55):
                 ws.cell(r, 2).number_format = "0.00%"
         else:
             ws.cell(r, 2).value = val
@@ -754,24 +763,24 @@ def rebuild_params(wb, stats: dict):
                 style_formula(ws.cell(r, 2))
             else:
                 style_input(ws.cell(r, 2))
-            if isinstance(val, (int, float)) and r not in (51, 52):
+            if isinstance(val, (int, float)) and r not in (54, 55):
                 ws.cell(r, 2).number_format = "#,##0"
         ws.cell(r, 3).value = unit
         ws.cell(r, 4).value = note
 
-    style_control(ws["B47"])
     style_control(ws["B50"])
+    style_control(ws["B53"])
 
     # F. Target OKVED dictionary
-    ws["A56"] = "F. Справочник целевых ОКВЭД (ICP)"
-    ws["A56"].font = SECTION_FONT
-    ws["A57"] = "Префикс"
-    ws["B57"] = "Сегмент"
-    style_header_row(ws, 57, 2)
+    ws["A59"] = "F. Справочник целевых ОКВЭД (ICP)"
+    ws["A59"].font = SECTION_FONT
+    ws["A60"] = "Префикс"
+    ws["B60"] = "Сегмент"
+    style_header_row(ws, 60, 2)
     for i, (pref, seg) in enumerate(TARGET_OKVED_PREFIXES):
-        ws.cell(58 + i, 1).value = pref
-        ws.cell(58 + i, 2).value = seg
-        style_input(ws.cell(58 + i, 1))
+        ws.cell(61 + i, 1).value = pref
+        ws.cell(61 + i, 2).value = seg
+        style_input(ws.cell(61 + i, 1))
 
     set_col_widths(ws, {"A": 48, "B": 16, "C": 14, "D": 14, "E": 10, "F": 42})
     ws.freeze_panes = "A5"
@@ -786,7 +795,7 @@ def rebuild_tariffs(wb):
     ws = wb.create_sheet(name, 2)
     ws["A1"] = "Тарифы «1С:Кабинет сотрудника»"
     ws["A1"].font = TITLE_FONT
-    ws["A2"] = "Источник: прайс партнёра (розница / дилер). Стартовый оффер модели — пакет до 10."
+    ws["A2"] = "Источник: прайс партнёра (розница / дилер). КП модели: 10 кабинетов для пилота КЭДО = 3 360 ₽/год."
     headers = ["Пакет", "Сотрудников до", "Цена ₽/мес.", "Цена ₽/год", "Закупка ₽/год", "Маржа ₽/год", "Маржинальность", "Стартовый?"]
     for c, h in enumerate(headers, 1):
         ws.cell(4, c).value = h
@@ -808,8 +817,8 @@ def rebuild_tariffs(wb):
         ws.cell(r, 7).number_format = "0.0%"
         for c in range(3, 7):
             ws.cell(r, c).number_format = '#,##0'
-    ws["A14"] = "Логика КП: старт — до 10 сотрудников (3 360 ₽/год). После пилота — пакет по фактической численности."
-    ws["A15"] = "Потенциал по базе считается по ближайшему достаточному пакету из этой таблицы."
+    ws["A14"] = "Коммерческое предложение: 10 кабинетов для пилотного подключения КЭДО — 3 360 ₽/год (закупка 1 680 ₽). После пилота — расширение по численности."
+    ws["A15"] = "В плане, прогнозе, P&L и ДДС везде сумма пилота 3 360 ₽. Пакеты выше — только оценка апселла после пилота."
     set_col_widths(ws, {"A": 14, "B": 14, "C": 14, "D": 14, "E": 14, "F": 14, "G": 14, "H": 12})
 
 
@@ -831,25 +840,25 @@ def rebuild_market(wb):
     style_header_row(ws, 4, 6)
 
     ws["A5"] = "TAM (верхняя граница: все орг. РФ)"
-    ws["B5"] = f"='{P}'!B39"
+    ws["B5"] = f"='{P}'!B42"
     ws["C5"] = f"='{P}'!B5"
     ws["D5"] = "=B5*C5"
     ws["E5"] = 1
     ws["F5"] = "Ориентир; не доказанный TAM продукта КЭДО"
     ws["A6"] = "SAM — целевые ОКВЭД"
-    ws["B6"] = f"='{P}'!B53"
+    ws["B6"] = f"='{P}'!B56"
     ws["C6"] = f"='{P}'!B5"
     ws["D6"] = '=IF(B6="","" ,B6*C6)'
     ws["E6"] = '=IF(OR(B6="",B5=0),"",B6/B5)'
     ws["F6"] = "Введите число в Исходных данных после cross-join"
     ws["A7"] = "SAM — целевые ОКВЭД + 22+"
-    ws["B7"] = f"='{P}'!B54"
+    ws["B7"] = f"='{P}'!B57"
     ws["C7"] = f"='{P}'!B5"
     ws["D7"] = '=IF(B7="","" ,B7*C7)'
     ws["E7"] = '=IF(OR(B7="",B5=0),"",B7/B5)'
     ws["F7"] = "Узкий SAM по ICP"
     ws["A8"] = "Подтверждённая целевая база (наша)"
-    ws["B8"] = f"='{P}'!B50"
+    ws["B8"] = f"='{P}'!B53"
     ws["C8"] = f"='{P}'!B5"
     ws["D8"] = "=B8*C8"
     ws["E8"] = '=IF(B5=0,0,B8/B5)'
@@ -869,11 +878,11 @@ def rebuild_market(wb):
     ):
         ws.cell(11, c).value = h
     style_header_row(ws, 11, 7)
-    for i, scen in enumerate(["Малый", "Средний", "Большой"]):
+    for i, scen in enumerate(["Малый", "Средний", "Перевыполнение"]):
         r = 12 + i
         col = "BCD"[i]
         ws.cell(r, 1).value = scen
-        ws.cell(r, 2).value = f"='{P}'!B31"
+        ws.cell(r, 2).value = f"='{P}'!B34"
         ws.cell(r, 3).value = f"='{P}'!{col}20"
         ws.cell(r, 4).value = f"=B{r}*C{r}*12"
         ws.cell(r, 5).value = f"=D{r}*'{{P}}'!B5".replace("{P}", P)
@@ -905,7 +914,7 @@ def rebuild_market(wb):
 
     ws["A22"] = "Как читать для инвестора"
     ws["A22"].font = SECTION_FONT
-    ws["A23"] = "TAM — потолок рынка. SAM — компании с нужным ОКВЭД/ICP. SOM — что реально взять мощностью 3 менеджеров при плане 4/6/9."
+    ws["A23"] = "TAM — потолок рынка. SAM — компании с нужным ОКВЭД/ICP. SOM — что реально взять мощностью 3 менеджеров при плане 3/5/7."
     ws["A24"] = "Пока SAM пуст — опирайтесь на capacity-based SOM и подтверждённую целевую базу (строка 8)."
     set_col_widths(ws, {"A": 40, "B": 14, "C": 14, "D": 14, "E": 14, "F": 36, "G": 28})
 
@@ -927,7 +936,7 @@ def rebuild_base_summary(wb, stats: dict):
         "Критерий",
         "Уникальных ИНН",
         "Доля базы",
-        "Потенциал ₽/год (старт 3360)",
+        "Потенциал пилота ₽/год (10 каб. = 3360)",
         "Потенциал по пакетам (если есть ССЧР)",
         "Действие",
     ]
@@ -936,17 +945,17 @@ def rebuild_base_summary(wb, stats: dict):
     style_header_row(ws, 4, 7)
 
     rows = [
-        ("1 — Горячие", "ОКВЭД + 22+ или 50+", f"='{P}'!B47", "Обрабатывать первыми; персональный оффер"),
-        ("2 — Целевой ОКВЭД", "Целевой ОКВЭД, 22+ не подтверждён", f"='{P}'!B48", "Обогащать ССЧР и запускать продажи"),
-        ("3 — Дополнительный", "22+ без целевого ОКВЭД", f"='{P}'!B49", "Тестировать отдельным сценарием"),
-        ("ИТОГО целевая", "Объединение сегментов", f"='{P}'!B50", "Подтверждённый минимум для плана"),
+        ("1 — Горячие", "ОКВЭД + 22+ или 50+", f"='{P}'!B50", "Обрабатывать первыми; персональный оффер"),
+        ("2 — Целевой ОКВЭД", "Целевой ОКВЭД, 22+ не подтверждён", f"='{P}'!B51", "Обогащать ССЧР и запускать продажи"),
+        ("3 — Дополнительный", "22+ без целевого ОКВЭД", f"='{P}'!B52", "Тестировать отдельным сценарием"),
+        ("ИТОГО целевая", "Объединение сегментов", f"='{P}'!B53", "Подтверждённый минимум для плана"),
     ]
     for i, (prio, crit, formula, action) in enumerate(rows):
         r = 5 + i
         ws.cell(r, 1).value = prio
         ws.cell(r, 2).value = crit
         ws.cell(r, 3).value = formula
-        ws.cell(r, 4).value = f"=IF('{P}'!B41=0,0,C{r}/'{P}'!B41)"
+        ws.cell(r, 4).value = f"=IF('{P}'!B44=0,0,C{r}/'{P}'!B44)"
         ws.cell(r, 5).value = f"=C{r}*'{P}'!B5"
         ws.cell(r, 6).value = ""  # filled below with computed package potential if available
         ws.cell(r, 7).value = action
@@ -969,9 +978,9 @@ def rebuild_base_summary(wb, stats: dict):
     ws["A10"] = "Контроль качества обогащения"
     ws["A10"].font = SECTION_FONT
     ws["A11"] = "Покрытие ССЧР"
-    ws["B11"] = f"='{P}'!B51"
+    ws["B11"] = f"='{P}'!B54"
     ws["A12"] = "Покрытие ОКВЭД"
-    ws["B12"] = f"='{P}'!B52"
+    ws["B12"] = f"='{P}'!B55"
     style_control(ws["B11"])
     style_control(ws["B12"])
     ws["B11"].number_format = "0.00%"
@@ -1083,6 +1092,7 @@ def rebuild_hot_clients(wb):
     return out_r - 5
 
 
+
 def rebuild_sales_plan(wb):
     name = "07_План_продаж"
     for old in ("03_План продаж", name):
@@ -1090,102 +1100,185 @@ def rebuild_sales_plan(wb):
             del wb[old]
     ws = wb.create_sheet(name)
     P = "01_Исходные_данные"
-    ws["A1"] = "План продаж — сценарии 4 / 6 / 9 и воронка по источникам"
+    ws["A1"] = "План продаж 3 / 5 / 7 — от базы к обработке, прогнозу и плану"
     ws["A1"].font = TITLE_FONT
-    ws["A2"] = "Прогноз воронки (гипотеза) и коммерческий план — разные показатели. Excel показывает разрыв и требуемую конверсию."
+    ws["A2"] = (
+        "КП: 10 кабинетов = 3 360 ₽/год. Прогноз строится от плановых конверсий и требуемого объёма обработки; "
+        "прогноз оплат всегда ≥ плана."
+    )
 
+    # ---- Block 1: base available ----
+    ws["A4"] = "1. Сколько клиентов есть в базе"
+    ws["A4"].font = SECTION_FONT
+    for c, h in enumerate(["Сегмент", "Уникальных ИНН", "Потенциал пилота ₽/год", "Комментарий"], 1):
+        ws.cell(5, c).value = h
+    style_header_row(ws, 5, 4)
+    base_rows = [
+        (6, "Горячие (ОКВЭД+22+ или 50+)", f"='{P}'!B50", f"='{P}'!B50*'{P}'!B5", "Брать в работу первыми"),
+        (7, "Целевой ОКВЭД без 22+", f"='{P}'!B51", f"='{P}'!B51*'{P}'!B5", "Обогащать ССЧР"),
+        (8, "22+ без целевого ОКВЭД", f"='{P}'!B52", f"='{P}'!B52*'{P}'!B5", "Дополнительный сегмент"),
+        (9, "ИТОГО целевая база", f"='{P}'!B53", f"='{P}'!B53*'{P}'!B5", "Подтверждённый минимум"),
+        (10, "Вся база (уникальные ИНН)", f"='{P}'!B44", f"='{P}'!B44*'{P}'!B5", "Включая необогащённых"),
+    ]
+    for r, label, cnt, pot, note in base_rows:
+        ws.cell(r, 1).value = label
+        ws.cell(r, 2).value = cnt
+        ws.cell(r, 3).value = pot
+        ws.cell(r, 4).value = note
+        style_formula(ws.cell(r, 2))
+        style_formula(ws.cell(r, 3))
+        ws.cell(r, 2).number_format = "#,##0"
+        ws.cell(r, 3).number_format = "#,##0"
+    style_control(ws["B6"])
+    style_control(ws["B9"])
+
+    # ---- Block 2: reverse funnel / required processing ----
+    ws["A12"] = "2. Сколько нужно обработать при плановых конверсиях, чтобы выполнить план 3 / 5 / 7"
+    ws["A12"].font = SECTION_FONT
     headers = [
         "Сценарий",
-        "Лидов/мес",
-        "→ переговоры",
-        "→ демо",
-        "→ сделка",
-        "→ оплата",
-        "Общая конв.",
-        "Прогноз оплат",
-        "Целевые продажи",
-        "Требуемая конв. для плана",
-        "Лидов для плана при текущей конв.",
-        "Выручка по плану",
-        "Маржа по плану",
-        "Премия по плану",
+        "План оплат / мен / мес",
+        "Общая конв. (плановая)",
+        "Требуемая обработка / мен",
+        "Обработка команды / мес",
+        "Прогноз оплат / мен",
+        "Прогноз оплат команды",
+        "Прогноз ≥ план?",
+        "Выручка прогноза / мен (команда)",
+        "Маржа прогноза / мен (команда)",
+        "Запас базы, мес. (горячие)",
+        "Запас базы, мес. (целевая)",
     ]
     for c, h in enumerate(headers, 1):
-        ws.cell(4, c).value = h
-    style_header_row(ws, 4, 14)
+        ws.cell(13, c).value = h
+    style_header_row(ws, 13, 12)
 
-    for i, scen in enumerate(["Малый", "Средний", "Большой"]):
-        r = 5 + i
+    for i, scen in enumerate(["Малый", "Средний", "Перевыполнение"]):
+        r = 14 + i
         col = "BCD"[i]
         ws.cell(r, 1).value = scen
-        ws.cell(r, 2).value = f"='{P}'!{col}14"
-        ws.cell(r, 3).value = f"='{P}'!{col}15"
-        ws.cell(r, 4).value = f"='{P}'!{col}16"
-        ws.cell(r, 5).value = f"='{P}'!{col}17"
-        ws.cell(r, 6).value = f"='{P}'!{col}18"
-        ws.cell(r, 7).value = f"=C{r}*D{r}*E{r}*F{r}"
-        ws.cell(r, 8).value = f"=B{r}*G{r}"
-        ws.cell(r, 9).value = f"='{P}'!{col}20"
-        ws.cell(r, 10).value = f"=IF(B{r}=0,0,I{r}/B{r})"
-        ws.cell(r, 11).value = f"=IF(G{r}=0,0,I{r}/G{r})"
-        ws.cell(r, 12).value = f"=I{r}*'{{P}}'!B5".replace("{P}", P)
-        ws.cell(r, 13).value = f"=I{r}*'{{P}}'!B7".replace("{P}", P)
-        ws.cell(r, 14).value = f"=M{r}*'{{P}}'!{col}24".replace("{P}", P)
-        for c in range(2, 15):
+        ws.cell(r, 2).value = f"='{P}'!{col}20"  # plan
+        ws.cell(r, 3).value = f"='{P}'!{col}19"  # overall conv
+        ws.cell(r, 4).value = f"='{P}'!{col}21"  # required processed
+        ws.cell(r, 5).value = f"=D{r}*'{{P}}'!B34".replace("{P}", P)
+        ws.cell(r, 6).value = f"='{P}'!{col}22"  # forecast per mgr
+        ws.cell(r, 7).value = f"=F{r}*'{{P}}'!B34".replace("{P}", P)
+        ws.cell(r, 8).value = f"='{P}'!{col}23"
+        ws.cell(r, 9).value = f"=G{r}*'{{P}}'!B5".replace("{P}", P)
+        ws.cell(r, 10).value = f"=G{r}*'{{P}}'!B7".replace("{P}", P)
+        ws.cell(r, 11).value = f"=IF(E{r}=0,\"\",ROUND('{P}'!B50/E{r},1))"
+        ws.cell(r, 12).value = f"=IF(E{r}=0,\"\",ROUND('{P}'!B53/E{r},1))"
+        for c in range(2, 13):
             style_formula(ws.cell(r, c))
-        for c in (3, 4, 5, 6, 7, 10):
-            ws.cell(r, c).number_format = "0.0%"
-        for c in (8, 9, 11):
-            ws.cell(r, c).number_format = "0.00"
-        for c in (12, 13, 14):
-            ws.cell(r, c).number_format = '#,##0'
-
-    ws["A9"] = "План команды"
-    ws["A9"].font = SECTION_FONT
-    for c, h in enumerate(
-        ["Сценарий", "Менеджеров", "Продаж/мес", "Выручка/мес", "Маржа/мес", "Премии/мес", "Оклады/мес", "Результат до прочих"],
-        1,
-    ):
-        ws.cell(10, c).value = h
-    style_header_row(ws, 10, 8)
-    for i in range(3):
-        r = 11 + i
-        src = 5 + i
-        ws.cell(r, 1).value = f"=A{src}"
-        ws.cell(r, 2).value = f"='{P}'!B31"
-        ws.cell(r, 3).value = f"=I{src}*B{r}"
-        ws.cell(r, 4).value = f"=L{src}*B{r}"
-        ws.cell(r, 5).value = f"=M{src}*B{r}"
-        ws.cell(r, 6).value = f"=N{src}*B{r}"
-        ws.cell(r, 7).value = f"='{P}'!B32"
-        ws.cell(r, 8).value = f"=E{r}-F{r}-G{r}"
-        for c in range(1, 9):
-            style_formula(ws.cell(r, c))
-        for c in range(3, 9):
-            ws.cell(r, c).number_format = '#,##0'
+        ws.cell(r, 3).number_format = "0.00%"
+        for c in (2, 4, 5, 6, 7, 11, 12):
+            ws.cell(r, c).number_format = "0.0"
+        for c in (9, 10):
+            ws.cell(r, c).number_format = "#,##0"
+        style_control(ws.cell(r, 8))
         if i == 1:
-            style_control(ws.cell(r, 8))
+            style_control(ws.cell(r, 4))
+            style_control(ws.cell(r, 7))
 
-    ws["A15"] = "Воронка по источникам базы (план/модель)"
-    ws["A15"].font = SECTION_FONT
+    ws["A18"] = (
+        "Как читать: при средних плановых конверсиях, чтобы сделать план 5 оплат, менеджер должен обработать "
+        "ROUNDUP(5 / общая_конверсия) клиентов. Прогноз = обработка × конверсия ≥ 5."
+    )
+    ws.merge_cells("A18:L18")
+
+    # ---- Block 3: reverse stage cascade ----
+    ws["A20"] = "3. Обратная воронка от плана (сколько нужно на каждом этапе)"
+    ws["A20"].font = SECTION_FONT
     for c, h in enumerate(
-        ["Источник", "Обработано", "Переговоры", "Демо", "Сделки", "Оплаты", "Общая конв.", "Выручка", "Маржа"],
+        ["Сценарий", "Оплаты (план)", "← Сделки", "← Демо", "← Переговоры", "← Обработано", "Контроль оплат из обработки"],
         1,
     ):
-        ws.cell(16, c).value = h
-    style_header_row(ws, 16, 9)
+        ws.cell(21, c).value = h
+    style_header_row(ws, 21, 7)
+    for i in range(3):
+        r = 22 + i
+        col = "BCD"[i]
+        src = 14 + i
+        ws.cell(r, 1).value = f"=A{src}"
+        ws.cell(r, 2).value = f"=B{src}"  # plan payments
+        # deals = payments / (deal->pay)
+        ws.cell(r, 3).value = f"=IF('{P}'!{col}18=0,0,ROUNDUP(B{r}/'{P}'!{col}18,0))"
+        ws.cell(r, 4).value = f"=IF('{P}'!{col}17=0,0,ROUNDUP(C{r}/'{P}'!{col}17,0))"
+        ws.cell(r, 5).value = f"=IF('{P}'!{col}16=0,0,ROUNDUP(D{r}/'{P}'!{col}16,0))"
+        ws.cell(r, 6).value = f"=IF('{P}'!{col}15=0,0,ROUNDUP(E{r}/'{P}'!{col}15,0))"
+        ws.cell(r, 7).value = f"=F{r}*'{{P}}'!{col}19".replace("{P}", P)
+        for c in range(1, 8):
+            style_formula(ws.cell(r, c))
+        for c in range(2, 8):
+            ws.cell(r, c).number_format = "0.00"
+        style_control(ws.cell(r, 7))
+
+    # ---- Block 4: comparison forecast vs plan + finance ----
+    ws["A26"] = "4. Сравнение прогноза и плана + экономика (КП 3 360 ₽)"
+    ws["A26"].font = SECTION_FONT
+    for c, h in enumerate(
+        [
+            "Сценарий",
+            "Менеджеров",
+            "План оплат команды",
+            "Прогноз оплат команды",
+            "Дельта прогноз−план",
+            "Выручка по прогнозу",
+            "Маржа по прогнозу",
+            "Премии",
+            "Оклады",
+            "Результат до прочих",
+        ],
+        1,
+    ):
+        ws.cell(27, c).value = h
+    style_header_row(ws, 27, 10)
+    for i in range(3):
+        r = 28 + i
+        src = 14 + i
+        col = "BCD"[i]
+        ws.cell(r, 1).value = f"=A{src}"
+        ws.cell(r, 2).value = f"='{P}'!B34"
+        ws.cell(r, 3).value = f"=B{src}*B{r}"  # plan team
+        ws.cell(r, 4).value = f"=G{src}"  # forecast team already
+        ws.cell(r, 5).value = f"=D{r}-C{r}"
+        ws.cell(r, 6).value = f"=D{r}*'{{P}}'!B5".replace("{P}", P)
+        ws.cell(r, 7).value = f"=D{r}*'{{P}}'!B7".replace("{P}", P)
+        ws.cell(r, 8).value = f"=G{r}*'{{P}}'!{col}27".replace("{P}", P)
+        ws.cell(r, 9).value = f"='{P}'!B35"
+        ws.cell(r, 10).value = f"=G{r}-H{r}-I{r}"
+        for c in range(1, 11):
+            style_formula(ws.cell(r, c))
+        for c in range(3, 11):
+            ws.cell(r, c).number_format = "#,##0"
+        style_control(ws.cell(r, 5))
+        if i == 1:
+            style_control(ws.cell(r, 10))
+
+    # Keep aliases used by PnL/DDS/Dashboard: rows 11-13 historically were team plan.
+    # Map C11:H13 style used elsewhere -> use rows 28-30 going forward.
+    # Update other sheets separately to point to new cells.
+
+    ws["A32"] = "5. Воронка по источникам (модель загрузки базы)"
+    ws["A32"].font = SECTION_FONT
+    for c, h in enumerate(
+        ["Источник", "Обработано", "Переговоры", "Демо", "Сделки", "Оплаты", "Общая конв.", "Выручка пилота", "Маржа"],
+        1,
+    ):
+        ws.cell(33, c).value = h
+    style_header_row(ws, 33, 9)
     sources = ["Наша база", "ОКВЭД", "Лекторий", "Входящие", "Партнёры", "Реклама"]
     for i, src in enumerate(sources):
-        r = 17 + i
+        r = 34 + i
         ws.cell(r, 1).value = src
         if i == 0:
-            # example cascade using medium conversions from params
-            ws.cell(r, 2).value = 350
+            # default = required team processing for medium scenario
+            ws.cell(r, 2).value = "=E15"
+            style_formula(ws.cell(r, 2))
             ws.cell(r, 3).value = f"=ROUND(B{r}*'{{P}}'!C15,0)".replace("{P}", P)
             ws.cell(r, 4).value = f"=ROUND(C{r}*'{{P}}'!C16,0)".replace("{P}", P)
             ws.cell(r, 5).value = f"=ROUND(D{r}*'{{P}}'!C17,0)".replace("{P}", P)
             ws.cell(r, 6).value = f"=ROUND(E{r}*'{{P}}'!C18,0)".replace("{P}", P)
-            style_input(ws.cell(r, 2))
             for c in range(3, 7):
                 style_formula(ws.cell(r, c))
         else:
@@ -1195,34 +1288,45 @@ def rebuild_sales_plan(wb):
         ws.cell(r, 7).value = f"=IF(B{r}=0,0,F{r}/B{r})"
         ws.cell(r, 8).value = f"=F{r}*'{{P}}'!B5".replace("{P}", P)
         ws.cell(r, 9).value = f"=F{r}*'{{P}}'!B7".replace("{P}", P)
-        style_formula(ws.cell(r, 7))
-        style_formula(ws.cell(r, 8))
-        style_formula(ws.cell(r, 9))
+        for c in range(7, 10):
+            style_formula(ws.cell(r, c))
         ws.cell(r, 7).number_format = "0.0%"
-        ws.cell(r, 8).number_format = '#,##0'
-        ws.cell(r, 9).number_format = '#,##0'
+        ws.cell(r, 8).number_format = "#,##0"
+        ws.cell(r, 9).number_format = "#,##0"
 
-    ws["A24"] = "Итого по источникам"
-    ws["B24"] = "=SUM(B17:B22)"
-    ws["C24"] = "=SUM(C17:C22)"
-    ws["D24"] = "=SUM(D17:D22)"
-    ws["E24"] = "=SUM(E17:E22)"
-    ws["F24"] = "=SUM(F17:F22)"
-    ws["G24"] = "=IF(B24=0,0,F24/B24)"
-    ws["H24"] = "=SUM(H17:H22)"
-    ws["I24"] = "=SUM(I17:I22)"
-    for c in range(2, 10):
-        style_formula(ws.cell(24, c))
-    style_control(ws["F24"])
+    ws["A41"] = "Итого источники"
+    ws["B41"] = "=SUM(B34:B39)"
+    ws["F41"] = "=SUM(F34:F39)"
+    ws["H41"] = "=SUM(H34:H39)"
+    ws["I41"] = "=SUM(I34:I39)"
+    for coord in ("B41", "F41", "H41", "I41"):
+        style_formula(ws[coord])
+    style_control(ws["F41"])
 
-    ws["A26"] = "Стоимость продажи (по среднему сценарию команды)"
-    ws["B26"] = f"=IF(C12=0,0,('{P}'!B32+'{P}'!B33+'{P}'!B34+'{P}'!B35)/C12)"
-    style_control(ws["B26"])
-    ws["B26"].number_format = '#,##0'
-    ws["C26"] = "₽ на 1 оплату (оклады+прочие)/продажи"
+    ws["A43"] = "Стоимость продажи (средний сценарий, от прогноза команды)"
+    ws["B43"] = f"=IF(D29=0,0,('{P}'!B35+'{P}'!B36+'{P}'!B37+'{P}'!B38)/D29)"
+    style_control(ws["B43"])
+    ws["B43"].number_format = "#,##0"
+    ws["C43"] = "₽ на 1 оплату прогноза"
 
-    set_col_widths(ws, {get_column_letter(c): 12 for c in range(1, 15)})
-    ws.column_dimensions["A"].width = 18
+    # Compatibility named block for other sheets expecting old C11:H13 / I5 etc.
+    # Write hidden-friendly alias rows at AA
+    ws["AA1"] = "alias"
+    for i in range(3):
+        r = 2 + i
+        src = 28 + i
+        ws.cell(r, 27).value = f"=A{src}"  # AA
+        ws.cell(r, 28).value = f"=B{src}"  # AB managers
+        ws.cell(r, 29).value = f"=D{src}"  # AC forecast sales team
+        ws.cell(r, 30).value = f"=F{src}"  # AD revenue
+        ws.cell(r, 31).value = f"=G{src}"  # AE margin
+        ws.cell(r, 32).value = f"=H{src}"  # AF premium
+        ws.cell(r, 33).value = f"=I{src}"  # AG salaries
+        ws.cell(r, 34).value = f"=J{src}"  # AH result
+
+    set_col_widths(ws, {get_column_letter(c): 12 for c in range(1, 13)})
+    ws.column_dimensions["A"].width = 34
+    ws.column_dimensions["H"].width = 14
 
 
 def rebuild_fact(wb):
@@ -1261,7 +1365,7 @@ def rebuild_fact(wb):
 
     for i, mgr in enumerate(["Оглоблина", "Юнусова", "Кургузов"]):
         r = 5 + i
-        ws.cell(r, 1).value = f"='{P}'!A{28+i}"
+        ws.cell(r, 1).value = f"='{P}'!A{31+i}"
         ws.cell(r, 2).value = "Средний"
         style_input(ws.cell(r, 2))
         ws.cell(r, 3).value = (
@@ -1280,7 +1384,7 @@ def rebuild_fact(wb):
         ws.cell(r, 15).value = f"=H{r}*'{{P}}'!$B$5".replace("{P}", P)
         ws.cell(r, 16).value = f"=H{r}*'{{P}}'!$B$7".replace("{P}", P)
         ws.cell(r, 17).value = (
-            f'=P{r}*IF(B{r}="Малый",\'{P}\'!$B$24,IF(B{r}="Средний",\'{P}\'!$C$24,\'{P}\'!$D$24))'
+            f'=P{r}*IF(B{r}="Малый",\'{P}\'!$B$27,IF(B{r}="Средний",\'{P}\'!$C$27,\'{P}\'!$D$27))'
         )
         for c in range(9, 18):
             style_formula(ws.cell(r, c))
@@ -1289,7 +1393,7 @@ def rebuild_fact(wb):
         for c in (15, 16, 17):
             ws.cell(r, c).number_format = '#,##0'
 
-    dv = DataValidation(type="list", formula1='"Малый,Средний,Большой"', allow_blank=False)
+    dv = DataValidation(type="list", formula1='"Малый,Средний,Перевыполнение"', allow_blank=False)
     ws.add_data_validation(dv)
     dv.add("B5:B7")
 
@@ -1360,20 +1464,20 @@ def rebuild_pnl(wb):
     ws["A1"].font = TITLE_FONT
     ws["A2"] = "План по сценариям и факт месяца. Налоги/взносы в текущей версии не моделируются."
 
-    headers = ["Статья", "Малый план", "Средний план", "Большой план", "Факт месяца", "Комментарий"]
+    headers = ["Статья", "Малый план", "Средний план", "Перевыполнение", "Факт месяца", "Комментарий"]
     for c, h in enumerate(headers, 1):
         ws.cell(4, c).value = h
     style_header_row(ws, 4, 6)
 
     lines = [
-        (5, "Выручка", f"='{SP}'!D11", f"='{SP}'!D12", f"='{SP}'!D13", f"='{F}'!O8", "Оплаты × цена"),
+        (5, "Выручка", f"='{SP}'!F28", f"='{SP}'!F29", f"='{SP}'!F30", f"='{F}'!O8", "Оплаты × цена"),
         (6, "Себестоимость (закупка 1С)", f"=-B5*'{{P}}'!B6/'{{P}}'!B5".replace("{P}", P), f"=-C5*'{{P}}'!B6/'{{P}}'!B5".replace("{P}", P), f"=-D5*'{{P}}'!B6/'{{P}}'!B5".replace("{P}", P), f"=-E5*'{{P}}'!B6/'{{P}}'!B5".replace("{P}", P), "Пропорция закупки"),
         (7, "Маржинальный доход", "=B5+B6", "=C5+C6", "=D5+D6", "=E5+E6", "После закупки"),
-        (8, "ФОТ (оклады)", f"=-'{P}'!B32", f"=-'{P}'!B32", f"=-'{P}'!B32", f"=-'{P}'!B32", "Активные менеджеры"),
-        (9, "Премии", f"=-'{SP}'!F11", f"=-'{SP}'!F12", f"=-'{SP}'!F13", f"=-'{F}'!Q8", "% от маржи"),
-        (10, "Маркетинг", f"=-'{P}'!B33", f"=-'{P}'!B33", f"=-'{P}'!B33", f"=-'{P}'!B33", ""),
-        (11, "Техподдержка", f"=-'{P}'!B34", f"=-'{P}'!B34", f"=-'{P}'!B34", f"=-'{P}'!B34", ""),
-        (12, "Прочие расходы", f"=-'{P}'!B35", f"=-'{P}'!B35", f"=-'{P}'!B35", f"=-'{P}'!B35", ""),
+        (8, "ФОТ (оклады)", f"=-'{P}'!B35", f"=-'{P}'!B35", f"=-'{P}'!B35", f"=-'{P}'!B35", "Активные менеджеры"),
+        (9, "Премии", f"=-'{SP}'!H28", f"=-'{SP}'!H29", f"=-'{SP}'!H30", f"=-'{F}'!Q8", "% от маржи"),
+        (10, "Маркетинг", f"=-'{P}'!B36", f"=-'{P}'!B36", f"=-'{P}'!B36", f"=-'{P}'!B36", ""),
+        (11, "Техподдержка", f"=-'{P}'!B37", f"=-'{P}'!B37", f"=-'{P}'!B37", f"=-'{P}'!B37", ""),
+        (12, "Прочие расходы", f"=-'{P}'!B38", f"=-'{P}'!B38", f"=-'{P}'!B38", f"=-'{P}'!B38", ""),
         (13, "Операционная прибыль", "=B7+B8+B9+B10+B11+B12", "=C7+C8+C9+C10+C11+C12", "=D7+D8+D9+D10+D11+D12", "=E7+E8+E9+E10+E11+E12", "До налогов"),
         (14, "Маржинальность (маржа/выручка)", "=IF(B5=0,0,B7/B5)", "=IF(C5=0,0,C7/C5)", "=IF(D5=0,0,D7/D5)", "=IF(E5=0,0,E7/E5)", ""),
         (15, "Рентабельность (прибыль/выручка)", "=IF(B5=0,0,B13/B5)", "=IF(C5=0,0,C13/C5)", "=IF(D5=0,0,D13/D5)", "=IF(E5=0,0,E13/E5)", ""),
@@ -1432,15 +1536,15 @@ def rebuild_cashflow(wb):
     ):
         ws.cell(5, c).value = h
     style_header_row(ws, 5, 9)
-    for i, scen in enumerate(["Малый", "Средний", "Большой"]):
+    for i, scen in enumerate(["Малый", "Средний", "Перевыполнение"]):
         r = 6 + i
         ws.cell(r, 1).value = scen
-        ws.cell(r, 2).value = f"='{SP}'!C{11+i}"
+        ws.cell(r, 2).value = f"='{SP}'!D{28+i}"
         ws.cell(r, 3).value = f"=B{r}*'{{P}}'!B5".replace("{P}", P)
         ws.cell(r, 4).value = f"=B{r}*'{{P}}'!B6".replace("{P}", P)
-        ws.cell(r, 5).value = f"='{P}'!B32"
-        ws.cell(r, 6).value = f"='{SP}'!F{11+i}"
-        ws.cell(r, 7).value = f"='{P}'!B33+'{{P}}'!B34+'{{P}}'!B35".replace("{P}", P)
+        ws.cell(r, 5).value = f"='{P}'!B35"
+        ws.cell(r, 6).value = f"='{SP}'!H{28+i}"
+        ws.cell(r, 7).value = f"='{P}'!B36+'{{P}}'!B37+'{{P}}'!B38".replace("{P}", P)
         ws.cell(r, 8).value = f"=C{r}-D{r}-E{r}-F{r}-G{r}"
         ws.cell(r, 9).value = f"=H{r}*12"
         for c in range(2, 10):
@@ -1451,8 +1555,8 @@ def rebuild_cashflow(wb):
 
     ws["A10"] = "Точка безубыточности (оплат/мес.)"
     ws["B10"] = (
-        f"=IF(('{P}'!B7*(1-'{P}'!C24))=0,0,"
-        f"ROUNDUP(('{P}'!B32+'{P}'!B33+'{P}'!B34+'{P}'!B35)/('{P}'!B7*(1-'{P}'!C24)),0))"
+        f"=IF(('{P}'!B7*(1-'{P}'!C27))=0,0,"
+        f"ROUNDUP(('{P}'!B35+'{P}'!B36+'{P}'!B37+'{P}'!B38)/('{P}'!B7*(1-'{P}'!C27)),0))"
     )
     style_control(ws["B10"])
     ws["C10"] = "При средней премии 30%; без налогов"
@@ -1482,11 +1586,11 @@ def rebuild_cashflow(wb):
     for m in range(1, 13):
         c = 1 + m
         col = get_column_letter(c)
-        ws.cell(15, c).value = f"='{SP}'!D12*{col}14"
-        ws.cell(16, c).value = f"='{SP}'!D12*'{{P}}'!B6/'{{P}}'!B5*{col}14".replace("{P}", P)
-        ws.cell(17, c).value = f"='{P}'!B32"
-        ws.cell(18, c).value = f"='{SP}'!F12*{col}14"
-        ws.cell(19, c).value = f"='{P}'!B33+'{{P}}'!B34+'{{P}}'!B35".replace("{P}", P)
+        ws.cell(15, c).value = f"='{SP}'!F29*{col}14"
+        ws.cell(16, c).value = f"='{SP}'!F29*'{{P}}'!B6/'{{P}}'!B5*{col}14".replace("{P}", P)
+        ws.cell(17, c).value = f"='{P}'!B35"
+        ws.cell(18, c).value = f"='{SP}'!H29*{col}14"
+        ws.cell(19, c).value = f"='{P}'!B36+'{{P}}'!B37+'{{P}}'!B38".replace("{P}", P)
         ws.cell(20, c).value = f"={col}15-{col}16-{col}17-{col}18-{col}19"
         if m == 1:
             ws.cell(21, c).value = f"={col}20"
@@ -1511,11 +1615,11 @@ def rebuild_cashflow(wb):
     ws["A27"] = "Закупка факт"
     ws["B27"] = f"='{F}'!H8*'{P}'!B6"
     ws["A28"] = "Оклады"
-    ws["B28"] = f"='{P}'!B32"
+    ws["B28"] = f"='{P}'!B35"
     ws["A29"] = "Премии факт"
     ws["B29"] = f"='{F}'!Q8"
     ws["A30"] = "Прочие"
-    ws["B30"] = f"='{P}'!B33+'{P}'!B34+'{P}'!B35"
+    ws["B30"] = f"='{P}'!B36+'{P}'!B37+'{P}'!B38"
     ws["A31"] = "Поток факт"
     ws["B31"] = "=B26-B27-B28-B29-B30"
     for r in range(26, 32):
@@ -1549,13 +1653,13 @@ def rebuild_dashboard(wb, hot_count: int, stats: dict):
     ws["A4"] = "Клиентская база"
     ws["A4"].font = SECTION_FONT
     kpis_base = [
-        (5, "Уникальных клиентов", f"='{P}'!B41", "шт."),
-        (6, "С целевым ОКВЭД", f"='{P}'!B44", "шт."),
-        (7, "С численностью 22+", f"='{P}'!B45", "шт."),
-        (8, "Горячие (приоритет №1 / 50+)", f"='{P}'!B47", "шт."),
+        (5, "Уникальных клиентов", f"='{P}'!B44", "шт."),
+        (6, "С целевым ОКВЭД", f"='{P}'!B47", "шт."),
+        (7, "С численностью 22+", f"='{P}'!B48", "шт."),
+        (8, "Горячие (приоритет №1 / 50+)", f"='{P}'!B50", "шт."),
         (9, "Горячие на листе менеджеров", hot_count, "шт."),
-        (10, "Покрытие ССЧР", f"='{P}'!B51", "%"),
-        (11, "Покрытие ОКВЭД", f"='{P}'!B52", "%"),
+        (10, "Покрытие ССЧР", f"='{P}'!B54", "%"),
+        (11, "Покрытие ОКВЭД", f"='{P}'!B55", "%"),
     ]
     ws["A4"] = "Показатель"
     ws["B4"] = "Значение"
@@ -1587,13 +1691,14 @@ def rebuild_dashboard(wb, hot_count: int, stats: dict):
         ws.cell(5, c).font = WHITE_FONT
 
     fin = [
-        (6, "План/факт оплат", f"='{SP}'!C12", f"='{F}'!H8"),
-        (7, "Выручка", f"='{SP}'!D12", f"='{F}'!O8"),
-        (8, "Маржа", f"='{SP}'!E12", f"='{F}'!P8"),
-        (9, "Прибыль (P&L)", f"='{PN}'!C13", f"='{PN}'!E13"),
-        (10, "Выполнение плана", "", f"='{F}'!N8"),
-        (11, "Общая конверсия факт", "", f"='{F}'!M8"),
-        (12, "Денежный поток", f"='{CF}'!H7", f"='{CF}'!B31"),
+        (6, "План оплат", f"='{SP}'!C29", f"='{F}'!H8"),
+        (7, "Прогноз оплат (≥ план)", f"='{SP}'!D29", ""),
+        (8, "Выручка по прогнозу", f"='{SP}'!F29", f"='{F}'!O8"),
+        (9, "Маржа по прогнозу", f"='{SP}'!G29", f"='{F}'!P8"),
+        (10, "Прибыль (P&L)", f"='{PN}'!C13", f"='{PN}'!E13"),
+        (11, "Выполнение плана", "", f"='{F}'!N8"),
+        (12, "Общая конверсия факт", "", f"='{F}'!M8"),
+        (13, "Денежный поток", f"='{CF}'!H7", f"='{CF}'!B31"),
     ]
     for r, label, plan, fact in fin:
         ws.cell(r, 5).value = label
@@ -1604,12 +1709,13 @@ def rebuild_dashboard(wb, hot_count: int, stats: dict):
             ws.cell(r, 6).number_format = "#,##0"
         if fact != "":
             style_formula(ws.cell(r, 7))
-            if r in (10, 11):
+            if r in (11, 12):
                 ws.cell(r, 7).number_format = "0.0%"
             else:
                 ws.cell(r, 7).number_format = "#,##0"
-    style_control(ws["G10"])
-    style_control(ws["F9"])
+    style_control(ws["G11"])
+    style_control(ws["F7"])
+    style_control(ws["F10"])
 
     ws["A13"] = "Рынок"
     ws["A13"].font = SECTION_FONT
@@ -1635,11 +1741,10 @@ def rebuild_dashboard(wb, hot_count: int, stats: dict):
     ws["F17"] = f"='{P}'!B8"
     ws["E18"] = "Безубыточность, оплат/мес"
     ws["F18"] = f"='{CF}'!B10"
-    ws["E19"] = "Средний чек горячих (по пакетам)"
-    avg = int(round(stats.get("pot_hot", 0) / stats["hot"])) if stats.get("hot") else 0
-    ws["F19"] = avg
+    ws["E19"] = "КП пилота (10 кабинетов)"
+    ws["F19"] = 3360
     ws["E20"] = "Заметка"
-    ws["F20"] = "План 4/6/9 сейчас считает старт 3 360 ₽. Для защиты покажите также сценарий со средним чеком горячих."
+    ws["F20"] = "Везде в плане/прогнозе/P&L/ДДС — пилот 10 кабинетов = 3 360 ₽/год. Апселл по численности смотрите в тарифах."
     for r in range(15, 20):
         style_formula(ws.cell(r, 6))
         if r == 17:
@@ -1657,11 +1762,11 @@ def rebuild_dashboard(wb, hot_count: int, stats: dict):
     style_header_row(ws, 21, 5)
     for i in range(3):
         r = 22 + i
-        ws.cell(r, 1).value = f"='{SP}'!A{11+i}"
-        ws.cell(r, 2).value = f"='{SP}'!C{11+i}"
-        ws.cell(r, 3).value = f"='{SP}'!D{11+i}"
-        ws.cell(r, 4).value = f"='{SP}'!E{11+i}"
-        ws.cell(r, 5).value = f"='{SP}'!H{11+i}"
+        ws.cell(r, 1).value = f"='{SP}'!A{28+i}"
+        ws.cell(r, 2).value = f"='{SP}'!D{28+i}"
+        ws.cell(r, 3).value = f"='{SP}'!F{28+i}"
+        ws.cell(r, 4).value = f"='{SP}'!G{28+i}"
+        ws.cell(r, 5).value = f"='{SP}'!J{28+i}"
         for c in range(1, 6):
             style_formula(ws.cell(r, c))
         for c in range(2, 6):
@@ -1719,7 +1824,7 @@ def rebuild_methodology(wb):
         ("Горячий клиент", "ОКВЭД+22+ или 50+", "Расчёт", "Расчёт", "Оба критерия"),
         ("Конверсия план", "Гипотеза воронки", "01_Исходные_данные", "Гипотеза", "Не подменять фактом"),
         ("Конверсия факт", "Факт этапов", "08_Факт_воронка", "Факт", "CRM / 1С"),
-        ("План 4/6/9", "Целевые продажи", "Управленческая гипотеза", "Гипотеза", "Сверять с требуемой конв."),
+        ("План 3/5/7", "План продаж менеджера", "Управленческий план", "План", "Сверять с прогнозом воронки"),
         ("Цена / закупка", "Unit-экономика", "Прайс 1С", "Параметр", "Маржа = цена − закупка"),
         ("Премия", "% от маржи", "Политика мотивации", "Параметр", "Не от выручки"),
         ("TAM/SAM/SOM", "Рынок", "Федеральные реестры + capacity", "Расчёт", "SAM ⊂ TAM; SOM ≤ capacity"),
@@ -1802,7 +1907,8 @@ def compute_extra_stats(wb) -> dict:
         g = _safe_float(ws.cell(r, 7).value)
         target = ws.cell(r, 12).value
         prio = str(ws.cell(r, 20).value or "")
-        pot_n = _safe_float(ws.cell(r, 14).value) or 0
+        # Pilot KP always 3360
+        pot_n = 3360
         if g is not None:
             stats["sschr"] += 1
             if g >= 22:
