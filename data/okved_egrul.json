@@ -28314,8 +28314,9 @@
     "inn": "1434002771",
     "main": null,
     "all": [],
-    "name": "ООО \"ФОТОН\"",
-    "status": "no_okved"
+    "name": "Организация ООО \"ФОТОН\"",
+    "status": "no_okved",
+    "source": "list_org"
   },
   "261407698338": {
     "inn": "261407698338",
@@ -59922,9 +59923,9 @@
     "inn": "2502002118",
     "main": null,
     "all": [],
-    "name": null,
-    "status": "not_found",
-    "source": "list_org"
+    "name": "КГА ПОУ \"АКСИД\"",
+    "status": "no_okved",
+    "source": "egrul"
   },
   "2511007779": {
     "inn": "2511007779",
@@ -59938,9 +59939,9 @@
     "inn": "2227021070",
     "main": null,
     "all": [],
-    "name": "Организация ГМУЗ \"МСЧ БОЗ\"",
+    "name": "ГМУЗ \"МСЧ БОЗ\"",
     "status": "no_okved",
-    "source": "list_org"
+    "source": "egrul"
   },
   "2510009300": {
     "inn": "2510009300",
@@ -60042,9 +60043,9 @@
     "inn": "2502012660",
     "main": null,
     "all": [],
-    "name": null,
-    "status": "not_found",
-    "source": "list_org"
+    "name": "КГАПОУ  \"ПСК\"",
+    "status": "no_okved",
+    "source": "egrul"
   },
   "2513003674": {
     "inn": "2513003674",
@@ -60162,9 +60163,9 @@
     "inn": "2501019158",
     "main": null,
     "all": [],
-    "name": null,
-    "status": "not_found",
-    "source": "list_org"
+    "name": "КГБУСО \"АРСЕНЬЕВСКИЙ ПНИ\"",
+    "status": "no_okved",
+    "source": "egrul"
   },
   "2511076701": {
     "inn": "2511076701",
@@ -60234,9 +60235,9 @@
     "inn": "2501016911",
     "main": null,
     "all": [],
-    "name": null,
-    "status": "not_found",
-    "source": "list_org"
+    "name": "КГБУ \"АРСЕНЬЕВСКАЯ ВСББЖ\"",
+    "status": "no_okved",
+    "source": "egrul"
   },
   "2505005212": {
     "inn": "2505005212",
@@ -60419,8 +60420,8 @@
     "main": null,
     "all": [],
     "name": null,
-    "status": "not_found",
-    "source": "list_org"
+    "status": "no_okved",
+    "source": "egrul"
   },
   "2515002348": {
     "inn": "2515002348",
@@ -60442,9 +60443,9 @@
     "inn": "2501015749",
     "main": null,
     "all": [],
-    "name": "",
+    "name": "КГБУЗ \"АРСЕНЬЕВСКАЯ ГБ\"",
     "status": "no_okved",
-    "source": "list_org"
+    "source": "egrul"
   },
   "2511010651": {
     "inn": "2511010651",
@@ -60728,6 +60729,729 @@
   },
   "2510005056": {
     "inn": "2510005056",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3812054703": {
+    "inn": "3812054703",
+    "main": "94.20",
+    "all": [],
+    "name": "Организация ПЕРВИЧНАЯ ПРОФСОЮЗНАЯ ОРГАНИЗАЦИЯ ГБУЗ ИОКБ",
+    "status": "ok",
+    "source": "list_org"
+  },
+  "3803200838": {
+    "inn": "3803200838",
+    "main": "94.20",
+    "all": [],
+    "name": "Организация БРАТСКАЯ ГОРОДСКАЯ ОРГАНИЗАЦИЯ ОБЩЕРОССИЙСКОГО ПРОФСОЮЗА ОБРАЗОВАНИЯ",
+    "status": "ok",
+    "source": "list_org"
+  },
+  "3801015607": {
+    "inn": "3801015607",
+    "main": "86.23",
+    "all": [],
+    "name": "ОГАУЗ \"АНГАРСКАЯ ГОРОДСКАЯ ДЕТСКАЯ СТОМАТОЛОГИЧЕСКАЯ ПОЛИКЛИНИКА\"",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3801075684": {
+    "inn": "3801075684",
+    "main": "47.73",
+    "all": [
+      "47.74",
+      "47.75",
+      "58.11.1",
+      "86.23",
+      "86.90.9"
+    ],
+    "name": "Организация МАНО \"ЦДС\"",
+    "status": "ok",
+    "source": "list_org"
+  },
+  "3801015935": {
+    "inn": "3801015935",
+    "main": "85.21",
+    "all": [
+      "56.29.2"
+    ],
+    "name": "АНГАРСКИЙ ПЕДАГОГИЧЕСКИЙ КОЛЛЕДЖ",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3801012412": {
+    "inn": "3801012412",
+    "main": "85.21",
+    "all": [],
+    "name": "ГБПОУ ИО \"АПТ\"",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3807001382": {
+    "inn": "3807001382",
+    "main": "01.13",
+    "all": [
+      "01.19.2",
+      "01.19.21",
+      "01.19.22",
+      "01.19.9",
+      "01.30",
+      "02.10",
+      "02.10.11",
+      "02.10.19",
+      "02.10.2",
+      "37.00",
+      "38.11"
+    ],
+    "name": "Организация МУПЭП \"ГОРЗЕЛЕНХОЗ\"",
+    "status": "ok",
+    "source": "list_org"
+  },
+  "3801016784": {
+    "inn": "3801016784",
+    "main": "85.21",
+    "all": [],
+    "name": "ГБПОУ ИО \"АПЭТ\"",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3801022668": {
+    "inn": "3801022668",
+    "main": "85.21",
+    "all": [],
+    "name": "ОГБПОУ \"АНГАРСКИЙ МЕДИЦИНСКИЙ КОЛЛЕДЖ\"",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3801017259": {
+    "inn": "3801017259",
+    "main": "85.21",
+    "all": [],
+    "name": "ОГБПОУТ УОР",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3801029582": {
+    "inn": "3801029582",
+    "main": "85.21",
+    "all": [],
+    "name": "ГАПОУ ИО АТОПТ",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3801029600": {
+    "inn": "3801029600",
+    "main": "85.21",
+    "all": [],
+    "name": "ГБПОУ \"АТРИПТ\"",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3801024016": {
+    "inn": "3801024016",
+    "main": "68.32.2",
+    "all": [],
+    "name": "СНТ \"ВАГОННИК\"",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3801029590": {
+    "inn": "3801029590",
+    "main": "85.21",
+    "all": [],
+    "name": "ГАПОУ ИО АТСТ",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3801038410": {
+    "inn": "3801038410",
+    "main": "68.32.2",
+    "all": [],
+    "name": "СНТ \"МИЧУРИНЕЦ\"",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "380104089316": {
+    "inn": "380104089316",
+    "main": "70.22",
+    "all": [
+      "43.31",
+      "43.33",
+      "43.99",
+      "69.20.2",
+      "74.10",
+      "82.99"
+    ],
+    "name": "АРИКО СВЕТЛАНА ДМИТРИЕВНА",
+    "status": "ok",
+    "source": "egrul"
+  },
+  "3803204328": {
+    "inn": "3803204328",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5056009325": {
+    "inn": "5056009325",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5003028885": {
+    "inn": "5003028885",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5004012729": {
+    "inn": "5004012729",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5003007660": {
+    "inn": "5003007660",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5047069529": {
+    "inn": "5047069529",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5003164415": {
+    "inn": "5003164415",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3808094774": {
+    "inn": "3808094774",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3803200965": {
+    "inn": "3803200965",
+    "main": null,
+    "all": [],
+    "name": "Организация МРО Православный Приход храма Всех святых в земле Российской просиявших г. Братска Иркутской области",
+    "status": "no_okved",
+    "source": "list_org"
+  },
+  "5040114437": {
+    "inn": "5040114437",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "8506007661": {
+    "inn": "8506007661",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3810058501": {
+    "inn": "3810058501",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3808042416": {
+    "inn": "3808042416",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "8501006343": {
+    "inn": "8501006343",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3801018005": {
+    "inn": "3801018005",
+    "main": null,
+    "all": [],
+    "name": "ОГКУСО \"СРЦН \"МАЛЮТКА\" Г.АНГАРСКА\"",
+    "status": "no_okved",
+    "source": "egrul"
+  },
+  "3801035995": {
+    "inn": "3801035995",
+    "main": null,
+    "all": [],
+    "name": "ОГАУСО \"АНГАРСКИЙ ДСО\"",
+    "status": "no_okved",
+    "source": "egrul"
+  },
+  "5002132837": {
+    "inn": "5002132837",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5027062620": {
+    "inn": "5027062620",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3808016455": {
+    "inn": "3808016455",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5004003890": {
+    "inn": "5004003890",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3802010545": {
+    "inn": "3802010545",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5027197561": {
+    "inn": "5027197561",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3808071270": {
+    "inn": "3808071270",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5028026576": {
+    "inn": "5028026576",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3820001261": {
+    "inn": "3820001261",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3812076552": {
+    "inn": "3812076552",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5027115417": {
+    "inn": "5027115417",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5047105840": {
+    "inn": "5047105840",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5047025627": {
+    "inn": "5047025627",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3825003671": {
+    "inn": "3825003671",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "381800121012": {
+    "inn": "381800121012",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5056000629": {
+    "inn": "5056000629",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5027037744": {
+    "inn": "5027037744",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5027112952": {
+    "inn": "5027112952",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3812014556": {
+    "inn": "3812014556",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3818004748": {
+    "inn": "3818004748",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5027327563": {
+    "inn": "5027327563",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "383500034429": {
+    "inn": "383500034429",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3801014032": {
+    "inn": "3801014032",
+    "main": null,
+    "all": [],
+    "name": "ГОКУ СКШ № 1 Г. АНГАРСКА",
+    "status": "no_okved",
+    "source": "egrul"
+  },
+  "3821001666": {
+    "inn": "3821001666",
+    "main": null,
+    "all": [],
+    "name": "",
+    "status": "no_okved",
+    "source": "list_org"
+  },
+  "5004017830": {
+    "inn": "5004017830",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3801035723": {
+    "inn": "3801035723",
+    "main": null,
+    "all": [],
+    "name": "ОГАУЗ \"АНГАРСКАЯ ГОРОДСКАЯ ДЕТСКАЯ БОЛЬНИЦА № 1\"",
+    "status": "no_okved",
+    "source": "egrul"
+  },
+  "5002092084": {
+    "inn": "5002092084",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3822001210": {
+    "inn": "3822001210",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5002003775": {
+    "inn": "5002003775",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3804004681": {
+    "inn": "3804004681",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5003005422": {
+    "inn": "5003005422",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5003027458": {
+    "inn": "5003027458",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3818001761": {
+    "inn": "3818001761",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3808193380": {
+    "inn": "3808193380",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3805102057": {
+    "inn": "3805102057",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5004027041": {
+    "inn": "5004027041",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3811058896": {
+    "inn": "3811058896",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5040112380": {
+    "inn": "5040112380",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "8506003547": {
+    "inn": "8506003547",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5017015766": {
+    "inn": "5017015766",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5027036758": {
+    "inn": "5027036758",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5406173483": {
+    "inn": "5406173483",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3809011964": {
+    "inn": "3809011964",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3837045193": {
+    "inn": "3837045193",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3801111325": {
+    "inn": "3801111325",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3808045921": {
+    "inn": "3808045921",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3810084269": {
+    "inn": "3810084269",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5053041987": {
+    "inn": "5053041987",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5004022780": {
+    "inn": "5004022780",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3812014066": {
+    "inn": "3812014066",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3808198710": {
+    "inn": "3808198710",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3808024777": {
+    "inn": "3808024777",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5003105258": {
+    "inn": "5003105258",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "3802010560": {
+    "inn": "3802010560",
+    "main": null,
+    "all": [],
+    "name": null,
+    "status": "not_found",
+    "source": "list_org"
+  },
+  "5017058230": {
+    "inn": "5017058230",
     "main": null,
     "all": [],
     "name": null,

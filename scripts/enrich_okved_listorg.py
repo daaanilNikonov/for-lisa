@@ -42,6 +42,10 @@ def fetch(session: requests.Session, inn: str) -> dict:
                 continue
             ids = COMPANY_RE.findall(r.text)
             if not ids:
+                # empty page often means soft-block; retry
+                if attempt < 3:
+                    time.sleep(8 + attempt * 8)
+                    continue
                 return {
                     "inn": inn,
                     "main": None,
