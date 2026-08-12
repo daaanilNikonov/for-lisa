@@ -445,6 +445,133 @@ def link_to_slide(shape, target_slide):
     shape.click_action.target_slide = target_slide
 
 
+RED = RGBColor(0xC0, 0x39, 0x2B)
+
+
+def set_run_scheme_color(run, scheme: str = "hlink"):
+    """Use theme hyperlink color so PowerPoint can switch it to folHlink after click."""
+    r_pr = run._r.get_or_add_rPr()
+    # Remove existing solidFill (any namespace form)
+    for child in list(r_pr):
+        if child.tag == qn("a:solidFill") or child.tag.endswith("}solidFill"):
+            r_pr.remove(child)
+    solid = etree.SubElement(r_pr, qn("a:solidFill"))
+    scheme_el = etree.SubElement(solid, qn("a:schemeClr"))
+    scheme_el.set("val", scheme)
+    # Prevent python-pptx / Office from treating it as fixed sRGB
+    try:
+        run.font.color.theme_color = None
+    except Exception:
+        pass
+
+
+def fill_shape_text_hyperlink(shape, text, size_pt=20, bold=True):
+    """Score cell text bound to theme hyperlink colors (turns red when followed)."""
+    tf = shape.text_frame
+    tf.clear()
+    tf.word_wrap = True
+    set_anchor(tf, MSO_ANCHOR.MIDDLE)
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    run = p.add_run()
+    run.text = text
+    run.font.size = Pt(size_pt)
+    run.font.bold = bold
+    run.font.name = FONT
+    r_pr = run._r.get_or_add_rPr()
+    for tag in ("a:latin", "a:ea", "a:cs"):
+        el = r_pr.find(qn(tag))
+        if el is None:
+            el = etree.SubElement(r_pr, qn(tag))
+        el.set("typeface", FONT)
+    set_run_scheme_color(run, "hlink")
+    # Second pass: font API sometimes rewrites solidFill to sRGB
+    set_run_scheme_color(run, "hlink")
+    return shape
+
+
+def patch_theme_followed_hyperlink_red(prs: Presentation) -> None:
+    """Set theme hyperlink / followed-hyperlink colors so opened cells turn red."""
+    for part in prs.part.package.iter_parts():
+        name = str(getattr(part, "partname", ""))
+        if "theme" not in name or not name.endswith(".xml"):
+            continue
+        try:
+            root = etree.fromstring(part.blob)
+        except Exception:
+            continue
+        ns = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+        changed = False
+        hlink = root.find(".//a:clrScheme/a:hlink", ns)
+        fol = root.find(".//a:clrScheme/a:folHlink", ns)
+        if hlink is not None:
+            for child in list(hlink):
+                hlink.remove(child)
+            srgb = etree.SubElement(hlink, qn("a:srgbClr"))
+            srgb.set("val", "FFFFFF")  # unused cells: white score text
+            changed = True
+        if fol is not None:
+            for child in list(fol):
+                fol.remove(child)
+            srgb = etree.SubElement(fol, qn("a:srgbClr"))
+            srgb.set("val", "C0392B")  # opened cells: red
+            changed = True
+        if changed:
+            part._blob = etree.tostring(
+                root,
+                xml_declaration=True,
+                encoding="UTF-8",
+                standalone=True,
+            )
+
+
+def mark_cell_fill_red_on_follow(shape) -> None:
+    """Also tint shape fill toward red via highlight — keep base fill, add red line."""
+    try:
+        shape.line.color.rgb = RED
+        shape.line.width = Pt(1.5)
+    except Exception:
+        pass
+
+
+def bind_text_run_hyperlink(shape) -> None:
+    """Copy shape-level slide jump onto the text run (needed for followed-color)."""
+    sp = shape._element
+    hlink = None
+    # Prefer cNvPr level (shape action)
+    for el in sp.iter():
+        if el.tag == qn("a:hlinkClick"):
+            hlink = el
+            break
+    if hlink is None:
+        return
+    r_id = hlink.get(qn("r:id"))
+    action = hlink.get("action")
+    if not r_id:
+        return
+    for r in sp.iter(qn("a:r")):
+        r_pr = r.find(qn("a:rPr"))
+        if r_pr is None:
+            r_pr = etree.Element(qn("a:rPr"))
+            r.insert(0, r_pr)
+        for old in list(r_pr):
+            if old.tag == qn("a:hlinkClick") or old.tag.endswith("}hlinkClick"):
+                r_pr.remove(old)
+        # Re-assert scheme hyperlink color on the run
+        for child in list(r_pr):
+            if child.tag == qn("a:solidFill") or child.tag.endswith("}solidFill"):
+                r_pr.remove(child)
+        solid = etree.SubElement(r_pr, qn("a:solidFill"))
+        scheme_el = etree.SubElement(solid, qn("a:schemeClr"))
+        scheme_el.set("val", "hlink")
+        hl = etree.SubElement(r_pr, qn("a:hlinkClick"))
+        hl.set(qn("r:id"), r_id)
+        if action:
+            hl.set("action", action)
+
+
+
+
 def fill_shape_answer(shape, answer_text: str):
     """Title + answer body inside one shape (for a single animation target)."""
     tf = shape.text_frame
@@ -599,7 +726,7 @@ def build_board(prs):
         emu(1.2),
         emu(11.4),
         emu(0.35),
-        "Клик по баллам → вопрос  ·  таймер 30 сек  ·  ответ откроется сам  ·  «К полю» — назад",
+        "Клик по баллам → вопрос  ·  открытые ячейки краснеют  ·  таймер 30 сек  ·  «К полю» — назад",
         12,
         False,
         SOFT,
@@ -632,15 +759,10 @@ def build_board(prs):
         fill_shape_text(topic_card, topic["name"], 12, True, WHITE)
         for qi, q in enumerate(topic["questions"]):
             left = left0 + topic_w + gap_x + qi * (cell_w + gap_x)
-            fill = GOLD if q["points"] == 100 else CARD
+            # Unused: blue / gold. After opening, score text turns red (followed hyperlink).
+            fill = GOLD if q["points"] == 100 else BLUE
             shape = add_card(slide, left, top, cell_w, cell_h, fill, 0.12)
-            fill_shape_text(
-                shape,
-                str(q["points"]),
-                20,
-                True,
-                NEAR_BLACK if q["points"] == 100 else WHITE,
-            )
+            fill_shape_text_hyperlink(shape, str(q["points"]), 22, True)
             cell_shapes[(ti, qi)] = shape
 
     return slide, cell_shapes
@@ -752,6 +874,47 @@ def build_question_slide(prs, topic, qdata, board_slide):
 
 
 
+def write_vba_macros(cell_shapes: dict) -> None:
+    """Optional VBA: paint cell fill red and jump to question (for .pptm)."""
+    lines = [
+        "Attribute VB_Name = \"QuizMacros\"",
+        "Option Explicit",
+        "",
+        "' Импорт: PowerPoint → Вид → Макросы → редактор VBA → File → Import",
+        "' Затем сохраните презентацию как .pptm и назначьте макросы на ячейки",
+        "' (или используйте pptx: там номера открытых вопросов краснеют без макросов).",
+        "",
+        "Private Sub PaintRed(oShp As Shape)",
+        "    On Error Resume Next",
+        "    oShp.Fill.Visible = msoTrue",
+        "    oShp.Fill.Solid",
+        "    oShp.Fill.ForeColor.RGB = RGB(192, 57, 43)  ' #C0392B",
+        "    oShp.TextFrame.TextRange.Font.Color.RGB = RGB(255, 255, 255)",
+        "End Sub",
+        "",
+        "Sub BackToBoard()",
+        "    SlideShowWindows(1).View.GotoSlide 2",
+        "End Sub",
+        "",
+    ]
+    # Question slides start at index 3 (1-based in PPT)
+    for (ti, qi), _cell in sorted(cell_shapes.items()):
+        # slide number: title=1, board=2, questions start at 3 in row-major topic order
+        q_index = ti * 5 + qi  # 0..24
+        slide_num = 3 + q_index
+        sub = f"OpenCell_{ti}_{qi}"
+        lines += [
+            f"Sub {sub}(oShp As Shape)",
+            f"    PaintRed oShp",
+            f"    SlideShowWindows(1).View.GotoSlide {slide_num}",
+            "End Sub",
+            "",
+        ]
+    out = OUT_DIR / "QuizMacros.bas"
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"VBA macros: {out}")
+
+
 def main():
     if not TEMPLATE.exists():
         raise SystemExit(f"Template not found: {TEMPLATE}")
@@ -775,14 +938,30 @@ def main():
             cell = cell_shapes.get((ti, qi))
             if cell is not None:
                 link_to_slide(cell, q_slide)
+                bind_text_run_hyperlink(cell)
+
+    # Opened questions turn red via theme "followed hyperlink" color
+    patch_theme_followed_hyperlink_red(prs)
+
+    # Name cells for optional VBA (permanent red FILL)
+    for (ti, qi), cell in cell_shapes.items():
+        try:
+            cell.name = f"Cell_{ti}_{qi}"
+        except Exception:
+            pass
 
     prs.save(str(OUT))
     shutil.copy2(OUT, OUT_COPY)
+
+    # Write VBA helper for permanent red fill (optional .pptm)
+    write_vba_macros(cell_shapes)
+
     n_q = sum(len(t["questions"]) for t in TOPICS)
     print(f"Saved: {OUT}")
     print(f"Copy:  {OUT_COPY}")
     print(f"Slides: {len(prs.slides)} (title + board + {n_q} questions)")
     print(f"Topics: {', '.join(t['name'] for t in TOPICS)}")
+    print("Opened cells: score text turns red after return to the board (followed hyperlink).")
 
 
 if __name__ == "__main__":
