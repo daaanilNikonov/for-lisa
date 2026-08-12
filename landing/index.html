@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Тест · 1С:Кабинет сотрудника · ГК Форус</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow" aria-hidden="true"></div>
+    <div class="bg-grid" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div class="brand-text">
+          <strong>1С:Кабинет сотрудника</strong>
+          <span>ГК Форус</span>
+        </div>
+      </div>
+      <a class="topbar-link" href="#quiz">Пройти тест</a>
+    </header>
+
+    <main>
+      <!-- Hero -->
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow">Диагностика процессов HR и зарплаты</p>
+          <h1 class="hero-brand">1С:Кабинет сотрудника</h1>
+          <p class="hero-lead">
+            Ответьте на 7 вопросов — получите персональный сценарий под вашу
+            должность и масштаб компании.
+          </p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="#quiz">Начать тест</a>
+            <a class="btn btn-ghost" href="#scripts-map">Смотреть каналы скриптов</a>
+          </div>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="hero-orb"></div>
+          <div class="hero-panel">
+            <span>7 вопросов</span>
+            <span>30 скриптов</span>
+            <span>результат под роль</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quiz -->
+      <section class="quiz-section" id="quiz">
+        <div class="quiz-shell">
+          <div class="quiz-progress" aria-hidden="true">
+            <div class="quiz-progress-bar" id="progressBar"></div>
+          </div>
+          <p class="quiz-step" id="quizStep">Вопрос 1 из 7</p>
+
+          <div id="quizCard" class="quiz-card">
+            <!-- filled by app.js -->
+          </div>
+
+          <div class="quiz-nav">
+            <button type="button" class="btn btn-ghost" id="btnBack" disabled>
+              Назад
+            </button>
+            <button type="button" class="btn btn-primary" id="btnNext" disabled>
+              Далее
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Result -->
+      <section class="result-section is-hidden" id="result" aria-live="polite">
+        <div class="result-shell">
+          <p class="eyebrow">Ваш персональный скрипт</p>
+          <h2 class="result-title" id="resultTitle">—</h2>
+          <p class="result-meta" id="resultMeta"></p>
+
+          <div class="result-media">
+            <div class="result-image-slot" id="resultImageSlot">
+              <img id="resultImage" alt="" hidden />
+              <div class="result-image-placeholder" id="resultImagePlaceholder">
+                <span class="slot-label">Здесь будет картинка</span>
+                <span class="slot-path" id="resultImagePath"></span>
+              </div>
+            </div>
+            <div class="result-text-slot">
+              <span class="slot-label">Здесь будет текст</span>
+              <p id="resultText">Здесь будет текст</p>
+              <p class="result-note" id="resultNote"></p>
+            </div>
+          </div>
+
+          <div class="result-profile">
+            <h3>Профиль ответов (вопросы 3–7)</h3>
+            <ul id="resultProfile"></ul>
+            <p class="hint">
+              Эти ответы сохранены для уточнения финального текста и картинки
+              позже. Канал скрипта задают должность и численность.
+            </p>
+          </div>
+
+          <div class="result-actions">
+            <button type="button" class="btn btn-primary" id="btnRestart">
+              Пройти ещё раз
+            </button>
+            <a class="btn btn-ghost" href="#scripts-map">Все 30 скриптов</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scripts map -->
+      <section class="scripts-section" id="scripts-map">
+        <div class="section-head">
+          <p class="eyebrow">Матрица каналов</p>
+          <h2>Все соотношения: должность × численность</h2>
+          <p>
+            6 должностей × 5 размеров штата = <strong>30 скриптов</strong>. Для
+            каждого заготовлены поля под текст и картинку.
+          </p>
+        </div>
+        <div class="scripts-filters" id="scriptsFilters"></div>
+        <div class="scripts-grid" id="scriptsGrid"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>
+        <strong>1С:Кабинет сотрудника</strong>
+        <span>ГК Форус</span>
+      </div>
+      <p>Тексты и изображения результатов добавим на следующем шаге.</p>
+    </footer>
+
+    <script src="scripts-data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
