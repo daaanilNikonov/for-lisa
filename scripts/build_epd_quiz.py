@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import shutil
+import zipfile
 from pathlib import Path
 
 from lxml import etree
@@ -18,8 +19,22 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "Презентация ГК Форус темный шаблон 16х9 (1).pptx"
 OUT_DIR = ROOT / "квиз 1с-эпд"
 OUT = OUT_DIR / "Квиз_1С-ЭПД_Доки_Логистика_100к1.pptx"
+OUT_PPTM = OUT_DIR / "Квиз_1С-ЭПД_Доки_Логистика_100к1.pptm"
 OUT_COPY = ROOT / "presentation" / "quiz" / "Квиз_1С-ЭПД_Доки_Логистика_100к1.pptx"
+OUT_PPTM_COPY = ROOT / "presentation" / "quiz" / "Квиз_1С-ЭПД_Доки_Логистика_100к1.pptm"
+VBA_BIN = OUT_DIR / "vbaProject.bin"
 TIMER_GIF = ROOT / "presentation" / "quiz" / "timer_30s.gif"
+
+NSMAP = {
+    "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
+    "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
+    "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    "ct": "http://schemas.openxmlformats.org/package/2006/content-types",
+    "pr": "http://schemas.openxmlformats.org/package/2006/relationships",
+}
+VBA_REL_TYPE = "http://schemas.microsoft.com/office/2006/relationships/vbaProject"
+MACRO_PRES_CT = "application/vnd.ms-powerpoint.presentation.macroEnabled.main+xml"
+VBA_BIN_CT = "application/vnd.ms-office.vbaProject"
 
 # Brand
 BLUE = RGBColor(0x26, 0xA6, 0xE0)
@@ -874,15 +889,14 @@ def build_question_slide(prs, topic, qdata, board_slide):
 
 
 
-def write_vba_macros(cell_shapes: dict) -> None:
-    """Optional VBA: paint cell fill red and jump to question (for .pptm)."""
+def build_vba_source(cell_shapes: dict) -> str:
+    """VBA: paint clicked cell fill red (#C0392B) and jump to its question slide."""
     lines = [
-        "Attribute VB_Name = \"QuizMacros\"",
+        'Attribute VB_Name = "QuizMacros"',
         "Option Explicit",
         "",
-        "' Импорт: PowerPoint → Вид → Макросы → редактор VBA → File → Import",
-        "' Затем сохраните презентацию как .pptm и назначьте макросы на ячейки",
-        "' (или используйте pptx: там номера открытых вопросов краснеют без макросов).",
+        "' Макросы квиза: заливка ячейки красным + переход к вопросу.",
+        "' Файл .pptm уже содержит этот модуль; .bas — запасной исходник.",
         "",
         "Private Sub PaintRed(oShp As Shape)",
         "    On Error Resume Next",
@@ -893,26 +907,134 @@ def write_vba_macros(cell_shapes: dict) -> None:
         "End Sub",
         "",
         "Sub BackToBoard()",
+        "    On Error Resume Next",
         "    SlideShowWindows(1).View.GotoSlide 2",
         "End Sub",
         "",
     ]
-    # Question slides start at index 3 (1-based in PPT)
     for (ti, qi), _cell in sorted(cell_shapes.items()):
-        # slide number: title=1, board=2, questions start at 3 in row-major topic order
-        q_index = ti * 5 + qi  # 0..24
-        slide_num = 3 + q_index
+        slide_num = 3 + ti * 5 + qi
         sub = f"OpenCell_{ti}_{qi}"
         lines += [
             f"Sub {sub}(oShp As Shape)",
-            f"    PaintRed oShp",
+            "    PaintRed oShp",
+            f"    On Error Resume Next",
             f"    SlideShowWindows(1).View.GotoSlide {slide_num}",
             "End Sub",
             "",
         ]
-    out = OUT_DIR / "QuizMacros.bas"
-    out.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"VBA macros: {out}")
+    return "\r\n".join(lines) + "\r\n"
+
+
+def write_vba_macros(cell_shapes: dict) -> str:
+    source = build_vba_source(cell_shapes)
+    # .bas for humans / manual import (LF)
+    bas = OUT_DIR / "QuizMacros.bas"
+    bas.write_text(source.replace("\r\n", "\n"), encoding="utf-8")
+    print(f"VBA macros: {bas}")
+    return source
+
+
+def generate_vba_project_bin(source: str) -> bytes:
+    """Build ppt/vbaProject.bin via Aspose (no watermark in the binary itself)."""
+    import aspose.slides as slides
+    from aspose.slides import vba
+
+    prs = slides.Presentation()
+    factory = vba.VbaProjectFactory.instance
+    vp = factory.create_vba_project()
+    prs.vba_project = vp
+    mod = vp.modules.add_empty_module("QuizMacros")
+    mod.source_code = source
+    tmp = OUT_DIR / "_vba_scratch.pptm"
+    prs.save(str(tmp), slides.export.SaveFormat.PPTM)
+    with zipfile.ZipFile(tmp) as zf:
+        data = zf.read("ppt/vbaProject.bin")
+    tmp.unlink(missing_ok=True)
+    return data
+
+
+def _board_cells_to_macros(slide_xml: bytes) -> bytes:
+    """Replace board cell slide-jumps with Run Macro actions."""
+    root = etree.fromstring(slide_xml)
+    for sp in root.xpath(".//p:sp", namespaces=NSMAP):
+        c_nv_pr = sp.find("./p:nvSpPr/p:cNvPr", NSMAP)
+        if c_nv_pr is None:
+            continue
+        name = c_nv_pr.get("name") or ""
+        if not name.startswith("Cell_"):
+            continue
+        macro = "OpenCell_" + name[len("Cell_") :]
+        action = f"ppaction://macro?name={macro}"
+        for hlink in sp.xpath(".//a:hlinkClick", namespaces=NSMAP):
+            hlink.set("action", action)
+            hlink.set(qn("r:id"), "")
+    return etree.tostring(
+        root, xml_declaration=True, encoding="UTF-8", standalone=True
+    )
+
+
+def _patch_content_types(ct_xml: bytes) -> bytes:
+    root = etree.fromstring(ct_xml)
+    ns = NSMAP["ct"]
+    # Ensure Default for .bin
+    has_bin = False
+    for el in root.findall(f"{{{ns}}}Default"):
+        if el.get("Extension") == "bin":
+            el.set("ContentType", VBA_BIN_CT)
+            has_bin = True
+    if not has_bin:
+        el = etree.SubElement(root, f"{{{ns}}}Default")
+        el.set("Extension", "bin")
+        el.set("ContentType", VBA_BIN_CT)
+    # Macro-enabled presentation
+    for el in root.findall(f"{{{ns}}}Override"):
+        if el.get("PartName") == "/ppt/presentation.xml":
+            el.set("ContentType", MACRO_PRES_CT)
+    return etree.tostring(
+        root, xml_declaration=True, encoding="UTF-8", standalone=True
+    )
+
+
+def _patch_presentation_rels(rels_xml: bytes) -> bytes:
+    root = etree.fromstring(rels_xml)
+    ns = NSMAP["pr"]
+    for el in root.findall(f"{{{ns}}}Relationship"):
+        if el.get("Type") == VBA_REL_TYPE:
+            el.set("Target", "vbaProject.bin")
+            break
+    else:
+        used = {el.get("Id") for el in root.findall(f"{{{ns}}}Relationship")}
+        rid = "rIdVba"
+        n = 100
+        while rid in used:
+            rid = f"rId{n}"
+            n += 1
+        el = etree.SubElement(root, f"{{{ns}}}Relationship")
+        el.set("Id", rid)
+        el.set("Type", VBA_REL_TYPE)
+        el.set("Target", "vbaProject.bin")
+    return etree.tostring(
+        root, xml_declaration=True, encoding="UTF-8", standalone=True
+    )
+
+
+def package_pptm(pptx_path: Path, pptm_path: Path, vba_bin: bytes) -> None:
+    """Wrap quiz .pptx + vbaProject.bin into macro-enabled .pptm (no Aspose watermark)."""
+    with zipfile.ZipFile(pptx_path, "r") as zin, zipfile.ZipFile(
+        pptm_path, "w", compression=zipfile.ZIP_DEFLATED
+    ) as zout:
+        for info in zin.infolist():
+            data = zin.read(info.filename)
+            name = info.filename
+            if name == "[Content_Types].xml":
+                data = _patch_content_types(data)
+            elif name == "ppt/_rels/presentation.xml.rels":
+                data = _patch_presentation_rels(data)
+            elif name == "ppt/slides/slide2.xml":
+                data = _board_cells_to_macros(data)
+            zout.writestr(info, data)
+        zout.writestr("ppt/vbaProject.bin", vba_bin)
 
 
 def main():
@@ -931,7 +1053,7 @@ def main():
     build_title(prs)
     board_slide, cell_shapes = build_board(prs)
 
-    # Build question slides and wire hyperlinks
+    # Build question slides and wire hyperlinks (pptx fallback: followed-link red text)
     for ti, topic in enumerate(TOPICS):
         for qi, qdata in enumerate(topic["questions"]):
             q_slide = build_question_slide(prs, topic, qdata, board_slide)
@@ -940,10 +1062,8 @@ def main():
                 link_to_slide(cell, q_slide)
                 bind_text_run_hyperlink(cell)
 
-    # Opened questions turn red via theme "followed hyperlink" color
     patch_theme_followed_hyperlink_red(prs)
 
-    # Name cells for optional VBA (permanent red FILL)
     for (ti, qi), cell in cell_shapes.items():
         try:
             cell.name = f"Cell_{ti}_{qi}"
@@ -953,15 +1073,32 @@ def main():
     prs.save(str(OUT))
     shutil.copy2(OUT, OUT_COPY)
 
-    # Write VBA helper for permanent red fill (optional .pptm)
-    write_vba_macros(cell_shapes)
+    vba_source = write_vba_macros(cell_shapes)
+
+    # Embed macros into .pptm (red FILL on opened cells)
+    try:
+        vba_bin = generate_vba_project_bin(vba_source)
+        VBA_BIN.write_bytes(vba_bin)
+        print(f"vbaProject.bin: {VBA_BIN} ({len(vba_bin)} bytes)")
+    except Exception as exc:
+        if VBA_BIN.exists():
+            print(f"Aspose VBA build failed ({exc}); using cached {VBA_BIN}")
+            vba_bin = VBA_BIN.read_bytes()
+        else:
+            raise SystemExit(f"Cannot build vbaProject.bin: {exc}") from exc
+
+    package_pptm(OUT, OUT_PPTM, vba_bin)
+    shutil.copy2(OUT_PPTM, OUT_PPTM_COPY)
 
     n_q = sum(len(t["questions"]) for t in TOPICS)
     print(f"Saved: {OUT}")
+    print(f"Macro: {OUT_PPTM}")
     print(f"Copy:  {OUT_COPY}")
+    print(f"Copy:  {OUT_PPTM_COPY}")
     print(f"Slides: {len(prs.slides)} (title + board + {n_q} questions)")
     print(f"Topics: {', '.join(t['name'] for t in TOPICS)}")
-    print("Opened cells: score text turns red after return to the board (followed hyperlink).")
+    print("PPTX: opened score text turns red (followed hyperlink).")
+    print("PPTM: macros paint cell FILL red on click, then open the question.")
 
 
 if __name__ == "__main__":
