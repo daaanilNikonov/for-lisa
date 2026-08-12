@@ -2,163 +2,28 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Тест · 1С:Кабинет сотрудника · ГК Форус</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="styles.css" />
+    <meta http-equiv="refresh" content="0; url=../test-kabinet/index.html" />
+    <title>Переход к тесту · test-kabinet</title>
+    <style>
+      body {
+        font-family: Manrope, Verdana, sans-serif;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background: #fff9ec;
+        color: #231f20;
+      }
+      a {
+        color: #395f75;
+        font-weight: 700;
+      }
+    </style>
   </head>
   <body>
-    <div class="bg-wash" aria-hidden="true"></div>
-
-    <header class="topbar">
-      <a class="brand" href="#top">
-        <img
-          class="brand-logo"
-          src="assets/brand/logo-forus.png"
-          alt="форус"
-          width="120"
-          height="42"
-        />
-        <span class="brand-divider" aria-hidden="true"></span>
-        <span class="brand-product">1С:Кабинет сотрудника</span>
-      </a>
-      <nav class="topnav">
-        <a href="#quiz">Тест</a>
-        <a href="#scenarios">10 сценариев</a>
-        <a href="#editor">Загрузить контент</a>
-      </nav>
-    </header>
-
-    <main>
-      <section class="hero" id="top">
-        <div class="hero-copy">
-          <p class="eyebrow">ГК Форус · диагностика процессов</p>
-          <h1>1С:Кабинет сотрудника</h1>
-          <p class="hero-lead">
-            Пройдите короткий тест — узнайте свой сценарий по триггерам нагрузки
-            и автоматизации.
-          </p>
-          <div class="hero-cta">
-            <a class="btn btn-primary" href="#quiz">Начать тест</a>
-            <a class="btn btn-ghost" href="#editor">Окно загрузки картинок</a>
-          </div>
-        </div>
-        <div class="hero-aside" aria-hidden="true">
-          <div class="hero-badge">10 сценариев</div>
-          <div class="hero-card">
-            <strong>Триггеры</strong>
-            <span>ежедневно · почти всегда · последний день</span>
-            <span>КЭДО · >80% · сразу · редко</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="quiz-section" id="quiz">
-        <div class="quiz-shell">
-          <div class="quiz-progress" aria-hidden="true">
-            <div class="quiz-progress-bar" id="progressBar"></div>
-          </div>
-          <p class="quiz-step" id="quizStep">Вопрос 1 из 7</p>
-          <div id="quizCard" class="quiz-card"></div>
-          <div class="quiz-nav">
-            <button type="button" class="btn btn-ghost" id="btnBack" disabled>
-              Назад
-            </button>
-            <button type="button" class="btn btn-primary" id="btnNext" disabled>
-              Далее
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section class="result-section is-hidden" id="result" aria-live="polite">
-        <div class="result-shell">
-          <p class="eyebrow">Ваш сценарий</p>
-          <h2 class="result-title" id="resultTitle">—</h2>
-          <p class="result-meta" id="resultMeta"></p>
-
-          <div class="result-media">
-            <div class="result-image-slot" id="resultImageSlot">
-              <img id="resultImage" alt="" hidden />
-              <div class="result-image-placeholder" id="resultImagePlaceholder">
-                <span class="slot-label">Здесь будет картинка</span>
-              </div>
-            </div>
-            <div class="result-text-slot">
-              <span class="slot-label">Здесь будет текст</span>
-              <p id="resultText"></p>
-              <p class="result-note" id="resultNote"></p>
-            </div>
-          </div>
-
-          <div class="result-profile">
-            <h3>Сработавшие триггеры</h3>
-            <ul id="resultTriggers"></ul>
-            <h3>Все ответы</h3>
-            <ul id="resultProfile"></ul>
-          </div>
-
-          <div class="result-actions">
-            <button type="button" class="btn btn-primary" id="btnRestart">
-              Пройти ещё раз
-            </button>
-            <a class="btn btn-ghost" href="#editor">Заполнить текст и картинку</a>
-          </div>
-        </div>
-      </section>
-
-      <section class="scenarios-section" id="scenarios">
-        <div class="section-head">
-          <p class="eyebrow">Каналы результата</p>
-          <h2>10 основных сценариев</h2>
-          <p>
-            Канал выбирается по триггерам. Численность персонала на картинку не
-            влияет — сохраняется в профиле.
-          </p>
-        </div>
-        <div class="scenarios-grid" id="scenariosGrid"></div>
-      </section>
-
-      <!-- Окно загрузки контента для каждого сценария -->
-      <section class="editor-section" id="editor">
-        <div class="section-head">
-          <p class="eyebrow">Контент результата</p>
-          <h2>Окно загрузки: картинка + текст</h2>
-          <p>
-            Для каждого из 10 сценариев загрузите картинку и вставьте текст.
-            Сохраняется в этом браузере (localStorage). Можно экспортировать JSON.
-          </p>
-        </div>
-        <div class="editor-toolbar">
-          <button type="button" class="btn btn-primary" id="btnSaveEditor">
-            Сохранить всё
-          </button>
-          <button type="button" class="btn btn-ghost" id="btnExportEditor">
-            Скачать JSON
-          </button>
-          <button type="button" class="btn btn-ghost" id="btnResetEditor">
-            Сбросить правки
-          </button>
-          <span class="editor-status" id="editorStatus"></span>
-        </div>
-        <div class="editor-list" id="editorList"></div>
-      </section>
-    </main>
-
-    <footer class="footer">
-      <div class="footer-brand">
-        <img src="assets/brand/logo-forus.png" alt="форус" width="100" height="36" />
-        <span>1С:Кабинет сотрудника</span>
-      </div>
-      <p>Тексты результатов добавим вместе после загрузки картинок.</p>
-    </footer>
-
-    <script src="scripts-data.js"></script>
-    <script src="app.js"></script>
+    <p>
+      Лендинг переехал в
+      <a href="../test-kabinet/index.html">/test-kabinet/</a>
+    </p>
   </body>
 </html>
