@@ -13,57 +13,58 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="bg-glow" aria-hidden="true"></div>
-    <div class="bg-grid" aria-hidden="true"></div>
+    <div class="bg-wash" aria-hidden="true"></div>
 
     <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <div class="brand-text">
-          <strong>1С:Кабинет сотрудника</strong>
-          <span>ГК Форус</span>
-        </div>
-      </div>
-      <a class="topbar-link" href="#quiz">Пройти тест</a>
+      <a class="brand" href="#top">
+        <img
+          class="brand-logo"
+          src="assets/brand/logo-forus.png"
+          alt="форус"
+          width="120"
+          height="42"
+        />
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">1С:Кабинет сотрудника</span>
+      </a>
+      <nav class="topnav">
+        <a href="#quiz">Тест</a>
+        <a href="#scenarios">10 сценариев</a>
+        <a href="#editor">Загрузить контент</a>
+      </nav>
     </header>
 
     <main>
-      <!-- Hero -->
       <section class="hero" id="top">
         <div class="hero-copy">
-          <p class="eyebrow">Диагностика процессов HR и зарплаты</p>
-          <h1 class="hero-brand">1С:Кабинет сотрудника</h1>
+          <p class="eyebrow">ГК Форус · диагностика процессов</p>
+          <h1>1С:Кабинет сотрудника</h1>
           <p class="hero-lead">
-            Ответьте на 7 вопросов — получите персональный сценарий под вашу
-            должность и масштаб компании.
+            Пройдите короткий тест — узнайте свой сценарий по триггерам нагрузки
+            и автоматизации.
           </p>
           <div class="hero-cta">
             <a class="btn btn-primary" href="#quiz">Начать тест</a>
-            <a class="btn btn-ghost" href="#scripts-map">Смотреть каналы скриптов</a>
+            <a class="btn btn-ghost" href="#editor">Окно загрузки картинок</a>
           </div>
         </div>
-        <div class="hero-visual" aria-hidden="true">
-          <div class="hero-orb"></div>
-          <div class="hero-panel">
-            <span>7 вопросов</span>
-            <span>30 скриптов</span>
-            <span>результат под роль</span>
+        <div class="hero-aside" aria-hidden="true">
+          <div class="hero-badge">10 сценариев</div>
+          <div class="hero-card">
+            <strong>Триггеры</strong>
+            <span>ежедневно · почти всегда · последний день</span>
+            <span>КЭДО · >80% · сразу · редко</span>
           </div>
         </div>
       </section>
 
-      <!-- Quiz -->
       <section class="quiz-section" id="quiz">
         <div class="quiz-shell">
           <div class="quiz-progress" aria-hidden="true">
             <div class="quiz-progress-bar" id="progressBar"></div>
           </div>
           <p class="quiz-step" id="quizStep">Вопрос 1 из 7</p>
-
-          <div id="quizCard" class="quiz-card">
-            <!-- filled by app.js -->
-          </div>
-
+          <div id="quizCard" class="quiz-card"></div>
           <div class="quiz-nav">
             <button type="button" class="btn btn-ghost" id="btnBack" disabled>
               Назад
@@ -75,10 +76,9 @@
         </div>
       </section>
 
-      <!-- Result -->
       <section class="result-section is-hidden" id="result" aria-live="polite">
         <div class="result-shell">
-          <p class="eyebrow">Ваш персональный скрипт</p>
+          <p class="eyebrow">Ваш сценарий</p>
           <h2 class="result-title" id="resultTitle">—</h2>
           <p class="result-meta" id="resultMeta"></p>
 
@@ -87,55 +87,75 @@
               <img id="resultImage" alt="" hidden />
               <div class="result-image-placeholder" id="resultImagePlaceholder">
                 <span class="slot-label">Здесь будет картинка</span>
-                <span class="slot-path" id="resultImagePath"></span>
               </div>
             </div>
             <div class="result-text-slot">
               <span class="slot-label">Здесь будет текст</span>
-              <p id="resultText">Здесь будет текст</p>
+              <p id="resultText"></p>
               <p class="result-note" id="resultNote"></p>
             </div>
           </div>
 
           <div class="result-profile">
-            <h3>Профиль ответов (вопросы 3–7)</h3>
+            <h3>Сработавшие триггеры</h3>
+            <ul id="resultTriggers"></ul>
+            <h3>Все ответы</h3>
             <ul id="resultProfile"></ul>
-            <p class="hint">
-              Эти ответы сохранены для уточнения финального текста и картинки
-              позже. Канал скрипта задают должность и численность.
-            </p>
           </div>
 
           <div class="result-actions">
             <button type="button" class="btn btn-primary" id="btnRestart">
               Пройти ещё раз
             </button>
-            <a class="btn btn-ghost" href="#scripts-map">Все 30 скриптов</a>
+            <a class="btn btn-ghost" href="#editor">Заполнить текст и картинку</a>
           </div>
         </div>
       </section>
 
-      <!-- Scripts map -->
-      <section class="scripts-section" id="scripts-map">
+      <section class="scenarios-section" id="scenarios">
         <div class="section-head">
-          <p class="eyebrow">Матрица каналов</p>
-          <h2>Все соотношения: должность × численность</h2>
+          <p class="eyebrow">Каналы результата</p>
+          <h2>10 основных сценариев</h2>
           <p>
-            6 должностей × 5 размеров штата = <strong>30 скриптов</strong>. Для
-            каждого заготовлены поля под текст и картинку.
+            Канал выбирается по триггерам. Численность персонала на картинку не
+            влияет — сохраняется в профиле.
           </p>
         </div>
-        <div class="scripts-filters" id="scriptsFilters"></div>
-        <div class="scripts-grid" id="scriptsGrid"></div>
+        <div class="scenarios-grid" id="scenariosGrid"></div>
+      </section>
+
+      <!-- Окно загрузки контента для каждого сценария -->
+      <section class="editor-section" id="editor">
+        <div class="section-head">
+          <p class="eyebrow">Контент результата</p>
+          <h2>Окно загрузки: картинка + текст</h2>
+          <p>
+            Для каждого из 10 сценариев загрузите картинку и вставьте текст.
+            Сохраняется в этом браузере (localStorage). Можно экспортировать JSON.
+          </p>
+        </div>
+        <div class="editor-toolbar">
+          <button type="button" class="btn btn-primary" id="btnSaveEditor">
+            Сохранить всё
+          </button>
+          <button type="button" class="btn btn-ghost" id="btnExportEditor">
+            Скачать JSON
+          </button>
+          <button type="button" class="btn btn-ghost" id="btnResetEditor">
+            Сбросить правки
+          </button>
+          <span class="editor-status" id="editorStatus"></span>
+        </div>
+        <div class="editor-list" id="editorList"></div>
       </section>
     </main>
 
     <footer class="footer">
-      <div>
-        <strong>1С:Кабинет сотрудника</strong>
-        <span>ГК Форус</span>
+      <div class="footer-brand">
+        <img src="assets/brand/logo-forus.png" alt="форус" width="100" height="36" />
+        <span>1С:Кабинет сотрудника</span>
       </div>
-      <p>Тексты и изображения результатов добавим на следующем шаге.</p>
+      <p>Тексты результатов добавим вместе после загрузки картинок.</p>
     </footer>
 
     <script src="scripts-data.js"></script>

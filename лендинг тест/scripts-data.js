@@ -1,13 +1,31 @@
 /**
- * Матрица скриптов результата теста.
- * Основной канал = должность (Q1) × численность (Q2) → 30 вариантов.
- * Вопросы 3–7 сохраняются как «профиль» и позже уточнят текст/картинку.
+ * Тест «1С:Кабинет сотрудника» — ГК Форус
  *
- * Поля text и imageSrc заполняются позже — сейчас плейсхолдеры.
+ * 10 сценариев выбираются по ТРИГГЕРАМ (не по численности).
+ * Численность сохраняется в профиле, но на канал не влияет.
+ *
+ * Триггеры «напряжения» (к авральным сценариям):
+ *   — справки ежедневно
+ *   — задерживаются почти всегда
+ *   — отчётность в последний день
+ *
+ * Триггеры «спокойствия» (к «детокс»/цифровым сценариям):
+ *   — автоматизация >80%
+ *   — есть КЭДО
+ *   — отчётность сразу
+ *   — справки очень редко / не обращаются
  */
 window.QUIZ_SCRIPTS = {
   brand: "1С:Кабинет сотрудника",
   company: "ГК Форус",
+  logoSrc: "assets/brand/logo-forus.png",
+
+  /** Временные картинки (рандомный пул, пока нет финальных 10) */
+  tempImages: [
+    "assets/results/temp-1.jpeg",
+    "assets/results/temp-2.jpeg",
+    "assets/results/temp-3.jpeg",
+  ],
 
   questions: [
     {
@@ -89,412 +107,228 @@ window.QUIZ_SCRIPTS = {
     },
   ],
 
-  /** Углы коммуникации по должности — ориентир для финальных текстов */
-  roleAngles: {
-    kadrovik:
-      "Фокус: кадровый документооборот, приказы, отпуска, справки, самообслуживание сотрудников.",
-    buh_zp:
-      "Фокус: расчётные листки, больничные, удержания, меньше ручных запросов от сотрудников.",
-    glb:
-      "Фокус: контроль процессов, сроки отчётности, снижение операционных рисков и нагрузки на отдел.",
-    ruk_otdela:
-      "Фокус: прозрачность нагрузки команды, сроки, меньше «пожаров» и ручных согласований.",
-    ruk_kompanii:
-      "Фокус: эффективность HR/бухгалтерии, экономия времени, управляемость и ROI автоматизации.",
-    drugoe:
-      "Фокус: универсальный сценарий выгод Кабинета сотрудника под роль респондента.",
-  },
-
-  /** Углы по численности — ориентир для оффера/масштаба */
-  sizeAngles: {
-    s50: "Малый коллектив: быстрый старт, простой внедрение, ощутимая экономия часов.",
-    s50_100: "Растущая компания: стандартизация процессов, меньше хаоса в документах.",
-    s100_500: "Средний масштаб: очередь запросов, КЭДО/самообслуживание дают заметный эффект.",
-    s500_2000: "Крупная компания: нагрузка на кадры/ЗП, нужен самосервис и маршруты согласований.",
-    s2000: "Холдинг/крупный штат: масштаб, единые стандарты, снижение стоимости операции.",
-  },
-
   /**
-   * 30 скриптов: role × size.
-   * text / imageSrc / imageAlt — поля под финальный контент.
+   * 10 основных сценариев.
+   * text пока пустой; imageSrc — временно из пула tempImages (см. app.js assignTempImages).
+   * matches(answers) — правила триггеров; первый подходящий по порядку приоритета побеждает.
    */
-  results: [
-    // —— кадровик ——
+  scenarios: [
     {
-      id: "kadrovik__s50",
-      role: "kadrovik",
-      size: "s50",
-      label: "Кадровик · до 50",
-      title: "Скрипт: кадровик, компания до 50",
-      text: "Здесь будет текст",
+      id: "detoks",
+      name: "Бухгалтер/кадровик на детоксе",
+      shortName: "На детоксе",
+      group: "hr",
+      priority: 10,
+      text: "",
       imageSrc: "",
-      imageSlot: "assets/results/kadrovik__s50.png",
-      imageAlt: "Картинка результата: кадровик, до 50",
-      contentNote: "Кадровик в малой компании — упростить приказы/отпуска и выдачу справок.",
+      triggersNote:
+        "Автоматизация >80% + есть КЭДО + справки редко/не обращаются. Численность не важна.",
+      match(a) {
+        return (
+          isHrLike(a.role) &&
+          a.auto === "high" &&
+          a.docs === "kedo" &&
+          (a.certs === "rare" || a.certs === "never")
+        );
+      },
     },
     {
-      id: "kadrovik__s50_100",
-      role: "kadrovik",
-      size: "s50_100",
-      label: "Кадровик · 50–100",
-      title: "Скрипт: кадровик, 50–100 сотрудников",
-      text: "Здесь будет текст",
+      id: "lyubimchik",
+      name: "Бухгалтер/кадровик — любимчик",
+      shortName: "Любимчик",
+      group: "hr",
+      priority: 20,
+      text: "",
       imageSrc: "",
-      imageSlot: "assets/results/kadrovik__s50_100.png",
-      imageAlt: "Картинка результата: кадровик, 50–100",
-      contentNote: "Рост штата — акцент на единый кадровый контур и меньше бумажных обходов.",
+      triggersNote:
+        "Автоматизация >80%, но сотрудники всё равно часто приходят (ежедневно) или почти всегда задержки.",
+      match(a) {
+        return (
+          isHrLike(a.role) &&
+          a.auto === "high" &&
+          (a.certs === "daily" || a.overtime === "always")
+        );
+      },
     },
     {
-      id: "kadrovik__s100_500",
-      role: "kadrovik",
-      size: "s100_500",
-      label: "Кадровик · 100–500",
-      title: "Скрипт: кадровик, 100–500 сотрудников",
-      text: "Здесь будет текст",
+      id: "sorvigolova",
+      name: "Бухгалтер/кадровик — сорвиголова",
+      shortName: "Сорвиголова",
+      group: "hr",
+      priority: 30,
+      text: "",
       imageSrc: "",
-      imageSlot: "assets/results/kadrovik__s100_500.png",
-      imageAlt: "Картинка результата: кадровик, 100–500",
-      contentNote: "Поток кадровых операций — самообслуживание сотрудников и КЭДО.",
+      triggersNote:
+        "Автоматизация до 40% + частые обращения/задержки + отчётность в последний день.",
+      match(a) {
+        return (
+          isHrLike(a.role) &&
+          a.auto === "low" &&
+          (a.certs === "daily" || a.overtime === "always") &&
+          a.report === "last_day"
+        );
+      },
     },
     {
-      id: "kadrovik__s500_2000",
-      role: "kadrovik",
-      size: "s500_2000",
-      label: "Кадровик · 500–2000",
-      title: "Скрипт: кадровик, 500–2000 сотрудников",
-      text: "Здесь будет текст",
+      id: "knizhnyy_cherv",
+      name: "Книжный червь",
+      shortName: "Книжный червь",
+      group: "hr",
+      priority: 40,
+      text: "",
       imageSrc: "",
-      imageSlot: "assets/results/kadrovik__s500_2000.png",
-      imageAlt: "Картинка результата: кадровик, 500–2000",
-      contentNote: "Крупный штат — маршруты, статусы, снижение очереди к кадровику.",
+      triggersNote:
+        "Часто обращаются за справками, отчётность сдаёт сразу, автоматизация 40–80%.",
+      match(a) {
+        return (
+          isHrLike(a.role) &&
+          a.auto === "mid" &&
+          a.certs === "daily" &&
+          a.report === "now"
+        );
+      },
     },
     {
-      id: "kadrovik__s2000",
-      role: "kadrovik",
-      size: "s2000",
-      label: "Кадровик · 2000+",
-      title: "Скрипт: кадровик, 2000 и более",
-      text: "Здесь будет текст",
+      id: "pozharnyy",
+      name: "Пожарный",
+      shortName: "Пожарный",
+      group: "hr",
+      priority: 50,
+      text: "",
       imageSrc: "",
-      imageSlot: "assets/results/kadrovik__s2000.png",
-      imageAlt: "Картинка результата: кадровик, 2000+",
-      contentNote: "Масштаб холдинга — единые кадровые сервисы и контроль сроков.",
-    },
-
-    // —— бухгалтер по расчету ЗП ——
-    {
-      id: "buh_zp__s50",
-      role: "buh_zp",
-      size: "s50",
-      label: "Бухгалтер ЗП · до 50",
-      title: "Скрипт: бухгалтер по расчёту ЗП, до 50",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/buh_zp__s50.png",
-      imageAlt: "Картинка результата: бухгалтер ЗП, до 50",
-      contentNote: "Расчётные и справки без ручной раздачи в малом коллективе.",
+      triggersNote:
+        "Почти всегда задерживается и/или сдаёт в последний день при низкой/средней автоматизации.",
+      match(a) {
+        return (
+          isHrLike(a.role) &&
+          a.auto !== "high" &&
+          (a.overtime === "always" || a.report === "last_day") &&
+          (a.certs === "daily" || a.overtime === "always")
+        );
+      },
     },
     {
-      id: "buh_zp__s50_100",
-      role: "buh_zp",
-      size: "s50_100",
-      label: "Бухгалтер ЗП · 50–100",
-      title: "Скрипт: бухгалтер по расчёту ЗП, 50–100",
-      text: "Здесь будет текст",
+      id: "bumazhnyy_mag",
+      name: "Бумажный маг",
+      shortName: "Бумажный маг",
+      group: "hr",
+      priority: 60,
+      text: "",
       imageSrc: "",
-      imageSlot: "assets/results/buh_zp__s50_100.png",
-      imageAlt: "Картинка результата: бухгалтер ЗП, 50–100",
-      contentNote: "Рост запросов по ЗП — кабинет сотрудника снимает рутину.",
+      triggersNote: "Все документы на бумаге, автоматизация не высокая.",
+      match(a) {
+        return isHrLike(a.role) && a.docs === "paper" && a.auto !== "high";
+      },
     },
     {
-      id: "buh_zp__s100_500",
-      role: "buh_zp",
-      size: "s100_500",
-      label: "Бухгалтер ЗП · 100–500",
-      title: "Скрипт: бухгалтер по расчёту ЗП, 100–500",
-      text: "Здесь будет текст",
+      id: "tihaya_gavan",
+      name: "Тихая гавань",
+      shortName: "Тихая гавань",
+      group: "hr",
+      priority: 70,
+      text: "",
       imageSrc: "",
-      imageSlot: "assets/results/buh_zp__s100_500.png",
-      imageAlt: "Картинка результата: бухгалтер ЗП, 100–500",
-      contentNote: "Средний масштаб — расчётные листки и заявления online.",
+      triggersNote:
+        "Справки редко, задержки редко/никогда, отчётность не в последний день.",
+      match(a) {
+        return (
+          isHrLike(a.role) &&
+          (a.certs === "rare" || a.certs === "never") &&
+          (a.overtime === "rare" || a.overtime === "never") &&
+          a.report !== "last_day"
+        );
+      },
     },
     {
-      id: "buh_zp__s500_2000",
-      role: "buh_zp",
-      size: "s500_2000",
-      label: "Бухгалтер ЗП · 500–2000",
-      title: "Скрипт: бухгалтер по расчёту ЗП, 500–2000",
-      text: "Здесь будет текст",
+      id: "kontroler",
+      name: "Руководитель-контролёр",
+      shortName: "Контролёр",
+      group: "boss",
+      priority: 80,
+      text: "",
       imageSrc: "",
-      imageSlot: "assets/results/buh_zp__s500_2000.png",
-      imageAlt: "Картинка результата: бухгалтер ЗП, 500–2000",
-      contentNote: "Высокая нагрузка на ЗП — самосервис и меньше отвлечений.",
+      triggersNote:
+        "Руководитель + спокойные триггеры (КЭДО / высокая автоматизация / отчётность сразу).",
+      match(a) {
+        return isBoss(a.role) && calmScore(a) >= 2;
+      },
     },
     {
-      id: "buh_zp__s2000",
-      role: "buh_zp",
-      size: "s2000",
-      label: "Бухгалтер ЗП · 2000+",
-      title: "Скрипт: бухгалтер по расчёту ЗП, 2000+",
-      text: "Здесь будет текст",
+      id: "kapitan_shtorma",
+      name: "Капитан шторма",
+      shortName: "Капитан шторма",
+      group: "boss",
+      priority: 90,
+      text: "",
       imageSrc: "",
-      imageSlot: "assets/results/buh_zp__s2000.png",
-      imageAlt: "Картинка результата: бухгалтер ЗП, 2000+",
-      contentNote: "Крупный ФОТ — стандартизация выдачи расчётных и справок.",
-    },
-
-    // —— глб ——
-    {
-      id: "glb__s50",
-      role: "glb",
-      size: "s50",
-      label: "Гл. бухгалтер · до 50",
-      title: "Скрипт: главный бухгалтер, до 50",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/glb__s50.png",
-      imageAlt: "Картинка результата: глб, до 50",
-      contentNote: "Контроль процессов в малой компании без раздувания штата.",
+      triggersNote:
+        "Руководитель + триггеры напряжения (ежедневно / почти всегда / последний день).",
+      match(a) {
+        return isBoss(a.role) && painScore(a) >= 2;
+      },
     },
     {
-      id: "glb__s50_100",
-      role: "glb",
-      size: "s50_100",
-      label: "Гл. бухгалтер · 50–100",
-      title: "Скрипт: главный бухгалтер, 50–100",
-      text: "Здесь будет текст",
+      id: "novichok",
+      name: "Новичок в цифре",
+      shortName: "Новичок в цифре",
+      group: "any",
+      priority: 100,
+      text: "",
       imageSrc: "",
-      imageSlot: "assets/results/glb__s50_100.png",
-      imageAlt: "Картинка результата: глб, 50–100",
-      contentNote: "Сроки отчётности и снижение ручных согласований.",
-    },
-    {
-      id: "glb__s100_500",
-      role: "glb",
-      size: "s100_500",
-      label: "Гл. бухгалтер · 100–500",
-      title: "Скрипт: главный бухгалтер, 100–500",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/glb__s100_500.png",
-      imageAlt: "Картинка результата: глб, 100–500",
-      contentNote: "Управляемость отдела и прозрачность кадрово-зарплатных потоков.",
-    },
-    {
-      id: "glb__s500_2000",
-      role: "glb",
-      size: "s500_2000",
-      label: "Гл. бухгалтер · 500–2000",
-      title: "Скрипт: главный бухгалтер, 500–2000",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/glb__s500_2000.png",
-      imageAlt: "Картинка результата: глб, 500–2000",
-      contentNote: "Риски срыва сроков — акцент на автоматизацию и контроль.",
-    },
-    {
-      id: "glb__s2000",
-      role: "glb",
-      size: "s2000",
-      label: "Гл. бухгалтер · 2000+",
-      title: "Скрипт: главный бухгалтер, 2000+",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/glb__s2000.png",
-      imageAlt: "Картинка результата: глб, 2000+",
-      contentNote: "Корпоративный масштаб — единые правила и снижение операционных затрат.",
-    },
-
-    // —— руководитель отдела ——
-    {
-      id: "ruk_otdela__s50",
-      role: "ruk_otdela",
-      size: "s50",
-      label: "Рук. отдела · до 50",
-      title: "Скрипт: руководитель отдела, до 50",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/ruk_otdela__s50.png",
-      imageAlt: "Картинка результата: рук. отдела, до 50",
-      contentNote: "Разгрузить команду от рутины в небольшом отделе.",
-    },
-    {
-      id: "ruk_otdela__s50_100",
-      role: "ruk_otdela",
-      size: "s50_100",
-      label: "Рук. отдела · 50–100",
-      title: "Скрипт: руководитель отдела, 50–100",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/ruk_otdela__s50_100.png",
-      imageAlt: "Картинка результата: рук. отдела, 50–100",
-      contentNote: "Прозрачность задач и меньше ручных эскалаций.",
-    },
-    {
-      id: "ruk_otdela__s100_500",
-      role: "ruk_otdela",
-      size: "s100_500",
-      label: "Рук. отдела · 100–500",
-      title: "Скрипт: руководитель отдела, 100–500",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/ruk_otdela__s100_500.png",
-      imageAlt: "Картинка результата: рук. отдела, 100–500",
-      contentNote: "Нагрузка на отдел — цифровой контур запросов сотрудников.",
-    },
-    {
-      id: "ruk_otdela__s500_2000",
-      role: "ruk_otdela",
-      size: "s500_2000",
-      label: "Рук. отдела · 500–2000",
-      title: "Скрипт: руководитель отдела, 500–2000",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/ruk_otdela__s500_2000.png",
-      imageAlt: "Картинка результата: рук. отдела, 500–2000",
-      contentNote: "KPI отдела: скорость обработки, меньше переработок.",
-    },
-    {
-      id: "ruk_otdela__s2000",
-      role: "ruk_otdela",
-      size: "s2000",
-      label: "Рук. отдела · 2000+",
-      title: "Скрипт: руководитель отдела, 2000+",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/ruk_otdela__s2000.png",
-      imageAlt: "Картинка результата: рук. отдела, 2000+",
-      contentNote: "Управление процессом на масштабе, а не точечными запросами.",
-    },
-
-    // —— руководитель компании ——
-    {
-      id: "ruk_kompanii__s50",
-      role: "ruk_kompanii",
-      size: "s50",
-      label: "Рук. компании · до 50",
-      title: "Скрипт: руководитель компании, до 50",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/ruk_kompanii__s50.png",
-      imageAlt: "Картинка результата: рук. компании, до 50",
-      contentNote: "ROI и быстрый эффект для небольшой компании.",
-    },
-    {
-      id: "ruk_kompanii__s50_100",
-      role: "ruk_kompanii",
-      size: "s50_100",
-      label: "Рук. компании · 50–100",
-      title: "Скрипт: руководитель компании, 50–100",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/ruk_kompanii__s50_100.png",
-      imageAlt: "Картинка результата: рук. компании, 50–100",
-      contentNote: "Масштабирование без пропорционального роста админ. штата.",
-    },
-    {
-      id: "ruk_kompanii__s100_500",
-      role: "ruk_kompanii",
-      size: "s100_500",
-      label: "Рук. компании · 100–500",
-      title: "Скрипт: руководитель компании, 100–500",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/ruk_kompanii__s100_500.png",
-      imageAlt: "Картинка результата: рук. компании, 100–500",
-      contentNote: "Эффективность HR/ЗП и управляемость затрат на процессы.",
-    },
-    {
-      id: "ruk_kompanii__s500_2000",
-      role: "ruk_kompanii",
-      size: "s500_2000",
-      label: "Рук. компании · 500–2000",
-      title: "Скрипт: руководитель компании, 500–2000",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/ruk_kompanii__s500_2000.png",
-      imageAlt: "Картинка результата: рук. компании, 500–2000",
-      contentNote: "Стратегический эффект: стандарты, сроки, снижение рисков.",
-    },
-    {
-      id: "ruk_kompanii__s2000",
-      role: "ruk_kompanii",
-      size: "s2000",
-      label: "Рук. компании · 2000+",
-      title: "Скрипт: руководитель компании, 2000+",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/ruk_kompanii__s2000.png",
-      imageAlt: "Картинка результата: рук. компании, 2000+",
-      contentNote: "Корпоративная платформа самообслуживания и единый контур.",
-    },
-
-    // —— другое ——
-    {
-      id: "drugoe__s50",
-      role: "drugoe",
-      size: "s50",
-      label: "Другое · до 50",
-      title: "Скрипт: другая должность, до 50",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/drugoe__s50.png",
-      imageAlt: "Картинка результата: другое, до 50",
-      contentNote: "Универсальный оффер для малой компании.",
-    },
-    {
-      id: "drugoe__s50_100",
-      role: "drugoe",
-      size: "s50_100",
-      label: "Другое · 50–100",
-      title: "Скрипт: другая должность, 50–100",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/drugoe__s50_100.png",
-      imageAlt: "Картинка результата: другое, 50–100",
-      contentNote: "Универсальный оффер для растущей компании.",
-    },
-    {
-      id: "drugoe__s100_500",
-      role: "drugoe",
-      size: "s100_500",
-      label: "Другое · 100–500",
-      title: "Скрипт: другая должность, 100–500",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/drugoe__s100_500.png",
-      imageAlt: "Картинка результата: другое, 100–500",
-      contentNote: "Универсальный оффер для среднего масштаба.",
-    },
-    {
-      id: "drugoe__s500_2000",
-      role: "drugoe",
-      size: "s500_2000",
-      label: "Другое · 500–2000",
-      title: "Скрипт: другая должность, 500–2000",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/drugoe__s500_2000.png",
-      imageAlt: "Картинка результата: другое, 500–2000",
-      contentNote: "Универсальный оффер для крупной компании.",
-    },
-    {
-      id: "drugoe__s2000",
-      role: "drugoe",
-      size: "s2000",
-      label: "Другое · 2000+",
-      title: "Скрипт: другая должность, 2000+",
-      text: "Здесь будет текст",
-      imageSrc: "",
-      imageSlot: "assets/results/drugoe__s2000.png",
-      imageAlt: "Картинка результата: другое, 2000+",
-      contentNote: "Универсальный оффер для 2000+ сотрудников.",
+      triggersNote: "Универсальный сценарий / запасной вариант, если остальные не сработали.",
+      match() {
+        return true;
+      },
     },
   ],
 };
 
-/** Вспомогательные метки профиля (Q3–Q7) для уточнения контента позже */
+function isHrLike(role) {
+  return ["kadrovik", "buh_zp", "glb", "drugoe"].includes(role);
+}
+
+function isBoss(role) {
+  return role === "ruk_otdela" || role === "ruk_kompanii";
+}
+
+function painScore(a) {
+  let s = 0;
+  if (a.certs === "daily") s += 1;
+  if (a.overtime === "always") s += 1;
+  if (a.report === "last_day") s += 1;
+  return s;
+}
+
+function calmScore(a) {
+  let s = 0;
+  if (a.auto === "high") s += 1;
+  if (a.docs === "kedo") s += 1;
+  if (a.report === "now") s += 1;
+  if (a.certs === "rare" || a.certs === "never") s += 1;
+  return s;
+}
+
+window.QUIZ_MATCH = {
+  isHrLike,
+  isBoss,
+  painScore,
+  calmScore,
+  /** Вернуть сценарий по ответам (минимальный priority среди совпавших) */
+  resolve(answers) {
+    const list = window.QUIZ_SCRIPTS.scenarios
+      .filter((sc) => sc.match(answers))
+      .sort((a, b) => a.priority - b.priority);
+    return list[0] || window.QUIZ_SCRIPTS.scenarios.at(-1);
+  },
+};
+
 window.QUIZ_PROFILE_LABELS = {
+  role: Object.fromEntries(
+    window.QUIZ_SCRIPTS.questions[0].options.map((o) => [o.id, o.label])
+  ),
+  size: Object.fromEntries(
+    window.QUIZ_SCRIPTS.questions[1].options.map((o) => [o.id, o.label])
+  ),
   docs: {
     paper: "Документы на бумаге",
     email: "Документы по email/мессенджерам",
