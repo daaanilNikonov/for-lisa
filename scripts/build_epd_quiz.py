@@ -19,6 +19,7 @@ TEMPLATE = ROOT / "Презентация ГК Форус темный шабл�
 OUT_DIR = ROOT / "квиз 1с-эпд"
 OUT = OUT_DIR / "Квиз_1С-ЭПД_Доки_Логистика_100к1.pptx"
 OUT_COPY = ROOT / "presentation" / "quiz" / "Квиз_1С-ЭПД_Доки_Логистика_100к1.pptx"
+TIMER_GIF = ROOT / "presentation" / "quiz" / "timer_30s.gif"
 
 # Brand
 BLUE = RGBColor(0x26, 0xA6, 0xE0)
@@ -444,6 +445,120 @@ def link_to_slide(shape, target_slide):
     shape.click_action.target_slide = target_slide
 
 
+def fill_shape_answer(shape, answer_text: str):
+    """Title + answer body inside one shape (for a single animation target)."""
+    tf = shape.text_frame
+    tf.clear()
+    tf.word_wrap = True
+    set_anchor(tf, MSO_ANCHOR.TOP)
+    p0 = tf.paragraphs[0]
+    p0.alignment = PP_ALIGN.LEFT
+    set_run(p0.add_run(), "Ответ", 12, True, BLUE)
+    p1 = tf.add_paragraph()
+    p1.space_before = Pt(6)
+    p1.alignment = PP_ALIGN.LEFT
+    set_run(p1.add_run(), answer_text, 13, False, NEAR_BLACK)
+    # left margin via inset
+    try:
+        tf.margin_left = Inches(0.15)
+        tf.margin_right = Inches(0.15)
+        tf.margin_top = Inches(0.12)
+    except Exception:
+        pass
+    return shape
+
+
+def add_appear_after_ms(slide, shape, delay_ms: int = 30000) -> None:
+    """Entrance animation: shape is hidden until delay_ms, then appears (slideshow)."""
+    spid = str(shape.shape_id)
+    sld = slide._element
+
+    # Drop previous timing block if present
+    for old in list(sld.findall(qn("p:timing"))):
+        sld.remove(old)
+
+    # Minimal valid timing tree for auto Appear after delay
+    timing_xml = f"""
+    <p:timing xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+              xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+              xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+      <p:tnLst>
+        <p:par>
+          <p:cTn id="1" dur="indefinite" restart="never" nodeType="tmRoot">
+            <p:childTnLst>
+              <p:seq concurrent="1" nextAc="seek">
+                <p:cTn id="2" dur="indefinite" nodeType="mainSeq">
+                  <p:childTnLst>
+                    <p:par>
+                      <p:cTn id="3" fill="hold">
+                        <p:stCondLst>
+                          <p:cond delay="0"/>
+                        </p:stCondLst>
+                        <p:childTnLst>
+                          <p:par>
+                            <p:cTn id="4" fill="hold">
+                              <p:stCondLst>
+                                <p:cond delay="{delay_ms}"/>
+                              </p:stCondLst>
+                              <p:childTnLst>
+                                <p:par>
+                                  <p:cTn id="5" presetID="1" presetClass="entr" presetSubtype="0"
+                                         fill="hold" grpId="0" nodeType="withEffect">
+                                    <p:stCondLst>
+                                      <p:cond delay="0"/>
+                                    </p:stCondLst>
+                                    <p:childTnLst>
+                                      <p:set>
+                                        <p:cBhvr>
+                                          <p:cTn id="6" dur="1" fill="hold">
+                                            <p:stCondLst>
+                                              <p:cond delay="0"/>
+                                            </p:stCondLst>
+                                          </p:cTn>
+                                          <p:tgtEl>
+                                            <p:spTgt spid="{spid}"/>
+                                          </p:tgtEl>
+                                          <p:attrNameLst>
+                                            <p:attrName>style.visibility</p:attrName>
+                                          </p:attrNameLst>
+                                        </p:cBhvr>
+                                        <p:to>
+                                          <p:strVal val="visible"/>
+                                        </p:to>
+                                      </p:set>
+                                    </p:childTnLst>
+                                  </p:cTn>
+                                </p:par>
+                              </p:childTnLst>
+                            </p:cTn>
+                          </p:par>
+                        </p:childTnLst>
+                      </p:cTn>
+                    </p:par>
+                  </p:childTnLst>
+                </p:cTn>
+                <p:prevCondLst>
+                  <p:cond evt="onPrev" delay="0">
+                    <p:tgtEl><p:sldTgt/></p:tgtEl>
+                  </p:cond>
+                </p:prevCondLst>
+                <p:nextCondLst>
+                  <p:cond evt="onNext" delay="0">
+                    <p:tgtEl><p:sldTgt/></p:tgtEl>
+                  </p:cond>
+                </p:nextCondLst>
+              </p:seq>
+            </p:childTnLst>
+          </p:cTn>
+        </p:par>
+      </p:tnLst>
+    </p:timing>
+    """
+    timing = etree.fromstring(timing_xml)
+    sld.append(timing)
+
+
+
 def build_title(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[L_TITLE])
     for ph in slide.placeholders:
@@ -465,7 +580,7 @@ def build_title(prs):
             set_run(
                 p.add_run(),
                 "5 тем  ·  25 вопросов  ·  от 10 до 100 баллов\n"
-                "Выберите ячейку на игровом поле — откроется вопрос",
+                "Выберите ячейку на поле — вопрос, таймер 30 сек, затем ответ",
                 13,
                 False,
                 SOFT,
@@ -484,7 +599,7 @@ def build_board(prs):
         emu(1.2),
         emu(11.4),
         emu(0.35),
-        "Нажмите на баллы, чтобы открыть вопрос  ·  кнопка «К полю» вернёт обратно",
+        "Клик по баллам → вопрос  ·  таймер 30 сек  ·  ответ откроется сам  ·  «К полю» — назад",
         12,
         False,
         SOFT,
@@ -536,20 +651,39 @@ def build_question_slide(prs, topic, qdata, board_slide):
     fill_title(slide, topic["name"], 22)
     clear_body_placeholders(slide)
 
-    # Points badge
-    badge = add_card(slide, emu(10.6), emu(0.45), emu(1.7), emu(0.7), GOLD, 0.2)
-    fill_shape_text(badge, f"{qdata['points']}", 22, True, NEAR_BLACK)
+    # Points badge (top-right)
+    badge = add_card(slide, emu(10.55), emu(0.4), emu(1.15), emu(0.55), GOLD, 0.2)
+    fill_shape_text(badge, f"{qdata['points']}", 18, True, NEAR_BLACK)
 
-    # Question card
-    add_card(slide, emu(0.85), emu(1.55), emu(11.6), emu(2.4), CARD, 0.08)
+    # 30-second countdown timer (animated GIF, plays once in slideshow)
+    if TIMER_GIF.exists():
+        slide.shapes.add_picture(str(TIMER_GIF), emu(10.45), emu(1.1), width=emu(1.85))
+        add_textbox(
+            slide,
+            emu(10.35),
+            emu(2.95),
+            emu(2.05),
+            emu(0.35),
+            "Таймер 30 сек",
+            10,
+            False,
+            SOFT,
+            PP_ALIGN.CENTER,
+        )
+    else:
+        tcard = add_card(slide, emu(10.45), emu(1.1), emu(1.85), emu(1.85), CARD, 0.15)
+        fill_shape_text(tcard, "30", 36, True, GOLD)
+
+    # Question card (leave room for timer on the right)
+    add_card(slide, emu(0.7), emu(1.35), emu(9.5), emu(2.2), CARD, 0.08)
     add_textbox(
         slide,
-        emu(1.1),
-        emu(1.7),
-        emu(11.1),
-        emu(2.05),
+        emu(0.95),
+        emu(1.5),
+        emu(9.05),
+        emu(1.9),
         qdata["q"],
-        18 if len(qdata["q"]) < 160 else 15,
+        17 if len(qdata["q"]) < 160 else 14,
         True,
         WHITE,
         PP_ALIGN.LEFT,
@@ -557,71 +691,72 @@ def build_question_slide(prs, topic, qdata, board_slide):
     )
 
     # Options or open marker
-    y = emu(4.15)
+    y = emu(3.75)
     if qdata["options"]:
         for i, opt in enumerate(qdata["options"]):
             add_textbox(
                 slide,
-                emu(1.1),
-                y + i * emu(0.38),
-                emu(11.1),
-                emu(0.35),
+                emu(0.95),
+                y + i * emu(0.36),
+                emu(9.2),
+                emu(0.34),
                 f"{i + 1})  {opt}",
-                13,
+                12,
                 False,
                 SOFT,
             )
-        ans_top = y + len(qdata["options"]) * emu(0.38) + emu(0.15)
+        ans_top = y + len(qdata["options"]) * emu(0.36) + emu(0.12)
     else:
         add_textbox(
             slide,
-            emu(1.1),
+            emu(0.95),
             y,
-            emu(11.1),
-            emu(0.35),
+            emu(9.2),
+            emu(0.34),
             "Открытый вопрос — обсудите ответ командой",
-            13,
+            12,
             False,
             GOLD,
         )
-        ans_top = y + emu(0.55)
+        ans_top = y + emu(0.5)
 
-    # Answer card
-    add_card(slide, emu(0.85), ans_top, emu(9.3), emu(1.35), CARD_LIGHT, 0.08)
+    # Keep answer block from overlapping back button / bottom
+    max_ans_bottom = emu(6.55)
+    ans_h = max(emu(1.15), min(emu(1.55), max_ans_bottom - ans_top))
+
+    # Answer card — appears automatically after 30 seconds
+    answer_card = add_card(slide, emu(0.7), ans_top, emu(9.5), ans_h, CARD_LIGHT, 0.08)
+    fill_shape_answer(answer_card, qdata["answer"])
+    add_appear_after_ms(slide, answer_card, delay_ms=30000)
+
+    # Hint under timer
     add_textbox(
         slide,
-        emu(1.05),
-        ans_top + emu(0.12),
-        emu(8.9),
-        emu(0.3),
-        "Ответ",
-        12,
-        True,
-        BLUE,
-    )
-    add_textbox(
-        slide,
-        emu(1.05),
-        ans_top + emu(0.42),
-        emu(8.9),
-        emu(0.8),
-        qdata["answer"],
-        13,
+        emu(10.35),
+        emu(3.3),
+        emu(2.05),
+        emu(0.7),
+        "Ответ появится\nчерез 30 секунд",
+        10,
         False,
-        NEAR_BLACK,
+        GOLD,
+        PP_ALIGN.CENTER,
     )
 
-    # Back button (text inside shape = fully clickable)
-    back = add_card(slide, emu(10.4), ans_top, emu(2.05), emu(1.35), BLUE, 0.12)
-    fill_shape_text(back, "← К полю", 14, True, WHITE)
+    # Back button
+    back = add_card(slide, emu(10.45), emu(5.35), emu(1.85), emu(1.15), BLUE, 0.12)
+    fill_shape_text(back, "← К полю", 13, True, WHITE)
     link_to_slide(back, board_slide)
 
     return slide
 
 
+
 def main():
     if not TEMPLATE.exists():
         raise SystemExit(f"Template not found: {TEMPLATE}")
+    if not TIMER_GIF.exists():
+        raise SystemExit(f"Timer GIF not found: {TIMER_GIF}. Generate it first.")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     OUT_COPY.parent.mkdir(parents=True, exist_ok=True)
