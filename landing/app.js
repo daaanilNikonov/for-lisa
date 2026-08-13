@@ -70,6 +70,7 @@
         const o = parsed[sc.id];
         if (!o) return;
         if (typeof o.text === "string") sc.text = o.text;
+        if (typeof o.imagePrompt === "string") sc.imagePrompt = o.imagePrompt;
         if (typeof o.imageSrc === "string" && o.imageSrc) sc.imageSrc = o.imageSrc;
       });
     } catch (err) {
@@ -83,6 +84,7 @@
       payload[sc.id] = {
         shortName: sc.shortName,
         text: sc.text || "",
+        imagePrompt: sc.imagePrompt || "",
         imageSrc: sc.imageSrc || "",
       };
     });
@@ -342,9 +344,15 @@
             <input type="file" accept="image/*" data-field="image" />
           </label>
           <label>
-            Текст результата
+            Текст для плашки
             <textarea data-field="text" placeholder="Текст для этого сценария">${
               sc.text || ""
+            }</textarea>
+          </label>
+          <label>
+            Промпт для нейросети (картинка)
+            <textarea data-field="imagePrompt" placeholder="Описание сцены для генерации">${
+              sc.imagePrompt || ""
             }</textarea>
           </label>
         </div>
@@ -358,6 +366,7 @@
       const preview = card.querySelector(".editor-preview");
       const fileInput = card.querySelector('input[data-field="image"]');
       const textArea = card.querySelector('textarea[data-field="text"]');
+      const promptArea = card.querySelector('textarea[data-field="imagePrompt"]');
 
       fileInput.addEventListener("change", async () => {
         const file = fileInput.files?.[0];
@@ -372,6 +381,13 @@
         if (!scenario) return;
         scenario.text = textArea.value;
       });
+
+      if (promptArea) {
+        promptArea.addEventListener("input", () => {
+          if (!scenario) return;
+          scenario.imagePrompt = promptArea.value;
+        });
+      }
     });
   }
 
