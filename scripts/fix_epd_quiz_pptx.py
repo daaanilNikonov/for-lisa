@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fix quiz PPTX: answer delay (+10s / robust timing) + followed-hyperlink red cells.
+"""Fix quiz PPTX: auto answer after 30s + followed-hyperlink red cells.
 
 Preserves user layout/text/shapes; only patches animation timing, theme colors,
 and board-cell hyperlink wiring.
@@ -18,8 +18,8 @@ SRC = ROOT / "Квиз_1С-ЭПД_Доки_Логистика ИИ ПОПРАВ�
 OUT = ROOT / "Квиз_1С-ЭПД_Доки_Логистика ИИ ПОПРАВИТЬ.pptx"
 OUT_COPY = ROOT / "квиз 1с-эпд" / "Квиз_1С-ЭПД_Доки_Логистика_100к1.pptx"
 
-# Answer currently appears ~10s early vs the 30s timer → wait 40s
-ANSWER_DELAY_MS = 40000
+# Auto-appear answer in slideshow (no click)
+ANSWER_DELAY_MS = 30000
 
 NS = {
     "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
@@ -36,7 +36,9 @@ def qn(prefix: str, tag: str) -> str:
 
 
 def timing_xml(spid: str, delay_ms: int) -> etree._Element:
-    """PowerPoint-compatible Appear after delay (with bldLst hide-until-animate)."""
+    """Auto Appear after delay_ms — starts with slide, no click required."""
+    # Structure matches the original working quiz timing (auto mainSeq),
+    # plus bldLst so the answer stays hidden until the effect runs.
     xml = f"""
     <p:timing xmlns:p="{P}" xmlns:a="{A}" xmlns:r="{R}">
       <p:tnLst>
@@ -47,25 +49,22 @@ def timing_xml(spid: str, delay_ms: int) -> etree._Element:
                 <p:cTn id="2" dur="indefinite" nodeType="mainSeq">
                   <p:childTnLst>
                     <p:par>
-                      <p:cTn id="3" fill="hold" nodeType="clickPar">
+                      <p:cTn id="3" fill="hold">
                         <p:stCondLst>
-                          <p:cond delay="indefinite"/>
-                          <p:cond evt="onBegin" delay="0">
-                            <p:tn val="2"/>
-                          </p:cond>
+                          <p:cond delay="0"/>
                         </p:stCondLst>
                         <p:childTnLst>
                           <p:par>
-                            <p:cTn id="4" fill="hold" nodeType="afterGroup">
+                            <p:cTn id="4" fill="hold">
                               <p:stCondLst>
-                                <p:cond delay="0"/>
+                                <p:cond delay="{delay_ms}"/>
                               </p:stCondLst>
                               <p:childTnLst>
                                 <p:par>
                                   <p:cTn id="5" presetID="1" presetClass="entr" presetSubtype="0"
-                                         fill="hold" grpId="0" nodeType="afterEffect">
+                                         fill="hold" grpId="0" nodeType="withEffect">
                                     <p:stCondLst>
-                                      <p:cond delay="{delay_ms}"/>
+                                      <p:cond delay="0"/>
                                     </p:stCondLst>
                                     <p:childTnLst>
                                       <p:set>
@@ -247,7 +246,7 @@ def process(src: Path, dst: Path) -> None:
 
     dst.write_bytes(buf.getvalue())
     print(f"Saved: {dst} ({dst.stat().st_size} bytes)")
-    print(f"Answer delay: {ANSWER_DELAY_MS} ms (was 30000; +10s to match timer)")
+    print(f"Answer delay: {ANSWER_DELAY_MS} ms (auto, no click)")
     print("Board cells: score text uses theme hyperlink color; opened → red folHlink")
 
 
