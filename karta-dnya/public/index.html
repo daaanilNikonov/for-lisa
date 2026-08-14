@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Карта дня · Группа продуктового запуска · Форус</title>
+    <meta
+      name="description"
+      content="Ежедневная карта дня менеджеров группы продуктового запуска ГК Форус: чеклист, приоритеты на стикерах и формы задач."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true">
+      <div class="orb orb-a"></div>
+      <div class="orb orb-b"></div>
+      <div class="grid-fade"></div>
+    </div>
+
+    <header class="topbar">
+      <a class="brand" href="/karta-dnya" aria-label="Форус — карта дня">
+        <img
+          class="brand-logo"
+          src="/assets/brand/logo-forus-light.png"
+          alt="форус"
+          width="120"
+          height="42"
+        />
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">Группа продуктового запуска</span>
+      </a>
+      <nav class="topnav">
+        <a href="#checklist">Чеклист</a>
+        <a href="#managers">Менеджеры</a>
+        <a href="#archive">Архив</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="top">
+        <p class="eyebrow reveal">ГК Форус · внутренний контур</p>
+        <h1 class="reveal delay-1">
+          <span class="brand-hero">форус</span>
+          <span class="hero-title">Карта дня</span>
+        </h1>
+        <p class="hero-lead reveal delay-2">
+          Ежедневные задачи менеджеров группы продуктового запуска — утром план,
+          вечером отметки, в архиве только завершённые формы.
+        </p>
+        <div class="hero-cta reveal delay-3">
+          <a class="btn btn-primary" href="#managers">Открыть день</a>
+          <a class="btn btn-ghost" href="#checklist">К чеклисту</a>
+        </div>
+        <p class="hero-date reveal delay-4" id="todayLabel"></p>
+      </section>
+
+      <section class="workbench" id="checklist">
+        <div class="panel checklist-panel reveal">
+          <div class="panel-head">
+            <div>
+              <h2>Чеклист работы менеджеров</h2>
+              <p class="panel-sub">Группа продуктового запуска · на сегодня</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="addChecklistItem">
+              + Пункт
+            </button>
+          </div>
+          <ul class="checklist" id="checklistList"></ul>
+        </div>
+
+        <div class="panel board-panel reveal delay-1">
+          <div class="panel-head">
+            <div>
+              <h2>Основные приоритеты в работе</h2>
+              <p class="panel-sub">Доска стикеров · базы, фокусы, эстафеты</p>
+            </div>
+            <div class="board-actions">
+              <button type="button" class="btn btn-ghost btn-sm" id="addSticker" title="Добавить стикер">
+                + Стикер
+              </button>
+            </div>
+          </div>
+          <div class="sticker-board" id="stickerBoard" aria-label="Доска приоритетов">
+            <div class="board-hint">Перетащите · ✎ или двойной клик — редактировать</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="managers-section" id="managers">
+        <div class="section-head reveal">
+          <div>
+            <h2>Менеджеры дня</h2>
+            <p class="panel-sub">Утром — задачи, вечером — галочки. В хранилище форма попадает только после второго заполнения.</p>
+          </div>
+          <button type="button" class="btn btn-primary" id="addManagerBtn">+ Менеджер</button>
+        </div>
+        <div class="managers-grid" id="managersGrid"></div>
+      </section>
+
+      <section class="archive-section" id="archive">
+        <div class="section-head reveal">
+          <div>
+            <h2>Хранилище форм</h2>
+            <p class="panel-sub">Только завершённые карты: «Имя менеджера» + дата</p>
+          </div>
+        </div>
+        <div class="archive-list" id="archiveList"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>ГК Форус</span>
+      <a href="https://www.forus.ru/" target="_blank" rel="noopener noreferrer">forus.ru</a>
+      <span>Карта дня · /karta-dnya</span>
+    </footer>
+
+    <dialog class="modal" id="managerModal">
+      <form method="dialog" class="modal-card" id="managerForm">
+        <header class="modal-head">
+          <h3 id="modalTitle">Карта дня</h3>
+          <button type="submit" class="icon-btn" value="cancel" aria-label="Закрыть">×</button>
+        </header>
+        <p class="modal-meta" id="modalMeta"></p>
+        <div class="phase-tabs" role="tablist">
+          <button type="button" class="phase-tab is-active" data-phase="morning" id="tabMorning">
+            Утро · задачи
+          </button>
+          <button type="button" class="phase-tab" data-phase="evening" id="tabEvening">
+            Вечер · галочки
+          </button>
+        </div>
+        <div id="tasksEditor" class="tasks-editor"></div>
+        <footer class="modal-foot">
+          <button type="button" class="btn btn-ghost" id="addTaskBtn">+ Задача</button>
+          <button type="button" class="btn btn-primary" id="saveFormBtn">Сохранить утро</button>
+        </footer>
+        <p class="form-hint" id="formHint"></p>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="promptModal">
+      <form method="dialog" class="modal-card modal-card-sm" id="promptForm">
+        <header class="modal-head">
+          <h3 id="promptTitle">Добавить</h3>
+          <button type="submit" class="icon-btn" value="cancel" aria-label="Закрыть">×</button>
+        </header>
+        <label class="field">
+          <span id="promptLabel">Имя</span>
+          <input type="text" id="promptInput" autocomplete="off" required />
+        </label>
+        <footer class="modal-foot">
+          <button type="submit" class="btn btn-ghost" value="cancel">Отмена</button>
+          <button type="submit" class="btn btn-primary" value="ok" id="promptOk">Добавить</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
