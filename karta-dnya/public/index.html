@@ -6,7 +6,7 @@
     <title>Карта дня · Группа продуктового запуска · Форус</title>
     <meta
       name="description"
-      content="Ежедневная карта дня менеджеров группы продуктового запуска ГК Форус: чеклист, приоритеты на стикерах и формы задач."
+      content="Карта дня менеджеров группы продуктового запуска ГК Форус: личные чеклисты, доски стикеров и архив форм."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -36,8 +36,7 @@
         <span class="brand-product">Группа продуктового запуска</span>
       </a>
       <nav class="topnav">
-        <a href="#checklist">Чеклист</a>
-        <a href="#managers">Менеджеры</a>
+        <a href="#workspace">Рабочий стол</a>
         <a href="#archive">Архив</a>
       </nav>
     </header>
@@ -50,64 +49,65 @@
           <span class="hero-title">Карта дня</span>
         </h1>
         <p class="hero-lead reveal delay-2">
-          Ежедневные задачи менеджеров группы продуктового запуска — утром план,
-          вечером отметки, в архиве только завершённые формы.
+          У каждого менеджера — свой чеклист на день и своя доска приоритетов.
+          Вечером галочки сохраняются в архив. Здесь можно смотреть всё сразу.
         </p>
-        <div class="hero-cta reveal delay-3">
-          <a class="btn btn-primary" href="#managers">Открыть день</a>
-          <a class="btn btn-ghost" href="#checklist">К чеклисту</a>
-        </div>
-        <p class="hero-date reveal delay-4" id="todayLabel"></p>
+        <p class="hero-date reveal delay-3" id="todayLabel"></p>
       </section>
 
-      <section class="workbench" id="checklist">
-        <div class="panel checklist-panel reveal">
-          <div class="panel-head">
-            <div>
-              <h2>Чеклист работы менеджеров</h2>
-              <p class="panel-sub">Группа продуктового запуска · на сегодня</p>
-            </div>
-            <button type="button" class="btn btn-ghost btn-sm" id="addChecklistItem">
-              + Пункт
-            </button>
-          </div>
-          <ul class="checklist" id="checklistList"></ul>
-        </div>
-
-        <div class="panel board-panel reveal delay-1">
-          <div class="panel-head">
-            <div>
-              <h2>Основные приоритеты в работе</h2>
-              <p class="panel-sub">Доска стикеров · базы, фокусы, эстафеты</p>
-            </div>
-            <div class="board-actions">
-              <button type="button" class="btn btn-ghost btn-sm" id="addSticker" title="Добавить стикер">
-                + Стикер
-              </button>
-            </div>
-          </div>
-          <div class="sticker-board" id="stickerBoard" aria-label="Доска приоритетов">
-            <div class="board-hint">Перетащите · ✎ или двойной клик — редактировать</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="managers-section" id="managers">
+      <section class="workspace" id="workspace">
         <div class="section-head reveal">
           <div>
-            <h2>Менеджеры дня</h2>
-            <p class="panel-sub">Утром — задачи, вечером — галочки. В хранилище форма попадает только после второго заполнения.</p>
+            <h2>Рабочий стол</h2>
+            <p class="panel-sub">Выберите менеджера или откройте обзор всех чеклистов и досок</p>
           </div>
           <button type="button" class="btn btn-primary" id="addManagerBtn">+ Менеджер</button>
         </div>
-        <div class="managers-grid" id="managersGrid"></div>
+
+        <div class="manager-tabs reveal" id="managerTabs" role="tablist"></div>
+
+        <div id="overviewView" class="overview-view is-hidden"></div>
+
+        <div id="singleView" class="workbench is-hidden">
+          <div class="panel checklist-panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="checklistTitle">Чеклист менеджера</h2>
+                <p class="panel-sub" id="checklistSub">Задачи на сегодня</p>
+              </div>
+              <div class="phase-tabs phase-tabs-inline" role="tablist">
+                <button type="button" class="phase-tab is-active" id="tabMorning">Утро</button>
+                <button type="button" class="phase-tab" id="tabEvening">Вечер</button>
+              </div>
+            </div>
+            <div id="tasksEditor" class="tasks-editor"></div>
+            <footer class="panel-foot">
+              <button type="button" class="btn btn-ghost" id="addTaskBtn">+ Задача</button>
+              <button type="button" class="btn btn-primary" id="saveFormBtn">Сохранить утро</button>
+            </footer>
+            <p class="form-hint" id="formHint"></p>
+          </div>
+
+          <div class="panel board-panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="boardTitle">Основные приоритеты в работе</h2>
+                <p class="panel-sub" id="boardSub">Личная доска стикеров</p>
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" id="addSticker">+ Стикер</button>
+            </div>
+            <div class="sticker-board" id="stickerBoard" aria-label="Доска приоритетов">
+              <div class="board-hint">Перетащите · ✎ — редактировать</div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="archive-section" id="archive">
         <div class="section-head reveal">
           <div>
             <h2>Хранилище форм</h2>
-            <p class="panel-sub">Только завершённые карты: «Имя менеджера» + дата</p>
+            <p class="panel-sub">Завершённые карты: «Имя менеджера» + дата. Можно удалить тестовые записи.</p>
           </div>
         </div>
         <div class="archive-list" id="archiveList"></div>
@@ -119,30 +119,6 @@
       <a href="https://www.forus.ru/" target="_blank" rel="noopener noreferrer">forus.ru</a>
       <span>Карта дня · /karta-dnya</span>
     </footer>
-
-    <dialog class="modal" id="managerModal">
-      <form method="dialog" class="modal-card" id="managerForm">
-        <header class="modal-head">
-          <h3 id="modalTitle">Карта дня</h3>
-          <button type="submit" class="icon-btn" value="cancel" aria-label="Закрыть">×</button>
-        </header>
-        <p class="modal-meta" id="modalMeta"></p>
-        <div class="phase-tabs" role="tablist">
-          <button type="button" class="phase-tab is-active" data-phase="morning" id="tabMorning">
-            Утро · задачи
-          </button>
-          <button type="button" class="phase-tab" data-phase="evening" id="tabEvening">
-            Вечер · галочки
-          </button>
-        </div>
-        <div id="tasksEditor" class="tasks-editor"></div>
-        <footer class="modal-foot">
-          <button type="button" class="btn btn-ghost" id="addTaskBtn">+ Задача</button>
-          <button type="button" class="btn btn-primary" id="saveFormBtn">Сохранить утро</button>
-        </footer>
-        <p class="form-hint" id="formHint"></p>
-      </form>
-    </dialog>
 
     <dialog class="modal" id="promptModal">
       <form method="dialog" class="modal-card modal-card-sm" id="promptForm">

@@ -20,12 +20,28 @@ const DEFAULT_MANAGERS = [
   { id: "mgr-4", name: "Сергей" },
 ];
 
-const DEFAULT_CHECKLIST = [
-  { id: "chk-1", text: "Проверить очередь лидов и назначить приоритеты", done: false },
-  { id: "chk-2", text: "Обработать входящие заявки по продуктовому запуску", done: false },
-  { id: "chk-3", text: "Обновить статусы по базам и передать эстафету", done: false },
-  { id: "chk-4", text: "Зафиксировать итоги дня в карте менеджера", done: false },
-];
+const SAMPLE_STICKERS = {
+  "mgr-1": [
+    {
+      id: "stk-a1",
+      text: "База №12 — активные лиды",
+      x: 28,
+      y: 42,
+      color: "cyan",
+      rotation: -2,
+    },
+  ],
+  "mgr-2": [
+    {
+      id: "stk-d1",
+      text: "Приоритет: демо на этой неделе",
+      x: 40,
+      y: 50,
+      color: "amber",
+      rotation: 2,
+    },
+  ],
+};
 
 function uid(prefix) {
   return `${prefix}-${crypto.randomBytes(4).toString("hex")}`;
@@ -39,37 +55,58 @@ function todayISO() {
 }
 
 function emptyDb() {
-  return {
-    managers: DEFAULT_MANAGERS.map((m) => ({
-      ...m,
-      createdAt: new Date().toISOString(),
-    })),
-    forms: [],
-    stickers: [
-      {
-        id: "stk-welcome",
-        text: "База №12 — активные лиды",
-        x: 24,
-        y: 36,
-        color: "cyan",
-        rotation: -2,
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "stk-welcome-2",
-        text: "Приоритет: демо на этой неделе",
-        x: 180,
-        y: 90,
-        color: "amber",
-        rotation: 3,
-        updatedAt: new Date().toISOString(),
-      },
-    ],
-    checklist: {
-      date: todayISO(),
-      items: DEFAULT_CHECKLIST.map((i) => ({ ...i })),
-    },
-  };
+  const managers = DEFAULT_MANAGERS.map((m) => ({
+    ...m,
+    createdAt: new Date().toISOString(),
+  }));
+  const boards = {};
+  for (const m of managers) {
+    boards[m.id] = (SAMPLE_STICKERS[m.id] || []).map((s) => ({
+      ...s,
+      updatedAt: new Date().toISOString(),
+    }));
+  }
+  return { managers, forms: [], boards };
+}
+
+function migrateDb(db) {
+  let changed = false;
+  if (!db.managers) {
+    db.managers = emptyDb().managers;
+    changed = true;
+  }
+  if (!Array.isArray(db.forms)) {
+    db.forms = [];
+    changed = true;
+  }
+  if (!db.boards || typeof db.boards !== "object") {
+    db.boards = {};
+    changed = true;
+  }
+  // migrate old shared stickers → first manager board
+  if (Array.isArray(db.stickers)) {
+    const firstId = db.managers[0]?.id;
+    if (firstId && !db.boards[firstId]?.length && db.stickers.length) {
+      db.boards[firstId] = db.stickers.map((s) => ({
+        ...s,
+        updatedAt: s.updatedAt || new Date().toISOString(),
+      }));
+    }
+    delete db.stickers;
+    changed = true;
+  }
+  if (db.checklist) {
+    delete db.checklist;
+    changed = true;
+  }
+  for (const m of db.managers) {
+    if (!Array.isArray(db.boards[m.id])) {
+      db.boards[m.id] = [];
+      changed = true;
+    }
+  }
+  if (changed) writeDb(db);
+  return db;
 }
 
 function ensureDb() {
@@ -82,15 +119,7 @@ function ensureDb() {
 function readDb() {
   ensureDb();
   const raw = fs.readFileSync(DB_PATH, "utf8");
-  const db = JSON.parse(raw);
-  if (!db.checklist || db.checklist.date !== todayISO()) {
-    db.checklist = {
-      date: todayISO(),
-      items: DEFAULT_CHECKLIST.map((i) => ({ ...i, done: false })),
-    };
-    writeDb(db);
-  }
-  return db;
+  return migrateDb(JSON.parse(raw));
 }
 
 function writeDb(db) {
@@ -158,6 +187,20 @@ function formTitle(managerName, date) {
   return `${managerName} ${date}`;
 }
 
+function normalizeStickers(list) {
+  return (list || []).map((s) => ({
+    id: s.id || uid("stk"),
+    text: String(s.text ?? ""),
+    x: Number(s.x) || 0,
+    y: Number(s.y) || 0,
+    color: ["cyan", "amber", "mint", "rose", "violet"].includes(s.color)
+      ? s.color
+      : "cyan",
+    rotation: Number(s.rotation) || 0,
+    updatedAt: new Date().toISOString(),
+  }));
+}
+
 async function handleApi(req, res, pathname) {
   const method = req.method || "GET";
 
@@ -177,6 +220,7 @@ async function handleApi(req, res, pathname) {
       createdAt: new Date().toISOString(),
     };
     db.managers.push(manager);
+    db.boards[manager.id] = [];
     writeDb(db);
     return sendJson(res, 201, { manager });
   }
@@ -191,6 +235,16 @@ async function handleApi(req, res, pathname) {
       const name = String(body.name).trim();
       if (!name) return sendJson(res, 400, { error: "Имя не может быть пустым" });
       manager.name = name;
+      for (const form of db.forms) {
+        if (form.managerId === id) {
+          form.managerName = name;
+          if (form.status === "completed") {
+            form.title = formTitle(name, form.date);
+          } else {
+            form.title = formTitle(name, form.date);
+          }
+        }
+      }
     }
     writeDb(db);
     return sendJson(res, 200, { manager });
@@ -204,63 +258,39 @@ async function handleApi(req, res, pathname) {
     if (db.managers.length === before) {
       return sendJson(res, 404, { error: "Менеджер не найден" });
     }
+    delete db.boards[id];
     writeDb(db);
     return sendJson(res, 200, { ok: true });
   }
 
-  if (method === "PUT" && pathname === "/api/checklist") {
+  // Personal sticker boards
+  if (method === "PUT" && pathname.startsWith("/api/boards/")) {
+    const managerId = pathname.split("/").pop();
     const body = await readBody(req);
     const db = readDb();
-    if (!Array.isArray(body.items)) {
-      return sendJson(res, 400, { error: "Ожидается список пунктов" });
+    if (!db.managers.some((m) => m.id === managerId)) {
+      return sendJson(res, 404, { error: "Менеджер не найден" });
     }
-    db.checklist = {
-      date: todayISO(),
-      items: body.items.map((item, idx) => ({
-        id: item.id || `chk-${idx + 1}`,
-        text: String(item.text || "").trim() || `Пункт ${idx + 1}`,
-        done: Boolean(item.done),
-      })),
-    };
-    writeDb(db);
-    return sendJson(res, 200, { checklist: db.checklist });
-  }
-
-  if (method === "POST" && pathname === "/api/checklist/items") {
-    const body = await readBody(req);
-    const text = String(body.text || "").trim();
-    if (!text) return sendJson(res, 400, { error: "Введите текст пункта" });
-    const db = readDb();
-    const item = { id: uid("chk"), text, done: false };
-    db.checklist.items.push(item);
-    writeDb(db);
-    return sendJson(res, 201, { item, checklist: db.checklist });
-  }
-
-  if (method === "PUT" && pathname === "/api/stickers") {
-    const body = await readBody(req);
-    const db = readDb();
     if (!Array.isArray(body.stickers)) {
       return sendJson(res, 400, { error: "Ожидается массив стикеров" });
     }
-    db.stickers = body.stickers.map((s) => ({
-      id: s.id || uid("stk"),
-      text: String(s.text ?? ""),
-      x: Number(s.x) || 0,
-      y: Number(s.y) || 0,
-      color: ["cyan", "amber", "mint", "rose", "violet"].includes(s.color)
-        ? s.color
-        : "cyan",
-      rotation: Number(s.rotation) || 0,
-      updatedAt: new Date().toISOString(),
-    }));
+    db.boards[managerId] = normalizeStickers(body.stickers);
     writeDb(db);
-    return sendJson(res, 200, { stickers: db.stickers });
+    return sendJson(res, 200, { stickers: db.boards[managerId] });
   }
 
-  if (method === "POST" && pathname === "/api/stickers") {
+  if (method === "POST" && pathname.startsWith("/api/boards/") && pathname.endsWith("/stickers") === false) {
+    // POST /api/boards/:id/stickers
+  }
+
+  if (method === "POST" && /^\/api\/boards\/[^/]+\/stickers$/.test(pathname)) {
+    const managerId = pathname.split("/")[3];
     const body = await readBody(req);
     const db = readDb();
+    if (!db.managers.some((m) => m.id === managerId)) {
+      return sendJson(res, 404, { error: "Менеджер не найден" });
+    }
+    if (!Array.isArray(db.boards[managerId])) db.boards[managerId] = [];
     const sticker = {
       id: uid("stk"),
       text: String(body.text || "Новый приоритет"),
@@ -270,20 +300,25 @@ async function handleApi(req, res, pathname) {
       rotation: body.rotation ?? Math.round((Math.random() * 8 - 4) * 10) / 10,
       updatedAt: new Date().toISOString(),
     };
-    db.stickers.push(sticker);
+    db.boards[managerId].push(sticker);
     writeDb(db);
     return sendJson(res, 201, { sticker });
   }
 
-  if (method === "DELETE" && pathname.startsWith("/api/stickers/")) {
-    const id = pathname.split("/").pop();
+  if (method === "DELETE" && /^\/api\/boards\/[^/]+\/stickers\/[^/]+$/.test(pathname)) {
+    const parts = pathname.split("/");
+    const managerId = parts[3];
+    const stickerId = parts[5];
     const db = readDb();
-    db.stickers = db.stickers.filter((s) => s.id !== id);
+    if (!Array.isArray(db.boards[managerId])) {
+      return sendJson(res, 404, { error: "Доска не найдена" });
+    }
+    db.boards[managerId] = db.boards[managerId].filter((s) => s.id !== stickerId);
     writeDb(db);
     return sendJson(res, 200, { ok: true });
   }
 
-  // Save morning draft (first fill) — not archived yet
+  // Morning draft
   if (method === "POST" && pathname === "/api/forms/morning") {
     const body = await readBody(req);
     const managerId = body.managerId;
@@ -330,10 +365,13 @@ async function handleApi(req, res, pathname) {
       form.updatedAt = new Date().toISOString();
     }
     writeDb(db);
-    return sendJson(res, 200, { form, message: "Задачи на день сохранены. Архив обновится после вечерней отметки." });
+    return sendJson(res, 200, {
+      form,
+      message: "Чеклист на день сохранён. В архив попадёт после вечерних галочек.",
+    });
   }
 
-  // Evening completion — only then form enters archive storage
+  // Evening → archive
   if (method === "POST" && pathname === "/api/forms/evening") {
     const body = await readBody(req);
     const managerId = body.managerId;
@@ -350,7 +388,7 @@ async function handleApi(req, res, pathname) {
     );
     if (!form) {
       return sendJson(res, 400, {
-        error: "Сначала заполните утреннюю форму с задачами на день",
+        error: "Сначала сохраните утренний чеклист задач",
       });
     }
     if (tasks) {
@@ -369,22 +407,38 @@ async function handleApi(req, res, pathname) {
     form.status = "completed";
     form.updatedAt = new Date().toISOString();
     form.completedAt = new Date().toISOString();
-    // Move conceptually to archive: keep in forms with status completed
     writeDb(db);
     return sendJson(res, 200, {
       form,
-      message: `Форма «${form.title}» сохранена в хранилище`,
+      message: `Форма «${form.title}» сохранена в архив`,
     });
+  }
+
+  if (method === "DELETE" && pathname.startsWith("/api/forms/")) {
+    const id = pathname.split("/").pop();
+    const db = readDb();
+    const before = db.forms.length;
+    db.forms = db.forms.filter((f) => f.id !== id);
+    if (db.forms.length === before) {
+      return sendJson(res, 404, { error: "Форма не найдена" });
+    }
+    writeDb(db);
+    return sendJson(res, 200, { ok: true });
   }
 
   if (method === "GET" && pathname === "/api/archive") {
     const db = readDb();
     const archive = db.forms
       .filter((f) => f.status === "completed")
-      .sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(a.title).localeCompare(String(b.title)));
+      .sort(
+        (a, b) =>
+          String(b.date).localeCompare(String(a.date)) ||
+          String(a.title).localeCompare(String(b.title))
+      );
     return sendJson(res, 200, { archive });
   }
 
+  // legacy shared stickers endpoints removed
   return sendJson(res, 404, { error: "Не найдено" });
 }
 
@@ -392,7 +446,6 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     let pathname = url.pathname;
-    // Pretty URL aliases
     if (
       pathname === "/karta-dnya" ||
       pathname === "/karta-dnya/" ||
