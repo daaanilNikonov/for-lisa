@@ -1047,3 +1047,11 @@ textarea {
     min-width: 0;
   }
 }
+
+
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+}

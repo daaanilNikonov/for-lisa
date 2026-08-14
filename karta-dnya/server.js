@@ -14,10 +14,10 @@ const DB_PATH = path.join(DATA_DIR, "db.json");
 const PORT = Number(process.env.PORT || 3847);
 
 const DEFAULT_MANAGERS = [
-  { id: "mgr-1", name: "Анна" },
-  { id: "mgr-2", name: "Дмитрий" },
-  { id: "mgr-3", name: "Елена" },
-  { id: "mgr-4", name: "Сергей" },
+  { id: "mgr-1", name: "Блохина Елизавета" },
+  { id: "mgr-2", name: "Оглоблина Софья" },
+  { id: "mgr-3", name: "Кургузов Данил" },
+  { id: "mgr-4", name: "Юнусова Юлиана" },
 ];
 
 const SAMPLE_STICKERS = {

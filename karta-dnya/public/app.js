@@ -32,6 +32,7 @@
     tabEvening: document.getElementById("tabEvening"),
     addTaskBtn: document.getElementById("addTaskBtn"),
     addManagerBtn: document.getElementById("addManagerBtn"),
+    renameManagerBtn: document.getElementById("renameManagerBtn"),
     addSticker: document.getElementById("addSticker"),
     promptModal: document.getElementById("promptModal"),
     promptForm: document.getElementById("promptForm"),
@@ -112,6 +113,8 @@
 
   function renderAll() {
     renderTabs();
+    const single = state.selectedId !== "all";
+    el.renameManagerBtn.classList.toggle("is-hidden", !single);
     if (state.selectedId === "all") {
       el.overviewView.classList.remove("is-hidden");
       el.singleView.classList.add("is-hidden");
@@ -144,9 +147,15 @@
       btn.innerHTML = `<span></span><small></small>`;
       btn.querySelector("span").textContent = manager.name;
       btn.querySelector("small").textContent = status.label;
+      btn.title = "Клик — открыть · двойной клик — переименовать";
       btn.addEventListener("click", () => {
         state.selectedId = manager.id;
         renderAll();
+      });
+      btn.addEventListener("dblclick", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        renameManager(manager);
       });
       el.managerTabs.appendChild(btn);
     });
@@ -568,6 +577,40 @@
       el.archiveList.appendChild(item);
     });
   }
+
+
+  async function renameManager(manager) {
+    const name = await askPrompt({
+      title: "Переименовать менеджера",
+      label: "ФИО",
+      initial: manager.name,
+      placeholder: "Фамилия Имя",
+    });
+    if (!name || name === manager.name) return;
+    try {
+      const data = await api(`/api/managers/${manager.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
+      });
+      manager.name = data.manager.name;
+      // sync form titles in memory
+      state.forms.forEach((f) => {
+        if (f.managerId === manager.id) {
+          f.managerName = manager.name;
+          f.title = `${manager.name} ${f.date}`;
+        }
+      });
+      toast(`Имя обновлено: ${manager.name}`);
+      renderAll();
+    } catch (err) {
+      toast(err.message);
+    }
+  }
+
+  el.renameManagerBtn.addEventListener("click", () => {
+    const manager = state.managers.find((m) => m.id === state.selectedId);
+    if (manager) renameManager(manager);
+  });
 
   el.addManagerBtn.addEventListener("click", async () => {
     const name = await askPrompt({
