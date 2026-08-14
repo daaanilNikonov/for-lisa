@@ -279,10 +279,6 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, { stickers: db.boards[managerId] });
   }
 
-  if (method === "POST" && pathname.startsWith("/api/boards/") && pathname.endsWith("/stickers") === false) {
-    // POST /api/boards/:id/stickers
-  }
-
   if (method === "POST" && /^\/api\/boards\/[^/]+\/stickers$/.test(pathname)) {
     const managerId = pathname.split("/")[3];
     const body = await readBody(req);
