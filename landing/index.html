@@ -6,7 +6,7 @@
     <title>Тест Кабинет сотрудника · ГК Форус</title>
     <meta
       name="description"
-      content="Пройдите тест ГК Форус и узнайте свой сценарий работы с кадрами и зарплатой. Узнайте, как усилить процессы с 1С:Кабинет сотрудника."
+      content="Пройдите тест ГК Форус и узнайте свой сценарий работы с кадрами и зарплатой."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -33,8 +33,7 @@
       </a>
       <nav class="topnav">
         <a href="#quiz">Тест</a>
-        <a href="#scenarios">Сценарии</a>
-        <a href="#lead-form">Консультация</a>
+        <a href="#upload-images" class="admin-only is-hidden">Картинки</a>
       </nav>
     </header>
 
@@ -49,15 +48,14 @@
           </p>
           <div class="hero-cta">
             <a class="btn btn-primary" href="#quiz">Пройти тест</a>
-            <a class="btn btn-ghost" href="#lead-form">Получить рекомендацию</a>
           </div>
         </div>
         <div class="hero-aside" aria-hidden="true">
           <div class="hero-badge">15 сценариев</div>
           <div class="hero-card">
-            <strong>Триггеры</strong>
-            <span>ежедневно · почти всегда · последний день</span>
-            <span>КЭДО · >80% · сразу · редко</span>
+            <strong>Персональный результат</strong>
+            <span>по вашим ответам о процессах</span>
+            <span>и уровне автоматизации</span>
           </div>
         </div>
       </section>
@@ -86,7 +84,6 @@
 
           <div class="share-card" id="shareCard">
             <h2 class="result-title" id="resultTitle">—</h2>
-            <p class="result-meta" id="resultMeta"></p>
             <div class="result-media">
               <div class="result-image-slot" id="resultImageSlot">
                 <img id="resultImage" alt="" hidden />
@@ -95,22 +92,15 @@
                 </div>
               </div>
               <div class="result-text-slot">
-                <span class="slot-label">Здесь будет текст</span>
                 <p id="resultText"></p>
-                <p class="result-note" id="resultNote"></p>
               </div>
             </div>
           </div>
 
-          <div class="result-profile">
-            <h3>Сработавшие триггеры</h3>
-            <ul id="resultTriggers"></ul>
-            <h3>Все ответы</h3>
-            <ul id="resultProfile"></ul>
-          </div>
-
           <div class="result-actions">
-            <a class="btn btn-primary" href="#lead-form">Узнать, как усилить процессы</a>
+            <button type="button" class="btn btn-primary" id="btnShowLead">
+              Узнать, как усилить процессы
+            </button>
             <button type="button" class="btn btn-ghost" id="btnShare">
               Поделиться результатами
             </button>
@@ -137,91 +127,83 @@
             </div>
             <p class="editor-status" id="shareStatus"></p>
           </div>
-        </div>
-      </section>
 
-      <section class="lead-section" id="lead-form">
-        <div class="lead-shell">
-          <div class="section-head">
-            <p class="eyebrow">Следующий шаг</p>
-            <h2>Узнайте, как усилить процессы</h2>
-            <p>
-              Оставьте контакты — подскажем, как сократить рутину по кадрам и
-              зарплате с учётом вашего сценария.
-            </p>
+          <!-- Анкета только после результата -->
+          <div class="lead-after-result is-hidden" id="leadPanel">
+            <div class="section-head">
+              <p class="eyebrow">Следующий шаг</p>
+              <h2>Узнайте, как усилить процессы</h2>
+              <p>
+                Оставьте контакты — подскажем, как сократить рутину с учётом
+                вашего сценария.
+              </p>
+            </div>
+            <form class="lead-form" id="leadForm">
+              <label>
+                Имя
+                <input
+                  type="text"
+                  name="name"
+                  id="leadName"
+                  required
+                  autocomplete="name"
+                  placeholder="Как к вам обращаться"
+                />
+              </label>
+              <label>
+                Номер телефона
+                <input
+                  type="tel"
+                  name="phone"
+                  id="leadPhone"
+                  required
+                  autocomplete="tel"
+                  placeholder="+7 (___) ___-__-__"
+                />
+              </label>
+              <label>
+                ИНН организации
+                <input
+                  type="text"
+                  name="inn"
+                  id="leadInn"
+                  required
+                  inputmode="numeric"
+                  maxlength="12"
+                  pattern="\d{10}|\d{12}"
+                  placeholder="10 или 12 цифр"
+                />
+              </label>
+              <button type="submit" class="btn btn-primary">Отправить заявку</button>
+              <p class="editor-status" id="leadStatus"></p>
+            </form>
           </div>
-          <form class="lead-form" id="leadForm">
-            <label>
-              Имя
-              <input
-                type="text"
-                name="name"
-                id="leadName"
-                required
-                autocomplete="name"
-                placeholder="Как к вам обращаться"
-              />
-            </label>
-            <label>
-              Номер телефона
-              <input
-                type="tel"
-                name="phone"
-                id="leadPhone"
-                required
-                autocomplete="tel"
-                placeholder="+7 (___) ___-__-__"
-              />
-            </label>
-            <label>
-              ИНН организации
-              <input
-                type="text"
-                name="inn"
-                id="leadInn"
-                required
-                inputmode="numeric"
-                maxlength="12"
-                pattern="\d{10}|\d{12}"
-                placeholder="10 или 12 цифр"
-              />
-            </label>
-            <button type="submit" class="btn btn-primary">Отправить заявку</button>
-            <p class="editor-status" id="leadStatus"></p>
-          </form>
         </div>
       </section>
 
-      <section class="scenarios-section" id="scenarios">
+      <!-- Админ: загрузка картинок по видам -->
+      <section class="editor-section admin-only is-hidden" id="upload-images">
         <div class="section-head">
-          <p class="eyebrow">Каналы результата</p>
-          <h2>15 основных сценариев</h2>
+          <p class="eyebrow">Админ</p>
+          <h2>Загрузка картинок по видам</h2>
           <p>
-            Название подстраивается под должность из первого вопроса. Например:
-            кадровик-любимчик, бухгалтер-любимчик.
-          </p>
-        </div>
-        <div class="scenarios-grid" id="scenariosGrid"></div>
-      </section>
-
-      <section class="editor-section" id="editor">
-        <div class="section-head">
-          <p class="eyebrow">Контент результата</p>
-          <h2>Окно загрузки: картинка + текст</h2>
-          <p>
-            Для каждого из 15 сценариев загрузите картинку и текст. Сохраняется в
-            браузере.
+            Выберите файл для каждого вида. Можно сохранить в браузере и скачать
+            JSON. Чтобы закрепить в репозитории — положите файлы в
+            <code>assets/results/&lt;id&gt;.jpg</code>.
           </p>
         </div>
         <div class="editor-toolbar">
           <button type="button" class="btn btn-primary" id="btnSaveEditor">
-            Сохранить всё
+            Сохранить в браузере
           </button>
           <button type="button" class="btn btn-ghost" id="btnExportEditor">
             Скачать JSON
           </button>
+          <button type="button" class="btn btn-ghost" id="btnExportLeads">
+            Скачать заявки CSV
+          </button>
           <button type="button" class="btn btn-ghost" id="btnResetEditor">
-            Сбросить правки
+            Сбросить картинки
           </button>
           <span class="editor-status" id="editorStatus"></span>
         </div>
@@ -236,6 +218,9 @@
       </div>
       <p>URL теста: /test-kabinet/</p>
     </footer>
+
+    <!-- Скрытая форма для отправки в Яндекс.Формы -->
+    <iframe name="yandexFormFrame" id="yandexFormFrame" class="is-hidden" title="yandex"></iframe>
 
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="scripts-data.js"></script>

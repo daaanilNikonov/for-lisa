@@ -1,8 +1,8 @@
 (() => {
-  const STORAGE_KEY = "forus-quiz-scenario-content-v1";
+  const STORAGE_KEY = "forus-quiz-scenario-content-v2";
   const LEAD_KEY = "forus-quiz-leads-v1";
   const data = window.QUIZ_SCRIPTS;
-  const labels = window.QUIZ_PROFILE_LABELS;
+  const isAdmin = new URLSearchParams(location.search).has("admin");
 
   const state = {
     step: 0,
@@ -19,24 +19,22 @@
     btnNext: document.getElementById("btnNext"),
     btnRestart: document.getElementById("btnRestart"),
     btnShare: document.getElementById("btnShare"),
+    btnShowLead: document.getElementById("btnShowLead"),
     btnCopyLink: document.getElementById("btnCopyLink"),
     btnDownloadShot: document.getElementById("btnDownloadShot"),
+    btnExportLeads: document.getElementById("btnExportLeads"),
     shareBox: document.getElementById("shareBox"),
     sharePreview: document.getElementById("sharePreview"),
     shareLink: document.getElementById("shareLink"),
     shareStatus: document.getElementById("shareStatus"),
     shareCard: document.getElementById("shareCard"),
+    leadPanel: document.getElementById("leadPanel"),
     resultSection: document.getElementById("result"),
     quizSection: document.getElementById("quiz"),
     resultTitle: document.getElementById("resultTitle"),
-    resultMeta: document.getElementById("resultMeta"),
     resultText: document.getElementById("resultText"),
-    resultNote: document.getElementById("resultNote"),
     resultImage: document.getElementById("resultImage"),
     resultImagePlaceholder: document.getElementById("resultImagePlaceholder"),
-    resultTriggers: document.getElementById("resultTriggers"),
-    resultProfile: document.getElementById("resultProfile"),
-    scenariosGrid: document.getElementById("scenariosGrid"),
     editorList: document.getElementById("editorList"),
     editorStatus: document.getElementById("editorStatus"),
     btnSaveEditor: document.getElementById("btnSaveEditor"),
@@ -54,11 +52,10 @@
     return queue()[state.step];
   }
 
-  function assignTempImages() {
-    const pool = data.tempImages || [];
-    data.scenarios.forEach((sc, i) => {
-      if (!sc.imageSrc && pool.length) sc.imageSrc = pool[i % pool.length];
-    });
+  /** Картинка вида: override → явный imageSrc → assets/results/{id}.jpg/.jpeg/.png → пусто */
+  function resolveImageSrc(sc) {
+    if (sc.imageSrc) return sc.imageSrc;
+    return `assets/results/${sc.id}.jpg`;
   }
 
   function loadOverrides() {
@@ -69,7 +66,7 @@
       data.scenarios.forEach((sc) => {
         const o = parsed[sc.id];
         if (!o) return;
-        if (typeof o.text === "string") sc.text = o.text;
+        if (typeof o.text === "string" && o.text) sc.text = o.text;
         if (typeof o.imagePrompt === "string") sc.imagePrompt = o.imagePrompt;
         if (typeof o.imageSrc === "string" && o.imageSrc) sc.imageSrc = o.imageSrc;
       });
@@ -93,8 +90,7 @@
 
   function saveOverrides() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(collectEditorPayload()));
-    els.editorStatus.textContent = "Сохранено в браузере";
-    renderScenariosGrid();
+    if (els.editorStatus) els.editorStatus.textContent = "Сохранено в браузере";
   }
 
   function isQuestionAnswered(q) {
@@ -105,25 +101,19 @@
     return Boolean(state.answers[q.id]);
   }
 
-  function activeTriggers(answers) {
-    const list = [];
-    if (answers.certs === "daily") list.push("Триггер напряжения: справки ежедневно");
-    if (answers.overtime === "always") list.push("Триггер напряжения: почти всегда задерживается");
-    if (answers.report === "last_day") list.push("Триггер напряжения: отчётность в последний день");
-    if (answers.auto === "high") list.push("Триггер спокойствия: автоматизация >80%");
-    if (answers.docs === "kedo") list.push("Триггер спокойствия: есть КЭДО");
-    if (answers.report === "now") list.push("Триггер спокойствия: отчётность сразу");
-    if (answers.certs === "rare" || answers.certs === "never") {
-      list.push("Триггер спокойствия: справки редко / не обращаются");
-    }
-    return list;
-  }
-
   function landingUrl() {
     if (location.protocol.startsWith("http") && !location.hostname.includes("htmlpreview")) {
       return `${location.origin}${location.pathname.replace(/\/[^/]*$/, "/")}`;
     }
     return data.shareBaseUrl;
+  }
+
+  function kedoLabel() {
+    if (state.answers.docs !== "kedo") return "";
+    if (state.answers.kedo_vendor_custom) return state.answers.kedo_vendor_custom;
+    const id = state.answers.kedo_vendor;
+    const opt = data.kedoVendorQuestion.options.find((o) => o.id === id);
+    return opt?.label || id || "";
   }
 
   function renderQuestion() {
@@ -140,11 +130,10 @@
     els.btnNext.textContent =
       state.step === total - 1 ? "Показать результат" : "Далее";
 
-    const customBlock =
-      q.allowCustom
-        ? `<div class="custom-field">
+    const customBlock = q.allowCustom
+      ? `<div class="custom-field">
             <label>
-              Окошко для вписания
+              Свой вариант
               <input
                 type="text"
                 id="kedoCustomInput"
@@ -153,7 +142,7 @@
               />
             </label>
           </div>`
-        : "";
+      : "";
 
     els.quizCard.innerHTML = `
       <h2>${q.title}</h2>
@@ -184,6 +173,9 @@
           delete state.answers.kedo_vendor;
           delete state.answers.kedo_vendor_custom;
         }
+        if (q.id === "kedo_vendor") {
+          // выбор из списка — можно очистить кастом, если хотят только список
+        }
         renderQuestion();
       });
     });
@@ -199,63 +191,36 @@
 
   function showResult() {
     const scenario = window.QUIZ_MATCH.resolve(state.answers);
-    const title = window.QUIZ_MATCH.formatScenarioTitle(scenario, state.answers.role);
+    const title = window.QUIZ_MATCH.formatScenarioTitle(
+      scenario,
+      state.answers.role
+    );
     state.lastScenario = { ...scenario, displayName: title };
 
     els.progressBar.style.width = "100%";
     els.quizSection.classList.add("is-hidden");
     els.resultSection.classList.remove("is-hidden");
     els.shareBox.classList.add("is-hidden");
+    els.leadPanel.classList.add("is-hidden");
     state.shareDataUrl = "";
     els.sharePreview.hidden = true;
 
     els.resultTitle.textContent = title;
-    els.resultMeta.textContent = `сценарий · ${scenario.id}`;
     els.resultText.textContent = scenario.text || "";
-    els.resultNote.textContent = scenario.triggersNote || "";
 
-    if (scenario.imageSrc) {
-      els.resultImage.hidden = false;
-      els.resultImage.src = scenario.imageSrc;
-      els.resultImage.alt = title;
-      els.resultImagePlaceholder.hidden = true;
-    } else {
+    const src = resolveImageSrc(scenario);
+    els.resultImage.hidden = false;
+    els.resultImagePlaceholder.hidden = true;
+    els.resultImage.alt = title;
+    els.resultImage.onerror = () => {
       els.resultImage.hidden = true;
-      els.resultImage.removeAttribute("src");
       els.resultImagePlaceholder.hidden = false;
-    }
-
-    els.resultTriggers.innerHTML = activeTriggers(state.answers)
-      .map((t) => `<li>${t}</li>`)
-      .join("") || "<li>Явных триггеров нет — запасной сценарий</li>";
-
-    const keys = [
-      "role",
-      "size",
-      "docs",
-      "kedo_vendor",
-      "certs",
-      "auto",
-      "overtime",
-      "report",
-    ];
-    els.resultProfile.innerHTML = keys
-      .map((key) => {
-        if (key === "kedo_vendor") {
-          if (state.answers.docs !== "kedo") return "";
-          const custom = state.answers.kedo_vendor_custom;
-          const opt = state.answers.kedo_vendor;
-          const label = custom
-            ? `КЭДО: ${custom}`
-            : labels.kedo_vendor?.[opt] || (opt ? `КЭДО: ${opt}` : "");
-          return label ? `<li>${label}</li>` : "";
-        }
-        const value = state.answers[key];
-        if (!value) return "";
-        return `<li>${labels[key]?.[value] || value}</li>`;
-      })
-      .filter(Boolean)
-      .join("");
+    };
+    els.resultImage.onload = () => {
+      els.resultImage.hidden = false;
+      els.resultImagePlaceholder.hidden = true;
+    };
+    els.resultImage.src = src;
 
     els.shareLink.value = landingUrl();
     els.resultSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -266,6 +231,7 @@
     state.answers = {};
     state.lastScenario = null;
     els.resultSection.classList.add("is-hidden");
+    els.leadPanel.classList.add("is-hidden");
     els.quizSection.classList.remove("is-hidden");
     renderQuestion();
     els.quizSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -275,12 +241,13 @@
     if (typeof html2canvas !== "function") {
       throw new Error("Библиотека скриншота не загрузилась");
     }
-    const canvas = await html2canvas(els.shareCard, {
-      backgroundColor: "#ffffff",
-      scale: 2,
-      useCORS: true,
-    });
-    return canvas.toDataURL("image/png");
+    return (
+      await html2canvas(els.shareCard, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+      })
+    ).toDataURL("image/png");
   }
 
   async function shareResults() {
@@ -292,33 +259,12 @@
       state.shareDataUrl = dataUrl;
       els.sharePreview.src = dataUrl;
       els.sharePreview.hidden = false;
-      els.shareStatus.textContent = "Скриншот готов — скачайте или скопируйте ссылку";
-      els.shareBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      els.shareStatus.textContent = "Скриншот готов";
     } catch (err) {
       console.warn(err);
       els.shareStatus.textContent =
-        "Не удалось сделать скриншот. Ссылку на лендинг всё равно можно скопировать.";
+        "Скриншот не удалось создать — ссылку всё равно можно скопировать.";
     }
-  }
-
-  function renderScenariosGrid() {
-    const sampleRole = "kadrovik";
-    els.scenariosGrid.innerHTML = data.scenarios
-      .map((sc) => {
-        const title = window.QUIZ_MATCH.formatScenarioTitle(sc, sampleRole);
-        return `
-      <article class="scenario-card" id="scenario-${sc.id}">
-        <h3>${title}</h3>
-        <div class="scenario-id">${sc.id} · пример для кадровика</div>
-        ${
-          sc.imageSrc
-            ? `<img class="scenario-thumb" src="${sc.imageSrc}" alt="${title}" />`
-            : `<div class="scenario-thumb" role="img" aria-label="Нет картинки"></div>`
-        }
-        <p class="scenario-triggers">${sc.triggersNote}</p>
-      </article>`;
-      })
-      .join("");
   }
 
   function fileToDataUrl(file) {
@@ -331,33 +277,23 @@
   }
 
   function renderEditor() {
+    if (!els.editorList) return;
     els.editorList.innerHTML = data.scenarios
-      .map(
-        (sc) => `
+      .map((sc) => {
+        const preview = sc.imageSrc || `assets/results/${sc.id}.jpg`;
+        return `
       <article class="editor-card" data-id="${sc.id}">
-        <img class="editor-preview" src="${sc.imageSrc || ""}" alt="${sc.shortName}" />
+        <img class="editor-preview" src="${preview}" alt="${sc.shortName}" onerror="this.style.opacity=0.25" />
         <div class="editor-fields">
-          <h3>${sc.titlePattern}</h3>
-          <p class="hint">${sc.triggersNote}</p>
+          <h3>${sc.titlePattern.replace("{role}", "…")}</h3>
+          <p class="hint">id: <code>${sc.id}</code> · файл: assets/results/${sc.id}.jpg</p>
           <label>
-            Картинка сценария
+            Загрузить картинку для этого вида
             <input type="file" accept="image/*" data-field="image" />
           </label>
-          <label>
-            Текст для плашки
-            <textarea data-field="text" placeholder="Текст для этого сценария">${
-              sc.text || ""
-            }</textarea>
-          </label>
-          <label>
-            Промпт для нейросети (картинка)
-            <textarea data-field="imagePrompt" placeholder="Описание сцены для генерации">${
-              sc.imagePrompt || ""
-            }</textarea>
-          </label>
         </div>
-      </article>`
-      )
+      </article>`;
+      })
       .join("");
 
     els.editorList.querySelectorAll(".editor-card").forEach((card) => {
@@ -365,8 +301,6 @@
       const scenario = data.scenarios.find((s) => s.id === id);
       const preview = card.querySelector(".editor-preview");
       const fileInput = card.querySelector('input[data-field="image"]');
-      const textArea = card.querySelector('textarea[data-field="text"]');
-      const promptArea = card.querySelector('textarea[data-field="imagePrompt"]');
 
       fileInput.addEventListener("change", async () => {
         const file = fileInput.files?.[0];
@@ -374,21 +308,93 @@
         const url = await fileToDataUrl(file);
         scenario.imageSrc = url;
         preview.src = url;
-        els.editorStatus.textContent = `Картинка: ${scenario.shortName}`;
+        preview.style.opacity = 1;
+        els.editorStatus.textContent = `Загружено: ${scenario.shortName}`;
+        saveOverrides();
       });
-
-      textArea.addEventListener("input", () => {
-        if (!scenario) return;
-        scenario.text = textArea.value;
-      });
-
-      if (promptArea) {
-        promptArea.addEventListener("input", () => {
-          if (!scenario) return;
-          scenario.imagePrompt = promptArea.value;
-        });
-      }
     });
+  }
+
+  function csvEscape(value) {
+    const s = String(value ?? "");
+    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  }
+
+  function leadsToCsv(rows) {
+    const header = "created_at,name,phone,inn,scenario_id,scenario_name,kedo,source";
+    const lines = rows.map((r) =>
+      [
+        r.createdAt,
+        r.name,
+        r.phone,
+        r.inn,
+        r.scenarioId,
+        r.scenarioName,
+        r.kedo,
+        r.source || "landing",
+      ]
+        .map(csvEscape)
+        .join(",")
+    );
+    return [header, ...lines].join("\n");
+  }
+
+  function loadLeads() {
+    try {
+      return JSON.parse(localStorage.getItem(LEAD_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  function submitToYandexForm(payload) {
+    const cfg = data.yandexForm || {};
+    if (!cfg.url) return false;
+
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = cfg.url;
+    form.target = "yandexFormFrame";
+    form.acceptCharset = "UTF-8";
+    form.style.display = "none";
+
+    const map = cfg.fields || {};
+    const values = {
+      [map.name || "name"]: payload.name,
+      [map.phone || "phone"]: payload.phone,
+      [map.inn || "inn"]: payload.inn,
+      [map.scenario || "scenario"]: payload.scenarioName || "",
+    };
+
+    Object.entries(values).forEach(([name, value]) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    form.remove();
+    return true;
+  }
+
+  /** Строка для дозаписи в leads/submissions.csv (репозиторий) */
+  function buildRepoCsvRow(payload) {
+    return [
+      payload.createdAt,
+      payload.name,
+      payload.phone,
+      payload.inn,
+      payload.scenarioId,
+      payload.scenarioName,
+      payload.kedo,
+      "landing",
+    ]
+      .map(csvEscape)
+      .join(",");
   }
 
   els.btnBack.addEventListener("click", () => {
@@ -400,17 +406,13 @@
   els.btnNext.addEventListener("click", () => {
     const q = currentQuestion();
     if (!isQuestionAnswered(q)) return;
-
     const qList = queue();
     if (state.step === qList.length - 1) {
       showResult();
       return;
     }
-
-    // Recalculate queue after docs answer (may insert kedo question)
     state.step += 1;
-    const nextList = queue();
-    if (state.step >= nextList.length) {
+    if (state.step >= queue().length) {
       showResult();
       return;
     }
@@ -419,11 +421,14 @@
 
   els.btnRestart.addEventListener("click", restart);
   els.btnShare.addEventListener("click", shareResults);
+  els.btnShowLead.addEventListener("click", () => {
+    els.leadPanel.classList.remove("is-hidden");
+    els.leadPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   els.btnCopyLink.addEventListener("click", async () => {
-    const value = els.shareLink.value;
     try {
-      await navigator.clipboard.writeText(value);
+      await navigator.clipboard.writeText(els.shareLink.value);
       els.shareStatus.textContent = "Ссылка скопирована";
     } catch {
       els.shareLink.select();
@@ -437,32 +442,49 @@
       if (!state.shareDataUrl) state.shareDataUrl = await makeScreenshot();
       const a = document.createElement("a");
       a.href = state.shareDataUrl;
-      const slug = (state.lastScenario?.id || "result").replace(/[^\w-]+/g, "-");
-      a.download = `forus-test-${slug}.png`;
+      a.download = `forus-test-${state.lastScenario?.id || "result"}.png`;
       a.click();
       els.shareStatus.textContent = "Скриншот скачан";
-    } catch (err) {
+    } catch {
       els.shareStatus.textContent = "Не удалось скачать скриншот";
     }
   });
 
-  els.btnSaveEditor.addEventListener("click", saveOverrides);
-  els.btnExportEditor.addEventListener("click", () => {
-    const blob = new Blob([JSON.stringify(collectEditorPayload(), null, 2)], {
-      type: "application/json",
+  if (els.btnSaveEditor) els.btnSaveEditor.addEventListener("click", saveOverrides);
+  if (els.btnExportEditor) {
+    els.btnExportEditor.addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(collectEditorPayload(), null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "forus-quiz-images.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      els.editorStatus.textContent = "JSON скачан";
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "forus-quiz-scenarios.json";
-    a.click();
-    URL.revokeObjectURL(url);
-    els.editorStatus.textContent = "JSON скачан";
-  });
-  els.btnResetEditor.addEventListener("click", () => {
-    localStorage.removeItem(STORAGE_KEY);
-    location.reload();
-  });
+  }
+  if (els.btnResetEditor) {
+    els.btnResetEditor.addEventListener("click", () => {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    });
+  }
+  if (els.btnExportLeads) {
+    els.btnExportLeads.addEventListener("click", () => {
+      const csv = leadsToCsv(loadLeads());
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "submissions.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      els.editorStatus.textContent =
+        "CSV скачан — допишите в test-kabinet/leads/submissions.csv и закоммитьте";
+    });
+  }
 
   els.leadForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -470,10 +492,12 @@
       name: document.getElementById("leadName").value.trim(),
       phone: document.getElementById("leadPhone").value.trim(),
       inn: document.getElementById("leadInn").value.trim(),
-      scenarioId: state.lastScenario?.id || null,
-      scenarioName: state.lastScenario?.displayName || null,
-      answers: { ...state.answers },
+      scenarioId: state.lastScenario?.id || "",
+      scenarioName: state.lastScenario?.displayName || "",
+      kedo: kedoLabel(),
       createdAt: new Date().toISOString(),
+      source: "landing",
+      repoCsvRow: "",
     };
 
     if (!/^\d{10}$|^\d{12}$/.test(payload.inn)) {
@@ -481,17 +505,35 @@
       return;
     }
 
-    const existing = JSON.parse(localStorage.getItem(LEAD_KEY) || "[]");
+    payload.repoCsvRow = buildRepoCsvRow(payload);
+
+    const existing = loadLeads();
     existing.push(payload);
     localStorage.setItem(LEAD_KEY, JSON.stringify(existing));
-    els.leadStatus.textContent =
-      "Заявка сохранена. Мы свяжемся с вами и подскажем, как усилить процессы.";
+
+    const sent = submitToYandexForm(payload);
+    if (sent) {
+      els.leadStatus.textContent =
+        "Заявка отправлена в Яндекс.Форму и сохранена. Мы свяжемся с вами.";
+    } else {
+      els.leadStatus.textContent =
+        "Заявка сохранена. Укажите URL Яндекс.Формы в настройках, чтобы отправка шла туда автоматически.";
+    }
+
+    // Строка для таблицы репозитория — копируем в буфер
+    navigator.clipboard?.writeText(payload.repoCsvRow).catch(() => {});
+
     els.leadForm.reset();
   });
 
-  assignTempImages();
+  // Admin UI
+  if (isAdmin) {
+    document.querySelectorAll(".admin-only").forEach((el) => {
+      el.classList.remove("is-hidden");
+    });
+    renderEditor();
+  }
+
   loadOverrides();
   renderQuestion();
-  renderScenariosGrid();
-  renderEditor();
 })();

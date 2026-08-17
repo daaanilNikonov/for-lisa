@@ -99,17 +99,34 @@ window.QUIZ_SCRIPTS = {
     },
   ],
 
+  /** Яндекс.Форма: подставьте публичный URL, когда будет готов */
+  yandexForm: {
+    url: "",
+    /** Имена answer_* полей Яндекс.Формы — уточним по ссылке */
+    fields: {
+      name: "name",
+      phone: "phone",
+      inn: "inn",
+      scenario: "scenario",
+    },
+  },
+
   kedoVendorQuestion: {
     id: "kedo_vendor",
     title: "Каким КЭДО вы пользуетесь?",
     options: [
-      { id: "v1", label: "1" },
-      { id: "v2", label: "2" },
-      { id: "v3", label: "3" },
-      { id: "v4", label: "4" },
+      { id: "hrlink", label: "HRlink" },
+      { id: "nopaper", label: "Nopaper" },
+      { id: "sbis", label: "СБИС" },
+      { id: "directum", label: "Directum HR PRO" },
+      { id: "vk_hr_tek", label: "VK HR TEK" },
+      { id: "kontur", label: "Контур.КЭДО" },
+      { id: "elma365", label: "ELMA365.КЭДО" },
+      { id: "topfactor", label: "ТопФактор" },
+      { id: "easydocs", label: "EasyDocs" },
     ],
     allowCustom: true,
-    customPlaceholder: "Или впишите название вашей системы КЭДО",
+    customPlaceholder: "Свой вариант — впишите название КЭДО",
   },
 
   /**
@@ -424,10 +441,15 @@ window.QUIZ_PROFILE_LABELS = {
     none: "Нет расчётных/приказов в работе",
   },
   kedo_vendor: {
-    v1: "КЭДО: вариант 1",
-    v2: "КЭДО: вариант 2",
-    v3: "КЭДО: вариант 3",
-    v4: "КЭДО: вариант 4",
+    hrlink: "КЭДО: HRlink",
+    nopaper: "КЭДО: Nopaper",
+    sbis: "КЭДО: СБИС",
+    directum: "КЭДО: Directum HR PRO",
+    vk_hr_tek: "КЭДО: VK HR TEK",
+    kontur: "КЭДО: Контур.КЭДО",
+    elma365: "КЭДО: ELMA365.КЭДО",
+    topfactor: "КЭДО: ТопФактор",
+    easydocs: "КЭДО: EasyDocs",
   },
   certs: {
     never: "За справками не обращаются",
