@@ -9,7 +9,7 @@ window.QUIZ_SCRIPTS = {
   logoSrc: "assets/brand/logo-forus.png",
   publicPath: "test-kabinet",
   shareBaseUrl:
-    "https://htmlpreview.github.io/?https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@9f1fe51e7aad95946fc05c6863ad0c9649312887/test-kabinet/index.html",
+    "https://htmlpreview.github.io/?https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/quiz-landing-scripts-55dd/test-kabinet/index.html",
 
   tempImages: [
     "assets/results/temp-1.jpeg",
