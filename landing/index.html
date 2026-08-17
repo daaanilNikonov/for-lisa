@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="ru">
   <head>
+    <script>
+      (function () {
+        var h = location.hostname || "";
+        var local = h === "localhost" || h === "127.0.0.1" || location.protocol === "file:";
+        if (!local) {
+          var b = document.createElement("base");
+          b.href = "https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@b4609cd676065cf3c53d0f6a2f828b473db81cdd/test-kabinet/";
+          document.head.insertBefore(b, document.head.firstChild);
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Тест Кабинет сотрудника · ГК Форус</title>
