@@ -4,7 +4,8 @@ PDF для откликов на backend-роли (Go / Python) в крупны�
 
 ## Файлы
 
-- [`Попов_Семён_Backend_разработчик.pdf`](./Попов_Семён_Backend_разработчик.pdf) — готовый документ
+- [`Попов_Семён_Backend_разработчик.pdf`](./Попов_Семён_Backend_разработчик.pdf) — готовый PDF
+- [`Попов_Семён_Backend_разработчик.docx`](./Попов_Семён_Backend_разработчик.docx) — редактируемый Word
 - [`index.html`](./index.html) + [`styles.css`](./styles.css) — исходная вёрстка
 - [`hh-text.md`](./hh-text.md) — тот же текст для копирования в конструктор hh.ru
 - Структура блоков как на hh.ru: шапка → желаемая должность → опыт → проекты → образование → курсы → навыки → о себе → языки
@@ -14,6 +15,7 @@ PDF для откликов на backend-роли (Go / Python) в крупны�
 ```bash
 pip3 install -r resume/requirements.txt
 python3 scripts/build_resume.py
+python3 scripts/build_resume_docx.py
 ```
 
 Нужны шрифты Inter (лежат в `fonts/`, SIL Open Font License) и WeasyPrint.
