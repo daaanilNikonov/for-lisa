@@ -33,7 +33,7 @@ window.QUIZ_SCRIPTS = {
       options: [
         { id: "kadrovik", label: "кадровик" },
         { id: "buh_zp", label: "бухгалтер по расчету ЗП" },
-        { id: "glb", label: "глб" },
+        { id: "glb", label: "главный бухгалтер" },
         { id: "ruk_otdela", label: "руководитель отдела" },
         { id: "ruk_kompanii", label: "руководитель компании" },
         { id: "drugoe", label: "другое" },
