@@ -390,14 +390,35 @@
     );
   }
 
+  /** Текст КЭДО для Яндекс.Формы из ответов квиза */
+  function kedoForYandex() {
+    const vendor = kedoLabel();
+    if (vendor) return vendor;
+    const docs = state.answers.docs;
+    if (docs === "kedo") return "есть КЭДО (система не указана)";
+    if (docs === "paper") return "нет КЭДО (документы на бумаге)";
+    if (docs === "email") return "нет КЭДО (email/мессенджеры)";
+    if (docs === "none") return "нет кадровых документов";
+    return "";
+  }
+
   function buildYandexValues(payload) {
     const map = yandexFieldMap();
-    return {
+    const kedo = (payload.kedo || "").trim();
+    const position = (payload.position || "").trim();
+    const values = {
       [map.name]: payload.name,
       [map.inn]: payload.inn,
       [map.phone]: payload.phone,
-      [map.position]: payload.position,
     };
+    if (map.kedo) {
+      values[map.position] = position;
+      values[map.kedo] = kedo;
+    } else {
+      // В форме пока нет отдельного поля КЭДО — пишем в «Должность»
+      values[map.position] = kedo ? `${position} · КЭДО: ${kedo}` : position;
+    }
+    return values;
   }
 
   function yandexFormBaseUrl() {
@@ -419,6 +440,7 @@
       phone: normalizePhone(document.getElementById("leadPhone")?.value || ""),
       inn: document.getElementById("leadInn")?.value.trim() || "",
       position: roleLabel(),
+      kedo: kedoForYandex(),
     };
   }
 
@@ -539,7 +561,9 @@
     const hint = document.getElementById("leadPositionHint");
     const draft = currentLeadDraft();
     if (hint) {
-      hint.textContent = `Должность в заявке: ${draft.position}`;
+      hint.textContent = draft.kedo
+        ? `В заявку: ${draft.position} · КЭДО: ${draft.kedo}`
+        : `В заявку: ${draft.position}`;
     }
     const err = leadDraftValid(draft);
     const frame = document.getElementById("yandexHitFrame");
@@ -609,7 +633,12 @@
     yandexBridge.ready = false;
     setHitboxEnabled(false);
     const hint = document.getElementById("leadPositionHint");
-    if (hint) hint.textContent = `Должность в заявке: ${roleLabel()}`;
+    if (hint) {
+      const kedo = kedoForYandex();
+      hint.textContent = kedo
+        ? `В заявку: ${roleLabel()} · КЭДО: ${kedo}`
+        : `В заявку: ${roleLabel()}`;
+    }
   }
 
   /** Опциональный серверный прокси (если открыт proxy/server.mjs и нет капчи) */
@@ -773,7 +802,12 @@
   const _showLead = () => {
     ensureYandexBridge();
     const hint = document.getElementById("leadPositionHint");
-    if (hint) hint.textContent = `Должность в заявке: ${roleLabel()}`;
+    if (hint) {
+      const kedo = kedoForYandex();
+      hint.textContent = kedo
+        ? `В заявку: ${roleLabel()} · КЭДО: ${kedo}`
+        : `В заявку: ${roleLabel()}`;
+    }
     refreshYandexBridge(false);
   };
   els.btnShowLead.addEventListener("click", () => {
