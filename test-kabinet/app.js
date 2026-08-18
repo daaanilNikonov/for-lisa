@@ -385,7 +385,8 @@
         name: "answer_short_text_9008986271269920",
         inn: "answer_short_text_9008986271288132",
         phone: "answer_short_text_9008986271302340",
-        position: "answer_short_text_9008986271334516",
+        kedo: "answer_short_text_9008986271334516",
+        position: "",
       }
     );
   }
@@ -404,19 +405,25 @@
 
   function buildYandexValues(payload) {
     const map = yandexFieldMap();
-    const kedo = (payload.kedo || "").trim();
+    const kedo = (payload.kedo || "").trim() || "не указано";
     const position = (payload.position || "").trim();
+    let name = (payload.name || "").trim();
+    // Если в Яндекс.Форме нет поля «Должность» — добавим её к ФИО
+    if (!map.position && position) {
+      name = `${name} · ${position}`;
+    }
     const values = {
-      [map.name]: payload.name,
+      [map.name]: name,
       [map.inn]: payload.inn,
       [map.phone]: payload.phone,
     };
     if (map.kedo) {
-      values[map.position] = position;
       values[map.kedo] = kedo;
-    } else {
-      // В форме пока нет отдельного поля КЭДО — пишем в «Должность»
-      values[map.position] = kedo ? `${position} · КЭДО: ${kedo}` : position;
+    }
+    if (map.position) {
+      values[map.position] = map.kedo
+        ? position
+        : (kedo && kedo !== "не указано" ? `${position} · КЭДО: ${kedo}` : position);
     }
     return values;
   }
