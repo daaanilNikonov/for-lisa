@@ -8,21 +8,32 @@
 
 ## Постоянный хостинг (Render)
 
-Туннель Cloudflare временный. Для постоянной ссылки разверните сервис на Render (бесплатно):
+Важно: лендинг пока лежит в ветке  
+`cursor/karta-dnya-produktovogo-zapuska-ed4c`  
+(в `main` его ещё нет). Поэтому кнопка «Deploy to Render» с `main` может показать **Not Found**.
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/daaanilNikonov/for-lisa)
+### Как задеплоить вручную (работает)
 
-1. Войдите на [render.com](https://dashboard.render.com) через GitHub.
-2. Нажмите кнопку выше **или** создайте Web Service вручную:
-   - Repository: `daaanilNikonov/for-lisa`
-   - Root Directory: `karta-dnya`
-   - Start Command: `npm start`
-   - Plan: Free
-3. В Environment добавьте `GITHUB_TOKEN` — fine-grained PAT GitHub с правом **Contents: Read and write** на этот репозиторий.  
-   Тогда база `data/db.json` будет сохраняться в GitHub и не пропадёт при «засыпании» бесплатного инстанса.
-4. После деплоя ссылка будет вида: `https://forus-karta-dnya.onrender.com/karta-dnya`
+1. Войдите на [dashboard.render.com](https://dashboard.render.com) через GitHub.
+2. **New → Web Service** → выберите репозиторий `daaanilNikonov/for-lisa`.
+3. Укажите:
+   - **Branch:** `cursor/karta-dnya-produktovogo-zapuska-ed4c`
+   - **Root Directory:** `karta-dnya`
+   - **Runtime:** Node
+   - **Build Command:** можно оставить пустым или `node -v`
+   - **Start Command:** `npm start`
+   - **Instance type:** Free
+4. В **Environment** добавьте:
+   - `GITHUB_TOKEN` — fine-grained PAT с **Contents: Read and write**
+   - `GITHUB_REPO` = `daaanilNikonov/for-lisa`
+   - `GITHUB_BRANCH` = `cursor/karta-dnya-produktovogo-zapuska-ed4c`
+   - `GITHUB_DB_PATH` = `karta-dnya/data/db.json`
+5. Deploy. Ссылка будет вида:  
+   `https://<имя-сервиса>.onrender.com/karta-dnya`
 
-На бесплатном тарифе сервис может «засыпать» после простоя ~15 минут — первый заход после сна занимает 30–60 секунд, дальше работает как обычно.
+На бесплатном тарифе сервис может «засыпать» после простоя ~15 минут — первый заход после сна занимает 30–60 секунд.
+
+Чтобы кнопка Deploy to Render заработала без выбора ветки — смержите эту ветку в `main`.
 
 ## Возможности
 
