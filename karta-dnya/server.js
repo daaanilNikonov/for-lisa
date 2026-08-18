@@ -575,6 +575,9 @@ const server = http.createServer(async (req, res) => {
     ) {
       pathname = "/";
     }
+    if (pathname === "/healthz" || pathname === "/api/health") {
+      return sendJson(res, 200, { ok: true });
+    }
     if (pathname.startsWith("/api/")) {
       return await handleApi(req, res, pathname);
     }
