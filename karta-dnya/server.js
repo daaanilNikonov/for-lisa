@@ -325,6 +325,10 @@ function normalizeStickers(list) {
 async function handleApi(req, res, pathname) {
   const method = req.method || "GET";
 
+  if (method === "GET" && (pathname === "/healthz" || pathname === "/api/health")) {
+    return sendJson(res, 200, { ok: true });
+  }
+
   if (method === "GET" && pathname === "/api/state") {
     const db = await readDb();
     return sendJson(res, 200, { ...db, today: todayISO() });
