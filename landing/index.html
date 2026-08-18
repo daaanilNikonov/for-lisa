@@ -3,13 +3,15 @@
   <head>
     <script>
       (function () {
+        /* На VDS/своём домене — относительные пути к локальным файлам.
+           jsDelivr base только для CDN-превью репозитория. */
         var h = location.hostname || "";
-        var local =
-          h === "localhost" ||
-          h === "127.0.0.1" ||
-          h.endsWith(".trycloudflare.com") ||
-          location.protocol === "file:";
-        if (!local) {
+        var preview =
+          h.includes("jsdelivr.net") ||
+          h.includes("githack.com") ||
+          h.includes("htmlpreview") ||
+          h.includes("github.io");
+        if (preview) {
           var b = document.createElement("base");
           b.href =
             "https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/quiz-landing-scripts-55dd/test-kabinet/";
