@@ -99,15 +99,24 @@ window.QUIZ_SCRIPTS = {
     },
   ],
 
-  /** Яндекс.Форма: подставьте публичный URL, когда будет готов */
+  /**
+   * Яндекс.Форма «Форма сбора заявок на КЭДО»
+   * https://forms.yandex.ru/u/6a83b54feb614605f98e10ee
+   *
+   * Отправка с лендинга идёт через proxyUrl (CSRF Яндекса нельзя пройти из браузера).
+   * Локально: node proxy/server.mjs → proxyUrl: "/api/yandex-submit"
+   * Пункт 4 «Должность» заполняется из ответа на 1-й вопрос квиза.
+   */
   yandexForm: {
-    url: "",
-    /** Имена answer_* полей Яндекс.Формы — уточним по ссылке */
+    url: "https://forms.yandex.ru/u/6a83b54feb614605f98e10ee",
+    surveyId: "6a83b54feb614605f98e10ee",
+    /** Относительный путь, если лендинг открыт через proxy/server.mjs */
+    proxyUrl: "", // опционально: "/api/yandex-submit" при запуске proxy/server.mjs
     fields: {
-      name: "name",
-      phone: "phone",
-      inn: "inn",
-      scenario: "scenario",
+      name: "answer_short_text_9008986271269920",
+      inn: "answer_short_text_9008986271288132",
+      phone: "answer_short_text_9008986271302340",
+      position: "answer_short_text_9008986271334516",
     },
   },
 
