@@ -6,15 +6,15 @@
         /* На VDS/своём домене — относительные пути к локальным файлам.
            jsDelivr base только для CDN-превью репозитория. */
         var h = location.hostname || "";
+        /* githack/rawcdn — относительные пути с того же коммита (без кэша ветки jsDelivr) */
         var preview =
           h.includes("jsdelivr.net") ||
-          h.includes("githack.com") ||
           h.includes("htmlpreview") ||
           h.includes("github.io");
         if (preview) {
           var b = document.createElement("base");
           b.href =
-            "https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/quiz-landing-scripts-55dd/test-kabinet/";
+            "https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@4ea418e/test-kabinet/";
           document.head.insertBefore(b, document.head.firstChild);
         }
       })();
