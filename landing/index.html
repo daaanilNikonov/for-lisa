@@ -103,9 +103,7 @@
             <div class="result-media">
               <div class="result-image-slot" id="resultImageSlot">
                 <img id="resultImage" alt="" hidden />
-                <div class="result-image-placeholder" id="resultImagePlaceholder">
-                  <span class="slot-label">Здесь будет картинка</span>
-                </div>
+                <div class="result-image-placeholder" id="resultImagePlaceholder" hidden></div>
               </div>
               <div class="result-text-slot">
                 <p id="resultText"></p>
@@ -126,14 +124,16 @@
           </div>
 
           <div class="share-box is-hidden" id="shareBox">
-            <h3>Поделиться результатами</h3>
-            <p class="hint">Скриншот сценария и ссылка на тест</p>
+            <div class="share-box-head">
+              <h3>Поделиться результатами</h3>
+              <p class="hint">Скриншот сценария и ссылка на тест</p>
+            </div>
             <img id="sharePreview" alt="Скриншот результата" hidden />
             <label class="share-link-label">
               Ссылка на лендинг
               <input type="text" id="shareLink" readonly />
             </label>
-            <div class="result-actions">
+            <div class="share-box-actions">
               <button type="button" class="btn btn-primary" id="btnCopyLink">
                 Скопировать ссылку
               </button>

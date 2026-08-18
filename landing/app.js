@@ -214,7 +214,7 @@
     els.resultImage.alt = title;
     els.resultImage.onerror = () => {
       els.resultImage.hidden = true;
-      els.resultImagePlaceholder.hidden = false;
+      if (els.resultImagePlaceholder) els.resultImagePlaceholder.hidden = true;
     };
     els.resultImage.onload = () => {
       els.resultImage.hidden = false;
@@ -464,6 +464,9 @@
     });
 
     window.addEventListener("message", onYandexMessage);
+    window.addEventListener("resize", () => {
+      if (document.getElementById("yandexHitFrame")) positionYandexFrame();
+    });
   }
 
   function onYandexMessage(event) {
@@ -491,18 +494,36 @@
 
   function positionYandexFrame() {
     const frame = document.getElementById("yandexHitFrame");
-    if (!frame) return;
-    frame.style.top = `${-yandexBridge.buttonTop}px`;
-    frame.style.left = `${-yandexBridge.buttonLeft}px`;
+    const hit = document.getElementById("yandexHitbox");
+    if (!frame || !hit) return;
+    // Кнопка Яндекса ~97×36 @ (12, 368). Масштабируем под размер CTA лендинга.
+    const btnLeft = 12;
+    const btnTop = 368;
+    const btnW = 97;
+    const btnH = 36;
+    const scale = Math.max(hit.offsetWidth / btnW, hit.offsetHeight / btnH, 1.8);
+    const scaledH = btnH * scale;
+    const topPad = Math.max(0, (hit.offsetHeight - scaledH) / 2);
+    frame.style.transform = `scale(${scale})`;
+    frame.style.transformOrigin = "0 0";
+    frame.style.left = `${-btnLeft * scale}px`;
+    frame.style.top = `${topPad - btnTop * scale}px`;
+    yandexBridge.buttonTop = btnTop;
+    yandexBridge.buttonLeft = btnLeft;
+    yandexBridge.scale = scale;
   }
 
   function setHitboxEnabled(enabled) {
     const blocker = document.getElementById("yandexHitBlocker");
     const label = document.getElementById("yandexHitboxLabel");
+    const hit = document.getElementById("yandexHitbox");
     if (!blocker || !label) return;
     blocker.classList.toggle("is-hidden", enabled);
-    label.textContent = enabled ? "Отправить заявку" : "Отправить заявку";
+    label.textContent = "Отправить заявку";
+    label.classList.toggle("is-ready", enabled);
+    if (hit) hit.classList.toggle("is-ready", enabled);
     yandexBridge.ready = enabled;
+    if (enabled) positionYandexFrame();
   }
 
   function refreshYandexBridge(force) {
