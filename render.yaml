@@ -1,0 +1,23 @@
+# One-click deploy: https://render.com/deploy?repo=https://github.com/daaanilNikonov/for-lisa
+services:
+  - type: web
+    name: forus-karta-dnya
+    runtime: node
+    plan: free
+    rootDir: karta-dnya
+    buildCommand: "node -v"
+    startCommand: "npm start"
+    autoDeploy: true
+    healthCheckPath: /karta-dnya
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: GITHUB_REPO
+        value: daaanilNikonov/for-lisa
+      - key: GITHUB_BRANCH
+        value: cursor/karta-dnya-produktovogo-zapuska-ed4c
+      - key: GITHUB_DB_PATH
+        value: karta-dnya/data/db.json
+      # Fine-grained PAT with Contents: Read/Write for the repo — keeps data durable on free plan
+      - key: GITHUB_TOKEN
+        sync: false

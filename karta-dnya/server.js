@@ -69,7 +69,7 @@ function emptyDb() {
   return { managers, forms: [], boards };
 }
 
-function migrateDb(db) {
+function migrateDb(db, opts) {
   let changed = false;
   if (!db.managers) {
     db.managers = emptyDb().managers;
@@ -105,28 +105,149 @@ function migrateDb(db) {
       changed = true;
     }
   }
-  if (changed) writeDb(db);
+  if (changed && (!opts || opts.persist !== false)) {
+    // fire-and-forget local/github write
+    Promise.resolve(writeDb(db)).catch((err) => console.error(err));
+  }
   return db;
 }
 
-function ensureDb() {
+const GH_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || "";
+const GH_REPO = process.env.GITHUB_REPO || "daaanilNikonov/for-lisa";
+const GH_BRANCH = process.env.GITHUB_BRANCH || "cursor/karta-dnya-produktovogo-zapuska-ed4c";
+const GH_DB_PATH = process.env.GITHUB_DB_PATH || "karta-dnya/data/db.json";
+const USE_GITHUB = Boolean(GH_TOKEN && GH_REPO);
+
+let githubSha = null;
+let writeQueue = Promise.resolve();
+
+function ensureDbLocal() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DB_PATH)) {
-    writeDb(emptyDb());
+    writeDbLocal(emptyDb());
   }
 }
 
-function readDb() {
-  ensureDb();
-  const raw = fs.readFileSync(DB_PATH, "utf8");
-  return migrateDb(JSON.parse(raw));
-}
-
-function writeDb(db) {
-  ensureDb();
+function writeDbLocal(db) {
+  ensureDbLocal();
   const tmp = `${DB_PATH}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(db, null, 2), "utf8");
   fs.renameSync(tmp, DB_PATH);
+}
+
+async function githubRequest(method, apiPath, body) {
+  const res = await fetch(`https://api.github.com${apiPath}`, {
+    method,
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${GH_TOKEN}`,
+      "User-Agent": "forus-karta-dnya",
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = { raw: text };
+  }
+  if (!res.ok) {
+    const msg = data && data.message ? data.message : `GitHub API ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+async function readDbFromGithub() {
+  const encPath = GH_DB_PATH.split("/").map(encodeURIComponent).join("/");
+  try {
+    const data = await githubRequest(
+      "GET",
+      `/repos/${GH_REPO}/contents/${encPath}?ref=${encodeURIComponent(GH_BRANCH)}`
+    );
+    githubSha = data.sha;
+    const raw = Buffer.from(data.content.replace(/\n/g, ""), "base64").toString("utf8");
+    return migrateDb(JSON.parse(raw), { persist: false });
+  } catch (err) {
+    if (err.status === 404) {
+      const db = emptyDb();
+      await writeDbToGithub(db);
+      return db;
+    }
+    throw err;
+  }
+}
+
+async function writeDbToGithub(db) {
+  const encPath = GH_DB_PATH.split("/").map(encodeURIComponent).join("/");
+  const content = Buffer.from(JSON.stringify(db, null, 2) + "\n", "utf8").toString("base64");
+  const payload = {
+    message: `chore(karta-dnya): sync db ${new Date().toISOString()}`,
+    content,
+    branch: GH_BRANCH,
+  };
+  if (githubSha) payload.sha = githubSha;
+  try {
+    const data = await githubRequest(
+      "PUT",
+      `/repos/${GH_REPO}/contents/${encPath}`,
+      payload
+    );
+    githubSha = data.content && data.content.sha ? data.content.sha : githubSha;
+    writeDbLocal(db);
+    return;
+  } catch (err) {
+    // sha conflict — refetch and retry once
+    if (err.status === 409 || err.status === 422) {
+      const latest = await githubRequest(
+        "GET",
+        `/repos/${GH_REPO}/contents/${encPath}?ref=${encodeURIComponent(GH_BRANCH)}`
+      );
+      githubSha = latest.sha;
+      payload.sha = githubSha;
+      const data = await githubRequest(
+        "PUT",
+        `/repos/${GH_REPO}/contents/${encPath}`,
+        payload
+      );
+      githubSha = data.content && data.content.sha ? data.content.sha : githubSha;
+      writeDbLocal(db);
+      return;
+    }
+    throw err;
+  }
+}
+
+async function readDb() {
+  if (USE_GITHUB) {
+    const db = await readDbFromGithub();
+    writeDbLocal(db);
+    return db;
+  }
+  ensureDbLocal();
+  const raw = fs.readFileSync(DB_PATH, "utf8");
+  return migrateDb(JSON.parse(raw), { persist: true });
+}
+
+function writeDb(db) {
+  // serialize writes so GitHub sha stays consistent
+  writeQueue = writeQueue.then(async () => {
+    if (USE_GITHUB) {
+      await writeDbToGithub(db);
+    } else {
+      writeDbLocal(db);
+    }
+  }).catch((err) => {
+    console.error("writeDb failed:", err);
+    throw err;
+  });
+  return writeQueue;
 }
 
 function sendJson(res, status, payload) {
@@ -205,7 +326,7 @@ async function handleApi(req, res, pathname) {
   const method = req.method || "GET";
 
   if (method === "GET" && pathname === "/api/state") {
-    const db = readDb();
+    const db = await readDb();
     return sendJson(res, 200, { ...db, today: todayISO() });
   }
 
@@ -213,7 +334,7 @@ async function handleApi(req, res, pathname) {
     const body = await readBody(req);
     const name = String(body.name || "").trim();
     if (!name) return sendJson(res, 400, { error: "Укажите имя менеджера" });
-    const db = readDb();
+    const db = await readDb();
     const manager = {
       id: uid("mgr"),
       name,
@@ -221,14 +342,14 @@ async function handleApi(req, res, pathname) {
     };
     db.managers.push(manager);
     db.boards[manager.id] = [];
-    writeDb(db);
+    await writeDb(db);
     return sendJson(res, 201, { manager });
   }
 
   if (method === "PATCH" && pathname.startsWith("/api/managers/")) {
     const id = pathname.split("/").pop();
     const body = await readBody(req);
-    const db = readDb();
+    const db = await readDb();
     const manager = db.managers.find((m) => m.id === id);
     if (!manager) return sendJson(res, 404, { error: "Менеджер не найден" });
     if (body.name != null) {
@@ -246,20 +367,20 @@ async function handleApi(req, res, pathname) {
         }
       }
     }
-    writeDb(db);
+    await writeDb(db);
     return sendJson(res, 200, { manager });
   }
 
   if (method === "DELETE" && pathname.startsWith("/api/managers/")) {
     const id = pathname.split("/").pop();
-    const db = readDb();
+    const db = await readDb();
     const before = db.managers.length;
     db.managers = db.managers.filter((m) => m.id !== id);
     if (db.managers.length === before) {
       return sendJson(res, 404, { error: "Менеджер не найден" });
     }
     delete db.boards[id];
-    writeDb(db);
+    await writeDb(db);
     return sendJson(res, 200, { ok: true });
   }
 
@@ -267,7 +388,7 @@ async function handleApi(req, res, pathname) {
   if (method === "PUT" && pathname.startsWith("/api/boards/")) {
     const managerId = pathname.split("/").pop();
     const body = await readBody(req);
-    const db = readDb();
+    const db = await readDb();
     if (!db.managers.some((m) => m.id === managerId)) {
       return sendJson(res, 404, { error: "Менеджер не найден" });
     }
@@ -275,14 +396,14 @@ async function handleApi(req, res, pathname) {
       return sendJson(res, 400, { error: "Ожидается массив стикеров" });
     }
     db.boards[managerId] = normalizeStickers(body.stickers);
-    writeDb(db);
+    await writeDb(db);
     return sendJson(res, 200, { stickers: db.boards[managerId] });
   }
 
   if (method === "POST" && /^\/api\/boards\/[^/]+\/stickers$/.test(pathname)) {
     const managerId = pathname.split("/")[3];
     const body = await readBody(req);
-    const db = readDb();
+    const db = await readDb();
     if (!db.managers.some((m) => m.id === managerId)) {
       return sendJson(res, 404, { error: "Менеджер не найден" });
     }
@@ -297,7 +418,7 @@ async function handleApi(req, res, pathname) {
       updatedAt: new Date().toISOString(),
     };
     db.boards[managerId].push(sticker);
-    writeDb(db);
+    await writeDb(db);
     return sendJson(res, 201, { sticker });
   }
 
@@ -305,12 +426,12 @@ async function handleApi(req, res, pathname) {
     const parts = pathname.split("/");
     const managerId = parts[3];
     const stickerId = parts[5];
-    const db = readDb();
+    const db = await readDb();
     if (!Array.isArray(db.boards[managerId])) {
       return sendJson(res, 404, { error: "Доска не найдена" });
     }
     db.boards[managerId] = db.boards[managerId].filter((s) => s.id !== stickerId);
-    writeDb(db);
+    await writeDb(db);
     return sendJson(res, 200, { ok: true });
   }
 
@@ -332,7 +453,7 @@ async function handleApi(req, res, pathname) {
     if (!tasks.length) {
       return sendJson(res, 400, { error: "Добавьте хотя бы одну задачу" });
     }
-    const db = readDb();
+    const db = await readDb();
     const manager = db.managers.find((m) => m.id === managerId);
     if (!manager) return sendJson(res, 404, { error: "Менеджер не найден" });
 
@@ -360,7 +481,7 @@ async function handleApi(req, res, pathname) {
       form.status = "morning";
       form.updatedAt = new Date().toISOString();
     }
-    writeDb(db);
+    await writeDb(db);
     return sendJson(res, 200, {
       form,
       message: "Чеклист на день сохранён. В архив попадёт после вечерних галочек.",
@@ -375,7 +496,7 @@ async function handleApi(req, res, pathname) {
     const tasks = Array.isArray(body.tasks) ? body.tasks : null;
     if (!managerId) return sendJson(res, 400, { error: "Не выбран менеджер" });
 
-    const db = readDb();
+    const db = await readDb();
     const manager = db.managers.find((m) => m.id === managerId);
     if (!manager) return sendJson(res, 404, { error: "Менеджер не найден" });
 
@@ -403,7 +524,7 @@ async function handleApi(req, res, pathname) {
     form.status = "completed";
     form.updatedAt = new Date().toISOString();
     form.completedAt = new Date().toISOString();
-    writeDb(db);
+    await writeDb(db);
     return sendJson(res, 200, {
       form,
       message: `Форма «${form.title}» сохранена в архив`,
@@ -412,18 +533,18 @@ async function handleApi(req, res, pathname) {
 
   if (method === "DELETE" && pathname.startsWith("/api/forms/")) {
     const id = pathname.split("/").pop();
-    const db = readDb();
+    const db = await readDb();
     const before = db.forms.length;
     db.forms = db.forms.filter((f) => f.id !== id);
     if (db.forms.length === before) {
       return sendJson(res, 404, { error: "Форма не найдена" });
     }
-    writeDb(db);
+    await writeDb(db);
     return sendJson(res, 200, { ok: true });
   }
 
   if (method === "GET" && pathname === "/api/archive") {
-    const db = readDb();
+    const db = await readDb();
     const archive = db.forms
       .filter((f) => f.status === "completed")
       .sort(
@@ -460,7 +581,11 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-ensureDb();
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
+  const mode = USE_GITHUB ? `GitHub ${GH_REPO}@${GH_BRANCH}` : `file ${DB_PATH}`;
   console.log(`Карта дня Форус → http://localhost:${PORT}/karta-dnya`);
+  console.log(`Storage: ${mode}`);
 });
+
+// warm local cache
+readDb().catch((err) => console.error("Initial DB load failed:", err));
