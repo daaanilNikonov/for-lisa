@@ -1,0 +1,236 @@
+<!--
+  ВАРИАНТ 2: HTML-код для Тильды — вставить в блок «HTML-код» (T123) целиком.
+  Вся логика квиза + заявка в Яндекс.Форму. Ассеты с CDN.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/quiz-landing-scripts-55dd/test-kabinet/styles.css" />
+<style>
+  /* Изоляция от типографики Тильды */
+  .forus-tilda-root, .forus-tilda-root * { box-sizing: border-box; }
+  .forus-tilda-root {
+    font-family: Manrope, Verdana, sans-serif !important;
+    color: #231f20;
+    line-height: 1.5;
+    text-align: left;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  .forus-tilda-root a { text-decoration: none; }
+</style>
+<div class="forus-tilda-root" id="forusTildaRoot">
+<div class="bg-wash" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#top">
+        <img
+          class="brand-logo"
+          src="https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/quiz-landing-scripts-55dd/test-kabinet/assets/brand/logo-forus.png"
+          alt="форус"
+          width="120"
+          height="42"
+        />
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">1С:Кабинет сотрудника</span>
+      </a>
+      <nav class="topnav">
+        <a href="#quiz">Тест</a>
+        <a href="#upload-images" class="admin-only is-hidden">Картинки</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow">ГК Форус · тест для HR и зарплаты</p>
+          <h1>1С:Кабинет сотрудника</h1>
+          <p class="hero-lead">
+            Ответьте на несколько вопросов — получите персональный сценарий и
+            узнайте, как сделать процессы спокойнее и быстрее.
+          </p>
+          <div class="hero-cta">
+            <a class="btn btn-primary" href="#quiz">Пройти тест</a>
+          </div>
+        </div>
+        <div class="hero-aside" aria-hidden="true">
+          <div class="hero-badge">15 сценариев</div>
+          <div class="hero-card">
+            <strong>Персональный результат</strong>
+            <span>по вашим ответам о процессах</span>
+            <span>и уровне автоматизации</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="quiz-section" id="quiz">
+        <div class="quiz-shell">
+          <div class="quiz-progress" aria-hidden="true">
+            <div class="quiz-progress-bar" id="progressBar"></div>
+          </div>
+          <p class="quiz-step" id="quizStep">Вопрос 1 из 7</p>
+          <div id="quizCard" class="quiz-card"></div>
+          <div class="quiz-nav">
+            <button type="button" class="btn btn-ghost" id="btnBack" disabled>
+              Назад
+            </button>
+            <button type="button" class="btn btn-primary" id="btnNext" disabled>
+              Далее
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="result-section is-hidden" id="result" aria-live="polite">
+        <div class="result-shell">
+          <p class="eyebrow">Ваш сценарий</p>
+
+          <div class="share-card" id="shareCard">
+            <h2 class="result-title" id="resultTitle">—</h2>
+            <div class="result-media">
+              <div class="result-image-slot" id="resultImageSlot">
+                <img id="resultImage" alt="" hidden />
+                <div class="result-image-placeholder" id="resultImagePlaceholder" hidden></div>
+              </div>
+              <div class="result-text-slot">
+                <p id="resultText"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="result-actions">
+            <button type="button" class="btn btn-primary" id="btnShowLead">
+              Узнать, как усилить процессы
+            </button>
+            <button type="button" class="btn btn-ghost" id="btnShare">
+              Поделиться результатами
+            </button>
+            <button type="button" class="btn btn-ghost" id="btnRestart">
+              Пройти ещё раз
+            </button>
+          </div>
+
+          <div class="share-box is-hidden" id="shareBox">
+            <div class="share-box-head">
+              <h3>Поделиться результатами</h3>
+              <p class="hint">Скриншот сценария и ссылка на тест</p>
+            </div>
+            <img id="sharePreview" alt="Скриншот результата" hidden />
+            <label class="share-link-label">
+              Ссылка на лендинг
+              <input type="text" id="shareLink" readonly />
+            </label>
+            <div class="share-box-actions">
+              <button type="button" class="btn btn-primary" id="btnCopyLink">
+                Скопировать ссылку
+              </button>
+              <button type="button" class="btn btn-ghost" id="btnDownloadShot">
+                Скачать скриншот
+              </button>
+            </div>
+            <p class="editor-status" id="shareStatus"></p>
+          </div>
+
+          <!-- Анкета только после результата -->
+          <div class="lead-after-result is-hidden" id="leadPanel">
+            <div class="section-head">
+              <p class="eyebrow">Следующий шаг</p>
+              <h2>Узнайте, как усилить процессы</h2>
+              <p>
+                Оставьте контакты — подскажем, как сократить рутину с учётом
+                вашего сценария. Должность подставим из вашего ответа в тесте
+                и отправим заявку в Яндекс.Форму.
+              </p>
+            </div>
+            <form class="lead-form" id="leadForm">
+              <label>
+                Имя
+                <input
+                  type="text"
+                  name="name"
+                  id="leadName"
+                  required
+                  autocomplete="name"
+                  placeholder="Как к вам обращаться"
+                />
+              </label>
+              <label>
+                Номер телефона
+                <input
+                  type="tel"
+                  name="phone"
+                  id="leadPhone"
+                  required
+                  autocomplete="tel"
+                  placeholder="+7 (___) ___-__-__"
+                />
+              </label>
+              <label>
+                ИНН организации
+                <input
+                  type="text"
+                  name="inn"
+                  id="leadInn"
+                  required
+                  inputmode="numeric"
+                  maxlength="12"
+                  pattern="\d{10}|\d{12}"
+                  placeholder="10 или 12 цифр"
+                />
+              </label>
+              <button type="submit" class="btn btn-primary">Отправить заявку</button>
+              <p class="editor-status" id="leadStatus"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Админ: загрузка картинок по видам -->
+      <section class="editor-section admin-only is-hidden" id="upload-images">
+        <div class="section-head">
+          <p class="eyebrow">Админ</p>
+          <h2>Загрузка картинок по видам</h2>
+          <p>
+            Выберите файл для каждого вида. Можно сохранить в браузере и скачать
+            JSON. Чтобы закрепить в репозитории — положите файлы в
+            <code>assets/results/&lt;id&gt;.jpg</code>.
+          </p>
+        </div>
+        <div class="editor-toolbar">
+          <button type="button" class="btn btn-primary" id="btnSaveEditor">
+            Сохранить в браузере
+          </button>
+          <button type="button" class="btn btn-ghost" id="btnExportEditor">
+            Скачать JSON
+          </button>
+          <button type="button" class="btn btn-ghost" id="btnExportLeads">
+            Скачать заявки CSV
+          </button>
+          <button type="button" class="btn btn-ghost" id="btnResetEditor">
+            Сбросить картинки
+          </button>
+          <span class="editor-status" id="editorStatus"></span>
+        </div>
+        <div class="editor-list" id="editorList"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-brand">
+        <img src="https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/quiz-landing-scripts-55dd/test-kabinet/assets/brand/logo-forus.png" alt="форус" width="100" height="36" />
+        <span>1С:Кабинет сотрудника</span>
+      </div>
+      <p>URL теста: /test-kabinet/</p>
+    </footer>
+
+    <!-- Скрытая форма для отправки в Яндекс.Формы -->
+    <iframe name="yandexFormFrame" id="yandexFormFrame" class="is-hidden" title="yandex"></iframe>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script>
+      /* Абсолютная база картинок/ассетов для блока Тильды */
+      window.QUIZ_ASSET_BASE = "https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/quiz-landing-scripts-55dd/test-kabinet/";
+    </script>
+    <script src="https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/quiz-landing-scripts-55dd/test-kabinet/scripts-data.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/quiz-landing-scripts-55dd/test-kabinet/app.js"></script>
+</div>

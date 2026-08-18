@@ -1,0 +1,52 @@
+<!--
+  Тильда → добавить блок «HTML-код» (T123) → вставить ВСЁ содержимое этого файла.
+  Страница должна быть на всю ширину; в настройках блока лучше отключить отступы.
+  При необходимости замените SRC на URL вашего VDS.
+-->
+<style>
+  .forus-quiz-iframe-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  .forus-quiz-iframe-wrap iframe {
+    display: block;
+    width: 100%;
+    min-height: 100vh;
+    height: 100vh;
+    border: 0;
+    background: #fff9ec;
+  }
+  @media (max-width: 640px) {
+    .forus-quiz-iframe-wrap iframe {
+      min-height: 100dvh;
+      height: 100dvh;
+    }
+  }
+</style>
+<div class="forus-quiz-iframe-wrap" id="forusQuizIframeWrap">
+  <iframe
+    id="forusQuizIframe"
+    title="Тест 1С:Кабинет сотрудника — ГК Форус"
+    src="https://rawcdn.githack.com/daaanilNikonov/for-lisa/cursor/quiz-landing-scripts-55dd/test-kabinet/index.html"
+    loading="eager"
+    allow="clipboard-write"
+    referrerpolicy="no-referrer-when-downgrade"
+  ></iframe>
+</div>
+<script>
+  (function () {
+    var frame = document.getElementById("forusQuizIframe");
+    if (!frame) return;
+    function fit() {
+      var h = Math.max(window.innerHeight || 800, 700);
+      frame.style.height = h + "px";
+      frame.style.minHeight = h + "px";
+    }
+    fit();
+    window.addEventListener("resize", fit);
+  })();
+</script>

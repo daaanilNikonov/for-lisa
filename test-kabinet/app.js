@@ -52,10 +52,18 @@
     return queue()[state.step];
   }
 
-  /** Картинка вида: override → явный imageSrc → assets/results/{id}.jpg/.jpeg/.png → пусто */
+  /** База ассетов для встраивания в Тильду / CDN (см. tilda/) */
+  function assetUrl(path) {
+    if (!path) return path;
+    if (/^(https?:|data:|blob:)/i.test(path)) return path;
+    const base = window.QUIZ_ASSET_BASE || "";
+    return base + String(path).replace(/^\//, "");
+  }
+
+  /** Картинка вида: override → явный imageSrc → assets/results/{id}.jpg */
   function resolveImageSrc(sc) {
-    if (sc.imageSrc) return sc.imageSrc;
-    return `assets/results/${sc.id}.jpg`;
+    if (sc.imageSrc) return assetUrl(sc.imageSrc);
+    return assetUrl(`assets/results/${sc.id}.jpg`);
   }
 
   function loadOverrides() {
