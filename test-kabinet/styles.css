@@ -13,8 +13,8 @@
   --radius: 18px;
   --font-display: "Unbounded", Verdana, sans-serif;
   --font-body: "Manrope", Verdana, sans-serif;
-  --page-max: 1120px;
-  --quiz-max: 860px;
+  --page-max: 1200px;
+  --quiz-max: 920px;
 }
 
 *,
@@ -941,8 +941,8 @@ code {
 /* ——— Большие экраны: меньше пустоты, шире контент ——— */
 @media (min-width: 1100px) {
   :root {
-    --page-max: 1180px;
-    --quiz-max: 980px;
+    --page-max: 1320px;
+    --quiz-max: 1120px;
   }
 
   .topbar,
@@ -1026,8 +1026,8 @@ code {
 
 @media (min-width: 1440px) {
   :root {
-    --page-max: 1280px;
-    --quiz-max: 1080px;
+    --page-max: 1440px;
+    --quiz-max: 1240px;
   }
 
   .hero {
@@ -1057,7 +1057,26 @@ code {
 
 @media (min-width: 1800px) {
   :root {
-    --page-max: 1360px;
-    --quiz-max: 1140px;
+    --page-max: 1520px;
+    --quiz-max: 1320px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .quiz-section {
+    position: relative;
+  }
+
+  .quiz-shell,
+  .result-shell {
+    width: 100%;
+  }
+
+  .hero-copy {
+    max-width: none;
+  }
+
+  .hero-lead {
+    max-width: 42rem;
   }
 }
