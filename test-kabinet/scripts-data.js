@@ -8,8 +8,7 @@ window.QUIZ_SCRIPTS = {
   company: "ГК Форус",
   logoSrc: "assets/brand/logo-forus.png",
   publicPath: "test-kabinet",
-  shareBaseUrl:
-    "https://htmlpreview.github.io/?https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/quiz-landing-scripts-55dd/test-kabinet/index.html",
+  shareBaseUrl: "http://xn--80aimcdbdwgbwkmcq7j.xn--p1ai/",
 
   tempImages: [
     "assets/results/temp-1.jpeg",

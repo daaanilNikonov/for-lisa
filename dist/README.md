@@ -15,3 +15,7 @@ unzip forus-test-kabinet-hosting.zip
 Либо распакуйте содержимое `test-kabinet/` сразу в корень сайта (чтобы `index.html` был в document root).
 
 Внутри архива есть `DEPLOY-VDS.md` с краткой инструкцией.
+
+## Обновление текста на оплаченном домене
+
+См. `UPDATE-SITE.md`. Короткий архив: `forus-code-update.zip` (4 файла без картинок).
