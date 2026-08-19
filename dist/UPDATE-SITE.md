@@ -40,3 +40,13 @@
 3. Ответ «есть КЭДО» → список из 5 пунктов (с «1С:Кабинет сотрудника»)  
 4. В заявке выбранный КЭДО уходит в Яндекс.Форму  
 5. `http://какойтысотрудник.рф/assets/results/detoks.jpg` открывается как картинка
+
+## Патч: «расчетными листками» (вопрос 3)
+
+Скачайте и замените `scripts-data.js` в корне сайта:
+
+- [forus-patch-raschetnymi.zip](https://github.com/daaanilNikonov/for-lisa/raw/cursor/quiz-landing-scripts-55dd/dist/forus-patch-raschetnymi.zip) — только `scripts-data.js`
+- или полный [forus-code-update.zip](https://github.com/daaanilNikonov/for-lisa/raw/cursor/quiz-landing-scripts-55dd/dist/forus-code-update.zip)
+
+Было: «Как вы работаете с расчетными и приказами»  
+Стало: «Как вы работаете с расчетными листками и приказами»
