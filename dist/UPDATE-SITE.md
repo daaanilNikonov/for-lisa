@@ -58,3 +58,9 @@
 - [forus-patch-large-screen.zip](https://github.com/daaanilNikonov/for-lisa/raw/cursor/quiz-landing-scripts-55dd/dist/forus-patch-large-screen.zip)
 
 Что меняется: шире блок теста/результата, варианты в 2 колонки, hero по центру с ограничением ширины, теплее фон — меньше «пустого белого» по краям на мониторах 1100px+.
+
+## Патч: лента картинок + крупный блок «15 сценариев»
+
+- [forus-patch-hero-marquee.zip](https://github.com/daaanilNikonov/for-lisa/raw/cursor/quiz-landing-scripts-55dd/dist/forus-patch-hero-marquee.zip) — заменить `index.html` и `styles.css`
+
+Наверху — прокручиваемая лента ваших иллюстраций сценариев, справа крупно **15 сценариев**, меньше пустого поля сверху.

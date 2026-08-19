@@ -75,8 +75,8 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.85rem clamp(1rem, 4vw, 3rem);
-  background: rgba(255, 255, 255, 0.9);
+  padding: 0.65rem clamp(1rem, 4vw, 3rem);
+  background: rgba(255, 255, 255, 0.92);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(10px);
 }
@@ -120,13 +120,129 @@ textarea {
 
 .hero {
   display: grid;
-  grid-template-columns: 1.25fr 0.75fr;
-  gap: clamp(1.5rem, 4vw, 3.5rem);
-  align-items: center;
+  gap: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.hero-marquee {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  background: #fff6e0;
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent);
+}
+
+.hero-marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  animation: marquee-scroll 55s linear infinite;
+}
+
+.hero-marquee-item {
+  margin: 0;
+  flex: 0 0 auto;
+  width: clamp(148px, 16vw, 220px);
+  aspect-ratio: 16 / 10;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(57, 95, 117, 0.14);
+  box-shadow: 0 8px 22px rgba(57, 95, 117, 0.1);
+  background: #fff;
+}
+
+.hero-marquee-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-inner {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: clamp(1.25rem, 3vw, 2.75rem);
+  align-items: stretch;
   width: min(100%, var(--page-max));
   margin-inline: auto;
-  min-height: min(78vh, 720px);
-  padding: clamp(2.2rem, 5vw, 4.5rem) clamp(1rem, 4vw, 2rem) 2rem;
+  padding: clamp(1.35rem, 3.2vw, 2.4rem) clamp(1rem, 4vw, 2rem) clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.hero-aside {
+  display: grid;
+  align-content: stretch;
+  animation: float-in 1s ease 0.15s both;
+}
+
+.hero-scenarios {
+  display: grid;
+  align-content: center;
+  gap: 0.55rem;
+  height: 100%;
+  min-height: 11.5rem;
+  padding: clamp(1.25rem, 2.5vw, 2rem) clamp(1.2rem, 2.4vw, 2.1rem);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(254, 207, 104, 0.95) 0%, rgba(254, 226, 164, 0.92) 48%, #fff 100%);
+  border: 1px solid rgba(230, 184, 74, 0.55);
+  box-shadow: var(--shadow);
+}
+
+.hero-scenarios-kicker {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--blue);
+}
+
+.hero-scenarios-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.hero-scenarios-num {
+  font-family: var(--font-display);
+  font-size: clamp(3.6rem, 8vw, 5.6rem);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.hero-scenarios-word {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.hero-scenarios-note {
+  margin: 0.15rem 0 0;
+  max-width: 22rem;
+  font-size: clamp(0.98rem, 1.4vw, 1.12rem);
+  line-height: 1.4;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-marquee-track {
+    animation: none;
+  }
 }
 
 .eyebrow {
@@ -169,39 +285,7 @@ textarea {
   animation: rise 0.95s ease 0.12s both;
 }
 
-.hero-aside {
-  display: grid;
-  gap: 0.85rem;
-  justify-items: start;
-  animation: float-in 1s ease 0.15s both;
-}
 
-.hero-badge {
-  display: inline-flex;
-  padding: 0.55rem 0.9rem;
-  border-radius: 999px;
-  background: var(--yellow);
-  font-weight: 800;
-  color: var(--ink);
-}
-
-.hero-card {
-  display: grid;
-  gap: 0.45rem;
-  padding: 1.1rem 1.2rem;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  color: var(--ink-soft);
-  font-weight: 600;
-}
-
-.hero-card strong {
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: 1rem;
-}
 
 .btn {
   display: inline-flex;
@@ -636,9 +720,16 @@ textarea {
 }
 
 @media (max-width: 900px) {
-  .hero {
+  .hero-inner {
     grid-template-columns: 1fr;
-    min-height: auto;
+  }
+
+  .hero-marquee-item {
+    width: 140px;
+  }
+
+  .hero-scenarios {
+    min-height: 0;
   }
 
   .result-media,
@@ -960,9 +1051,20 @@ code {
     padding-right: max(2rem, calc((100vw - var(--page-max)) / 2));
   }
 
-  .hero {
-    min-height: min(76vh, 780px);
-    gap: 3.25rem;
+  .hero-inner {
+    gap: 2.75rem;
+    padding-top: 1.75rem;
+    padding-bottom: 2rem;
+  }
+
+  .hero-marquee-track {
+    gap: 1rem;
+    padding: 0.9rem 0;
+  }
+
+  .hero-marquee-item {
+    width: clamp(180px, 14vw, 240px);
+    border-radius: 16px;
   }
 
   .hero h1 {
@@ -971,25 +1073,23 @@ code {
   }
 
   .hero-lead {
-    max-width: 38rem;
+    max-width: 40rem;
     font-size: 1.2rem;
   }
 
-  .hero-aside {
-    justify-items: stretch;
-    align-content: center;
+  .hero-scenarios {
+    min-height: 14rem;
+    padding: 2rem 2.15rem;
   }
 
-  .hero-card {
-    padding: 1.45rem 1.5rem;
-    font-size: 1.05rem;
-    gap: 0.55rem;
+  .hero-scenarios-num {
+    font-size: clamp(4.6rem, 6.5vw, 6.4rem);
   }
 
-  .hero-badge {
-    font-size: 1rem;
-    padding: 0.65rem 1.05rem;
+  .hero-scenarios-word {
+    font-size: clamp(1.6rem, 2.2vw, 2.15rem);
   }
+
 
   .options {
     grid-template-columns: 1fr 1fr;
@@ -1030,10 +1130,13 @@ code {
     --quiz-max: 1240px;
   }
 
-  .hero {
-    min-height: min(74vh, 820px);
-    padding-top: 4.5rem;
-    padding-bottom: 2.5rem;
+  .hero-inner {
+    padding-top: 2rem;
+    padding-bottom: 2.4rem;
+  }
+
+  .hero-scenarios-num {
+    font-size: 6.8rem;
   }
 
   .quiz-shell,
@@ -1063,20 +1166,8 @@ code {
 }
 
 @media (min-width: 1100px) {
-  .quiz-section {
-    position: relative;
-  }
-
   .quiz-shell,
   .result-shell {
     width: 100%;
-  }
-
-  .hero-copy {
-    max-width: none;
-  }
-
-  .hero-lead {
-    max-width: 42rem;
   }
 }
