@@ -85,6 +85,15 @@ def clear(cell):
     cell.paragraphs[0].clear()
 
 
+def keep_together(table):
+    """Prevent table from splitting across pages (keeps ИТОГО on page 1)."""
+    for row in table.rows:
+        tr = row._tr
+        trPr = tr.get_or_add_trPr()
+        cantSplit = OxmlElement("w:cantSplit")
+        trPr.append(cantSplit)
+
+
 def set_cell_margins(cell, top=40, bottom=40, left=60, right=60):
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
@@ -108,8 +117,8 @@ def p_add(doc, text, *, size=10, bold=False, color=DARK, after=6, before=0, cent
     return p
 
 
-def yellow_title(doc, text):
-    p = p_add(doc, text, size=13, bold=True, after=4, before=8)
+def yellow_title(doc, text, *, size=12, after=2, before=4):
+    p = p_add(doc, text, size=size, bold=True, after=after, before=before)
     pPr = p._p.get_or_add_pPr()
     pBdr = OxmlElement("w:pBdr")
     bottom = OxmlElement("w:bottom")
@@ -122,30 +131,31 @@ def yellow_title(doc, text):
     return p
 
 
-def yellow_box(doc, title, lines, fill="FFF6D8", title_size=11):
+def yellow_box(doc, title, lines, fill="FFF6D8", title_size=10):
     t = doc.add_table(rows=1, cols=1)
-    set_borders(t, "F0C14A", "14")
+    set_borders(t, "F0C14A", "12")
     cell = t.rows[0].cells[0]
     shade(cell, fill)
-    set_cell_margins(cell, 60, 60, 80, 80)
+    set_cell_margins(cell, 40, 40, 60, 60)
     clear(cell)
     set_run(cell.paragraphs[0].add_run(title), size=title_size, bold=True, color=DARK)
     for line in lines:
         p = cell.add_paragraph()
-        p.paragraph_format.space_after = Pt(2)
-        set_run(p.add_run(line), size=9, color=GRAY)
+        p.paragraph_format.space_after = Pt(1)
+        set_run(p.add_run(line), size=8, color=GRAY)
     spacer = doc.add_paragraph()
-    spacer.paragraph_format.space_after = Pt(6)
+    spacer.paragraph_format.space_after = Pt(3)
 
 
 def feature_card(cell, title, body):
     shade(cell, "FFFBEA")
-    set_cell_margins(cell, 50, 50, 70, 70)
+    set_cell_margins(cell, 28, 28, 40, 40)
     clear(cell)
-    set_run(cell.paragraphs[0].add_run(title), size=10, bold=True, color=DARK)
+    set_run(cell.paragraphs[0].add_run(title), size=9, bold=True, color=DARK)
     p = cell.add_paragraph()
     p.paragraph_format.space_after = Pt(0)
-    set_run(p.add_run(body), size=9, color=GRAY)
+    p.paragraph_format.space_before = Pt(1)
+    set_run(p.add_run(body), size=8, color=GRAY)
 
 
 def build_docx():
@@ -155,8 +165,8 @@ def build_docx():
     sec.page_height = Mm(297)
     sec.left_margin = Mm(14)
     sec.right_margin = Mm(14)
-    sec.top_margin = Mm(12)
-    sec.bottom_margin = Mm(12)
+    sec.top_margin = Mm(10)
+    sec.bottom_margin = Mm(10)
 
     # ----- Header: logo fully visible (padded asset) -----
     ht = doc.add_table(rows=1, cols=2)
@@ -169,7 +179,7 @@ def build_docx():
     if logo.exists():
         run = a.paragraphs[0].add_run()
         # width keeps aspect; padding in PNG prevents crop look
-        run.add_picture(str(logo), width=Cm(3.6))
+        run.add_picture(str(logo), width=Cm(3.1))
     clear(b)
     for i, (line, bold) in enumerate([
         ("Группа компаний «Форус»", True),
@@ -183,8 +193,8 @@ def build_docx():
 
     # yellow rule
     rule = doc.add_paragraph()
-    rule.paragraph_format.space_before = Pt(6)
-    rule.paragraph_format.space_after = Pt(8)
+    rule.paragraph_format.space_before = Pt(2)
+    rule.paragraph_format.space_after = Pt(4)
     pPr = rule._p.get_or_add_pPr()
     pBdr = OxmlElement("w:pBdr")
     bottom = OxmlElement("w:bottom")
@@ -195,11 +205,11 @@ def build_docx():
     pBdr.append(bottom)
     pPr.append(pBdr)
 
-    p_add(doc, "1С:Кабинет сотрудника — 750 личных кабинетов", size=16, bold=True, center=True, after=2)
+    p_add(doc, "1С:Кабинет сотрудника — 750 личных кабинетов", size=14, bold=True, center=True, after=1)
     p_add(
         doc,
         "Персональное предложение · кадровый электронный документооборот",
-        size=10, color=GRAY, center=True, after=8,
+        size=9, color=GRAY, center=True, after=4,
     )
 
     # Why now
@@ -213,23 +223,23 @@ def build_docx():
         ],
     )
 
-    yellow_title(doc, "Что умеет 1С:Кабинет сотрудника")
+    yellow_title(doc, "Что умеет 1С:Кабинет сотрудника", size=11, after=2, before=3)
     caps = [
         (
             "Ознакомление с документами в один клик",
-            "Больше не нужно распечатывать, собирать подписи и хранить горы бумаг. Отправьте любой документ сотрудникам одной кнопкой — они ознакомятся и подтвердят получение.",
+            "Отправьте документ одной кнопкой — сотрудник ознакомится и подтвердит получение. Без печати и сбора подписей.",
         ),
         (
             "Удалённый приём на работу",
-            "Новый сотрудник оформляет документы дистанционно: трудовой договор, заявление на приём, ознакомление с правилами — без визита в офис.",
+            "Трудовой договор, заявление и ознакомление с правилами — без визита в офис.",
         ),
         (
             "Ответы на вопросы по отпуску",
-            "Сотрудник сам смотрит остаток отпуска и график в личном кабинете и подаёт заявление онлайн. Кадры и бухгалтерия не тратят время на одни и те же вопросы.",
+            "Сотрудник сам смотрит остаток отпуска и подаёт заявление онлайн — меньше повторяющихся вопросов кадрам.",
         ),
         (
             "Согласование без походов по кабинетам",
-            "Отпуск, командировка, отгул — руководитель согласовывает с телефона, данные сразу уходят в 1С.",
+            "Отпуск, командировка, отгул — руководитель согласовывает с телефона, данные сразу в 1С.",
         ),
         (
             "Общение без сторонних мессенджеров",
@@ -237,7 +247,7 @@ def build_docx():
         ),
         (
             "Простое внедрение для ИТ",
-            "Сервис уже внутри 1С. Не нужно поднимать отдельную платформу и тянуть долгую интеграцию.",
+            "Сервис уже внутри 1С — без отдельной платформы и долгой интеграции.",
         ),
     ]
     ft = doc.add_table(rows=3, cols=2)
@@ -245,12 +255,11 @@ def build_docx():
     for i, (title, body) in enumerate(caps):
         feature_card(ft.rows[i // 2].cells[i % 2], title, body)
 
-    p_add(doc, "", after=6)
-    yellow_title(doc, "Ваш пакет: 750 личных кабинетов")
+    yellow_title(doc, "Ваш пакет: 750 личных кабинетов", size=11, after=2, before=4)
     p_add(
         doc,
-        f"Состав лицензий: 500 + 200 + 50 кабинетов. Цена за сотрудника — около {PER_MONTH} ₽ в месяц.",
-        size=9, color=GRAY, after=6,
+        f"Состав лицензий: 500 + 200 + 50 · ≈ {PER_MONTH} ₽ в месяц за сотрудника",
+        size=8, color=GRAY, after=3,
     )
 
     # Pricing — hours logic UPDATED vs first prototype
@@ -260,7 +269,8 @@ def build_docx():
         cell = pt.rows[0].cells[i]
         shade(cell, "F0C14A")
         clear(cell)
-        set_run(cell.paragraphs[0].add_run(h), size=9, bold=True, color=DARK)
+        set_cell_margins(cell, 20, 20, 30, 30)
+        set_run(cell.paragraphs[0].add_run(h), size=8, bold=True, color=DARK)
 
     price_rows = [
         (
@@ -294,35 +304,34 @@ def build_docx():
         for cell in row:
             shade(cell, fill)
             clear(cell)
-            set_cell_margins(cell, 40, 40, 50, 50)
-        set_run(row[0].paragraphs[0].add_run(label), size=9, bold=gift, color=DARK)
-        set_run(row[1].paragraphs[0].add_run(note), size=8, color=GRAY)
+            set_cell_margins(cell, 18, 18, 30, 30)
+        set_run(row[0].paragraphs[0].add_run(label), size=8, bold=gift, color=DARK)
+        set_run(row[1].paragraphs[0].add_run(note), size=7.5, color=GRAY)
         row[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        set_run(row[2].paragraphs[0].add_run(amount), size=10, bold=True, color=OK if gift else DARK)
+        set_run(row[2].paragraphs[0].add_run(amount), size=9, bold=True, color=OK if gift else DARK)
+    keep_together(pt)
 
-    # Total — yellow, not black
+    # Total — compact yellow bar (smaller sum so it stays on page 1)
     tot = doc.add_table(rows=1, cols=2)
-    set_borders(tot, "F0C14A", "16")
+    set_borders(tot, "F0C14A", "12")
     left, right = tot.rows[0].cells
     shade(left, "F0C14A")
     shade(right, "F0C14A")
-    set_cell_margins(left, 70, 70, 80, 80)
-    set_cell_margins(right, 70, 70, 80, 80)
+    set_cell_margins(left, 30, 30, 50, 50)
+    set_cell_margins(right, 30, 30, 50, 50)
     clear(left)
     clear(right)
-    set_run(left.paragraphs[0].add_run("ИТОГО К ОПЛАТЕ"), size=11, bold=True, color=DARK)
+    set_run(left.paragraphs[0].add_run("ИТОГО К ОПЛАТЕ"), size=9, bold=True, color=DARK)
     p = left.add_paragraph()
+    p.paragraph_format.space_before = Pt(1)
+    p.paragraph_format.space_after = Pt(0)
     set_run(
-        p.add_run("Только пакет кабинетов. Настройка, запуск и час поддержки — бесплатно из подарка."),
-        size=8, color=DARK,
-    )
-    p = left.add_paragraph()
-    set_run(
-        p.add_run("≈ 25 ₽ в месяц за сотрудника  ·  подпись сотрудникам — бесплатно"),
-        size=8, bold=True, color=DARK,
+        p.add_run("Только пакет кабинетов. Настройка и поддержка — из подарка. Подпись сотрудникам — бесплатно."),
+        size=7.5, color=DARK,
     )
     right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    set_run(right.paragraphs[0].add_run(f"{CABINETS:,} ₽".replace(",", " ")), size=20, bold=True, color=DARK)
+    set_run(right.paragraphs[0].add_run(f"{CABINETS:,} ₽".replace(",", " ")), size=14, bold=True, color=DARK)
+    keep_together(tot)
 
     # Page break before comparison (like first prototype page 2)
     doc.add_page_break()
