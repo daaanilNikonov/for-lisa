@@ -448,6 +448,14 @@ textarea {
   background: linear-gradient(160deg, #c9d0ff, #a9b4f5);
   color: #1d2240;
 }
+.sticker-pink {
+  background: linear-gradient(160deg, #ffd0ec, #ff8bd2);
+  color: #4a1535;
+}
+.sticker-rose {
+  background: linear-gradient(160deg, #f8c4ce, #ef9aaa);
+  color: #3a1820;
+}
 
 .sticker-text {
   display: block;
@@ -1054,4 +1062,316 @@ textarea {
   flex-wrap: wrap;
   gap: 0.55rem;
   align-items: center;
+}
+
+
+/* —— rich tasks / pack / dashboard —— */
+.foot-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.task-row-rich {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.55rem 0.75rem;
+  align-items: start;
+  padding: 0.75rem 0.8rem;
+  border-radius: 12px;
+  background: rgba(8, 14, 20, 0.4);
+  border: 1px solid rgba(38, 166, 224, 0.12);
+}
+
+.task-main {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  grid-column: 1 / 2;
+}
+
+.task-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.7rem;
+  align-items: center;
+  grid-column: 1 / 2;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.task-metrics label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.task-metrics input[type="number"],
+.task-metrics input[type="text"],
+.task-transfer input[type="date"] {
+  width: 4.2rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+  caret-color: var(--blue);
+  padding: 0.28rem 0.4rem;
+}
+
+.task-metrics input[type="text"] { width: 5.5rem; }
+.task-transfer input[type="date"] { width: 9.2rem; }
+
+.task-pct {
+  font-weight: 800;
+  color: var(--blue);
+  min-width: 2.8rem;
+}
+.task-pct.is-mid { color: var(--amber); }
+.task-pct.is-good { color: var(--mint); }
+
+.task-transfer {
+  grid-column: 1 / 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.transfer-hint { color: var(--amber); font-weight: 600; }
+
+.task-meta-line {
+  grid-column: 1 / 2;
+  font-size: 0.78rem;
+  color: var(--steel);
+}
+
+.task-row-rich .task-remove {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.chip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+.manager-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.manager-stats .stat,
+.mini-stats div {
+  background: rgba(38,166,224,0.08);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.55rem 0.65rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.manager-stats b,
+.mini-stats b {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.manager-stats span,
+.mini-stats span {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.sticker-pack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.pack-chip {
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.pack-chip:hover {
+  transform: translateY(-1px) rotate(-2deg);
+  border-color: var(--blue);
+}
+
+.pack-emoji, .pack-emoji-lg { line-height: 1; }
+.pack-emoji-lg { font-size: 1.6rem; margin-bottom: 0.2rem; }
+
+.sticker-pack-item {
+  text-align: center;
+  font-family: var(--font-display);
+  min-height: 96px;
+}
+
+.vibe-pink { box-shadow: 0 10px 24px rgba(255,139,210,0.25); }
+.vibe-mint { box-shadow: 0 10px 24px rgba(125,206,160,0.22); }
+.vibe-amber { box-shadow: 0 10px 24px rgba(254,207,104,0.22); }
+.vibe-violet { box-shadow: 0 10px 24px rgba(169,180,245,0.22); }
+.vibe-cyan { box-shadow: 0 10px 24px rgba(38,166,224,0.22); }
+.vibe-rose { box-shadow: 0 10px 24px rgba(240,163,176,0.22); }
+
+.analytics-section {
+  padding: 0.5rem clamp(1rem, 4vw, 3rem) 2.5rem;
+  max-width: 1200px;
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dash-title {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+}
+
+.table-wrap { overflow: auto; }
+
+.kpi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.kpi-table th,
+.kpi-table td {
+  text-align: left;
+  padding: 0.55rem 0.45rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.kpi-table th { color: var(--muted); font-weight: 700; }
+
+.kpi-table .good { color: var(--mint); }
+.kpi-table .mid { color: var(--amber); }
+.kpi-table .low { color: var(--rose); }
+
+.chart-wrap {
+  width: 100%;
+  overflow: hidden;
+}
+
+#convChart {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.9rem;
+  margin-top: 0.6rem;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.legend-item i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.analytics-cards { margin-bottom: 1rem; }
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.analytics-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.8rem;
+  background: rgba(8,14,20,0.28);
+}
+
+.analytics-card h4 {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+}
+
+.transfers-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.transfer-item {
+  display: grid;
+  grid-template-columns: 180px 1fr auto;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(8,14,20,0.35);
+  border: 1px solid var(--line);
+  font-size: 0.88rem;
+}
+
+.transfer-item em {
+  color: var(--blue);
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 980px) {
+  .dash-grid,
+  .analytics-grid,
+  .manager-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+  .transfer-item {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .dash-grid,
+  .analytics-grid,
+  .manager-stats {
+    grid-template-columns: 1fr;
+  }
 }

@@ -31,7 +31,10 @@
         "y": 42,
         "color": "cyan",
         "rotation": -2,
-        "updatedAt": "2026-08-14T00:00:00.000Z"
+        "updatedAt": "2026-08-14T00:00:00.000Z",
+        "kind": "note",
+        "packId": null,
+        "emoji": null
       }
     ],
     "mgr-2": [
@@ -42,10 +45,34 @@
         "y": 50,
         "color": "amber",
         "rotation": 2,
-        "updatedAt": "2026-08-14T00:00:00.000Z"
+        "updatedAt": "2026-08-14T00:00:00.000Z",
+        "kind": "note",
+        "packId": null,
+        "emoji": null
       }
     ],
     "mgr-3": [],
     "mgr-4": []
-  }
+  },
+  "kpiDefs": [
+    {
+      "id": "kpi-calls",
+      "name": "Успешные звонки",
+      "defaultTarget": 20,
+      "unit": "звонков"
+    },
+    {
+      "id": "kpi-demos",
+      "name": "Демонстрации",
+      "defaultTarget": 2,
+      "unit": "демо"
+    },
+    {
+      "id": "kpi-leads",
+      "name": "Обработанные лиды",
+      "defaultTarget": 15,
+      "unit": "лидов"
+    }
+  ],
+  "transfers": []
 }

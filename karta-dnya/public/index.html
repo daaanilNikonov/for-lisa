@@ -6,7 +6,7 @@
     <title>Карта дня · Группа продуктового запуска · Форус</title>
     <meta
       name="description"
-      content="Карта дня менеджеров группы продуктового запуска ГК Форус: личные чеклисты, доски стикеров и архив форм."
+      content="Карта дня менеджеров Форус: чеклисты с прогрессом, переносы, стикерпак, аналитика и дашборд KPI."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -37,6 +37,7 @@
       </a>
       <nav class="topnav">
         <a href="#workspace">Рабочий стол</a>
+        <a href="#analytics">Аналитика</a>
         <a href="#archive">Архив</a>
       </nav>
     </header>
@@ -49,8 +50,7 @@
           <span class="hero-title">Карта дня</span>
         </h1>
         <p class="hero-lead reveal delay-2">
-          У каждого менеджера — свой чеклист на день и своя доска приоритетов.
-          Вечером галочки сохраняются в архив. Здесь можно смотреть всё сразу.
+          План на день, прогресс по факту, перенос остатков и дашборд KPI менеджеров.
         </p>
         <p class="hero-date reveal delay-3" id="todayLabel"></p>
       </section>
@@ -59,7 +59,7 @@
         <div class="section-head reveal">
           <div>
             <h2>Рабочий стол</h2>
-            <p class="panel-sub">Выберите менеджера или откройте обзор всех чеклистов и досок</p>
+            <p class="panel-sub">Чеклист, доска и стикерпак каждого менеджера</p>
           </div>
           <div class="section-actions">
             <button type="button" class="btn btn-ghost is-hidden" id="renameManagerBtn">Переименовать</button>
@@ -68,7 +68,6 @@
         </div>
 
         <div class="manager-tabs reveal" id="managerTabs" role="tablist"></div>
-
         <div id="overviewView" class="overview-view is-hidden"></div>
 
         <div id="singleView" class="workbench is-hidden">
@@ -85,24 +84,70 @@
             </div>
             <div id="tasksEditor" class="tasks-editor"></div>
             <footer class="panel-foot">
-              <button type="button" class="btn btn-ghost" id="addTaskBtn">+ Задача</button>
+              <div class="foot-left">
+                <button type="button" class="btn btn-ghost" id="addTaskBtn">+ Задача</button>
+                <button type="button" class="btn btn-ghost" id="seedKpiBtn">+ Обязательные KPI</button>
+              </div>
               <button type="button" class="btn btn-primary" id="saveFormBtn">Сохранить утро</button>
             </footer>
             <p class="form-hint" id="formHint"></p>
+            <div id="managerStats" class="manager-stats"></div>
           </div>
 
           <div class="panel board-panel">
             <div class="panel-head">
               <div>
                 <h2 id="boardTitle">Основные приоритеты в работе</h2>
-                <p class="panel-sub" id="boardSub">Личная доска стикеров</p>
+                <p class="panel-sub" id="boardSub">Личная доска + зумер-стикерпак</p>
               </div>
-              <button type="button" class="btn btn-ghost btn-sm" id="addSticker">+ Стикер</button>
+              <button type="button" class="btn btn-ghost btn-sm" id="addSticker">+ Заметка</button>
             </div>
+            <div class="sticker-pack" id="stickerPack" aria-label="Стикерпак"></div>
             <div class="sticker-board" id="stickerBoard" aria-label="Доска приоритетов">
-              <div class="board-hint">Перетащите · ✎ — редактировать</div>
+              <div class="board-hint">Перетащите · клик по стикерпаку — кинуть на доску</div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section class="analytics-section" id="analytics">
+        <div class="section-head reveal">
+          <div>
+            <h2>Дашборд активности</h2>
+            <p class="panel-sub">Обязательные KPI, конверсия и динамика менеджеров</p>
+          </div>
+        </div>
+        <div class="dash-grid">
+          <div class="panel">
+            <h3 class="dash-title">Обязательные задачи · сегодня</h3>
+            <div class="table-wrap">
+              <table class="kpi-table" id="kpiTable">
+                <thead>
+                  <tr>
+                    <th>Менеджер</th>
+                    <th>Задача</th>
+                    <th>План</th>
+                    <th>Факт</th>
+                    <th>Конверсия</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="dash-title">Успеваемость · конверсия по дням</h3>
+            <p class="panel-sub">Линии менеджеров: % выполнения обязательных задач</p>
+            <div class="chart-wrap">
+              <canvas id="convChart" width="720" height="320" aria-label="График конверсии"></canvas>
+            </div>
+            <div class="chart-legend" id="chartLegend"></div>
+          </div>
+        </div>
+        <div class="panel analytics-cards" id="analyticsCards"></div>
+        <div class="panel">
+          <h3 class="dash-title">Журнал переносов</h3>
+          <div id="transfersList" class="transfers-list"></div>
         </div>
       </section>
 
@@ -110,7 +155,7 @@
         <div class="section-head reveal">
           <div>
             <h2>Хранилище форм</h2>
-            <p class="panel-sub">Завершённые карты: «Имя менеджера» + дата. Можно удалить тестовые записи.</p>
+            <p class="panel-sub">Завершённые карты дня с прогрессом и следом переносов</p>
           </div>
         </div>
         <div class="archive-list" id="archiveList"></div>
@@ -141,7 +186,6 @@
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
     <script src="/app.js" defer></script>
   </body>
 </html>
