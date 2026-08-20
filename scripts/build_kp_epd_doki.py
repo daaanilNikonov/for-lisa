@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-"""Коммерческое предложение / листовка: 1С-ЭПД и Доки.Логистика (стиль ГК Форус)."""
+"""Коммерческое предложение: 1С-ЭПД и Доки.Логистика (стиль ГК Форус).
+
+Акцент на Доки.Логистика, понятный язык без сокращений для бухгалтеров и клиентов.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 from docx import Document
-from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
-from docx.oxml.ns import qn, nsmap
-from docx.shared import Cm, Mm, Pt, RGBColor, Twips
+from docx.oxml.ns import qn
+from docx.shared import Cm, Mm, Pt, RGBColor
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "output" / "КП_1С-ЭПД_и_Доки_Логистика.docx"
 ASSETS = ROOT / "assets_forus"
 
-# Фирменные цвета Форус
 YELLOW = RGBColor(0xE8, 0xB8, 0x4A)
 YELLOW_HEX = "E8B84A"
 DARK = RGBColor(0x1E, 0x1E, 0x1E)
@@ -24,7 +25,9 @@ GRAY = RGBColor(0x55, 0x55, 0x55)
 LIGHT_GRAY = "F5F5F5"
 WHITE = "FFFFFF"
 SOFT_YELLOW = "FFF8E7"
+SOFT_DOKI = "F3F0FA"
 HEADER_BG = "1E1E1E"
+ACCENT_DOKI = "2D2A4A"
 
 
 def set_run_font(run, name="Arial", size=10, bold=False, color=DARK):
@@ -36,26 +39,12 @@ def set_run_font(run, name="Arial", size=10, bold=False, color=DARK):
 
 
 def set_cell_shading(cell, hex_color: str):
-    tc = cell._tePr if hasattr(cell, "_tePr") else cell._tc
+    tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     shd = OxmlElement("w:shd")
     shd.set(qn("w:fill"), hex_color)
     shd.set(qn("w:val"), "clear")
     tcPr.append(shd)
-
-
-def set_cell_borders(cell, color=YELLOW_HEX, sz="12", sides=("top", "left", "bottom", "right")):
-    tc = cell._tc
-    tcPr = tc.get_or_add_tcPr()
-    tcBorders = OxmlElement("w:tcBorders")
-    for edge in sides:
-        el = OxmlElement(f"w:{edge}")
-        el.set(qn("w:val"), "single")
-        el.set(qn("w:sz"), sz)
-        el.set(qn("w:space"), "0")
-        el.set(qn("w:color"), color)
-        tcBorders.append(el)
-    tcPr.append(tcBorders)
 
 
 def set_table_borders(table, color="CCCCCC", sz="4"):
@@ -72,61 +61,32 @@ def set_table_borders(table, color="CCCCCC", sz="4"):
     tblPr.append(borders)
 
 
+def yellow_rule(doc, space_before=6, space_after=8, sz="24"):
+    line = doc.add_paragraph()
+    line.paragraph_format.space_before = Pt(space_before)
+    line.paragraph_format.space_after = Pt(space_after)
+    pPr = line._p.get_or_add_pPr()
+    pBdr = OxmlElement("w:pBdr")
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), sz)
+    bottom.set(qn("w:space"), "1")
+    bottom.set(qn("w:color"), YELLOW_HEX)
+    pBdr.append(bottom)
+    pPr.append(pBdr)
+
+
 def clear_cell(cell):
     for p in cell.paragraphs:
         p.clear()
 
 
-def add_para(cell_or_doc, text, *, size=10, bold=False, color=DARK, align=WD_ALIGN_PARAGRAPH.LEFT, space_after=4, space_before=0):
-    if hasattr(cell_or_doc, "paragraphs") and hasattr(cell_or_doc, "add_paragraph") and not hasattr(cell_or_doc, "rows"):
-        # Document
-        p = cell_or_doc.add_paragraph()
-    elif hasattr(cell_or_doc, "add_paragraph"):
-        p = cell_or_doc.add_paragraph()
-    else:
-        # cell
-        p = cell_or_doc.paragraphs[0] if not cell_or_doc.paragraphs[0].text else cell_or_doc.add_paragraph()
-        if cell_or_doc.paragraphs[0].text == "" and len(cell_or_doc.paragraphs) == 1:
-            p = cell_or_doc.paragraphs[0]
-    p.alignment = align
-    p.paragraph_format.space_after = Pt(space_after)
-    p.paragraph_format.space_before = Pt(space_before)
-    p.paragraph_format.line_spacing = 1.15
-    run = p.add_run(text)
-    set_run_font(run, size=size, bold=bold, color=color)
-    return p
-
-
-def add_bullet(doc, text, size=10):
-    p = doc.add_paragraph(style="List Bullet")
-    p.paragraph_format.space_after = Pt(2)
-    p.paragraph_format.space_before = Pt(0)
-    p.clear()
-    run = p.add_run(text)
-    set_run_font(run, size=size, color=DARK)
-    # yellow bullet via numbering is hard; prefix with mark
-    return p
-
-
-def add_check_item(doc, text, size=10):
-    p = doc.add_paragraph()
-    p.paragraph_format.space_after = Pt(3)
-    p.paragraph_format.space_before = Pt(0)
-    p.paragraph_format.left_indent = Cm(0.3)
-    mark = p.add_run("●  ")
-    set_run_font(mark, size=size, color=YELLOW, bold=True)
-    run = p.add_run(text)
-    set_run_font(run, size=size, color=DARK)
-    return p
-
-
 def section_title(doc, text):
     p = doc.add_paragraph()
-    p.paragraph_format.space_before = Pt(14)
+    p.paragraph_format.space_before = Pt(12)
     p.paragraph_format.space_after = Pt(6)
     run = p.add_run(text)
-    set_run_font(run, size=14, bold=True, color=DARK)
-    # yellow underline via border
+    set_run_font(run, size=13, bold=True, color=DARK)
     pPr = p._p.get_or_add_pPr()
     pBdr = OxmlElement("w:pBdr")
     bottom = OxmlElement("w:bottom")
@@ -139,23 +99,67 @@ def section_title(doc, text):
     return p
 
 
-def fill_header_cell(cell, text, center=True):
+def fill_header_cell(cell, text, center=True, bg=HEADER_BG):
     clear_cell(cell)
-    set_cell_shading(cell, HEADER_BG)
+    set_cell_shading(cell, bg)
     p = cell.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER if center else WD_ALIGN_PARAGRAPH.LEFT
     run = p.add_run(text)
     set_run_font(run, size=9, bold=True, color=RGBColor(0xFF, 0xFF, 0xFF))
 
 
-def fill_cell(cell, text, *, bold=False, size=9, align=WD_ALIGN_PARAGRAPH.CENTER, shade=None):
+def fill_cell(cell, text, *, bold=False, size=9, align=WD_ALIGN_PARAGRAPH.CENTER, shade=None, color=DARK):
     clear_cell(cell)
     if shade:
         set_cell_shading(cell, shade)
     p = cell.paragraphs[0]
     p.alignment = align
     run = p.add_run(text)
-    set_run_font(run, size=size, bold=bold, color=DARK)
+    set_run_font(run, size=size, bold=bold, color=color)
+
+
+def add_body(doc, text, *, size=10, bold=False, color=DARK, space_after=6, space_before=0, align=WD_ALIGN_PARAGRAPH.LEFT):
+    p = doc.add_paragraph()
+    p.alignment = align
+    p.paragraph_format.space_after = Pt(space_after)
+    p.paragraph_format.space_before = Pt(space_before)
+    p.paragraph_format.line_spacing = 1.2
+    run = p.add_run(text)
+    set_run_font(run, size=size, bold=bold, color=color)
+    return p
+
+
+def add_rich(doc, parts, *, size=10, space_after=6, space_before=0, align=WD_ALIGN_PARAGRAPH.LEFT):
+    """parts: list of (text, bold, color)."""
+    p = doc.add_paragraph()
+    p.alignment = align
+    p.paragraph_format.space_after = Pt(space_after)
+    p.paragraph_format.space_before = Pt(space_before)
+    p.paragraph_format.line_spacing = 1.2
+    for text, bold, color in parts:
+        run = p.add_run(text)
+        set_run_font(run, size=size, bold=bold, color=color)
+    return p
+
+
+def add_check(cell_or_doc, text, *, size=9, first=False):
+    if hasattr(cell_or_doc, "rows"):
+        raise TypeError("pass cell or doc")
+    if hasattr(cell_or_doc, "paragraphs") and not hasattr(cell_or_doc, "add_heading"):
+        # cell
+        p = cell_or_doc.paragraphs[0] if first else cell_or_doc.add_paragraph()
+        if first:
+            clear_cell(cell_or_doc)
+            p = cell_or_doc.paragraphs[0]
+    else:
+        p = cell_or_doc.add_paragraph()
+    p.paragraph_format.space_after = Pt(3)
+    p.paragraph_format.space_before = Pt(1)
+    m = p.add_run("●  ")
+    set_run_font(m, size=size, color=YELLOW, bold=True)
+    r = p.add_run(text)
+    set_run_font(r, size=size, color=DARK)
+    return p
 
 
 def build():
@@ -172,125 +176,131 @@ def build():
 
     # --- Шапка ---
     header_table = doc.add_table(rows=1, cols=2)
-    header_table.autofit = True
     left, right = header_table.rows[0].cells
     clear_cell(left)
     clear_cell(right)
 
     logo_path = ASSETS / "brand" / "forus_logo_word.png"
-    if not logo_path.exists():
-        logo_path = ASSETS / "brand" / "forus_logo_clean.png"
-    if not logo_path.exists():
-        logo_path = ASSETS / "brand" / "forus_logo_word.png"
     if logo_path.exists():
-        p = left.paragraphs[0]
-        run = p.add_run()
-        run.add_picture(str(logo_path), width=Cm(4.2))
+        run = left.paragraphs[0].add_run()
+        run.add_picture(str(logo_path), width=Cm(4.0))
     else:
-        add_para(left, "Форус", size=22, bold=True)
+        run = left.paragraphs[0].add_run("Форус")
+        set_run_font(run, size=22, bold=True)
 
     p = right.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    for i, line in enumerate(
+    for i, (line, bold) in enumerate(
         [
-            "Группа компаний «Форус»",
-            "г. Иркутск, ул. Ямская, 1/1",
-            "+7 (3952) 78-00-00  ·  www.forus.ru",
+            ("Группа компаний «Форус»", True),
+            ("Крупнейшая IT-компания Иркутской области", False),
+            ("г. Иркутск, ул. Ямская, 1/1", False),
+            ("+7 (3952) 78-00-00  ·  www.forus.ru", False),
         ]
     ):
         if i:
             p = right.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-            p.paragraph_format.space_before = Pt(0)
-            p.paragraph_format.space_after = Pt(0)
-        else:
-            p.paragraph_format.space_before = Pt(6)
-            p.paragraph_format.space_after = Pt(0)
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(0)
         run = p.add_run(line)
-        set_run_font(run, size=9, bold=(i == 0), color=GRAY if i else DARK)
+        set_run_font(run, size=9, bold=bold, color=DARK if bold else GRAY)
 
-    # жёлтая линия
-    line = doc.add_paragraph()
-    line.paragraph_format.space_before = Pt(4)
-    line.paragraph_format.space_after = Pt(8)
-    pPr = line._p.get_or_add_pPr()
-    pBdr = OxmlElement("w:pBdr")
-    bottom = OxmlElement("w:bottom")
-    bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), "24")
-    bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), YELLOW_HEX)
-    pBdr.append(bottom)
-    pPr.append(pBdr)
+    yellow_rule(doc, space_before=4, space_after=8)
 
     # --- Заголовок ---
     title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title.paragraph_format.space_after = Pt(2)
     run = title.add_run("КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ")
-    set_run_font(run, size=18, bold=True, color=DARK)
+    set_run_font(run, size=17, bold=True, color=DARK)
 
     sub = doc.add_paragraph()
     sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
     sub.paragraph_format.space_after = Pt(4)
-    run = sub.add_run("сервисы электронных перевозочных документов")
+    run = sub.add_run("Переход на электронные перевозочные документы")
     set_run_font(run, size=11, color=GRAY)
 
     products = doc.add_paragraph()
     products.alignment = WD_ALIGN_PARAGRAPH.CENTER
     products.paragraph_format.space_after = Pt(8)
-    run = products.add_run("1С-ЭПД")
-    set_run_font(run, size=13, bold=True, color=DARK)
-    run = products.add_run("  ·  ")
-    set_run_font(run, size=13, color=YELLOW)
     run = products.add_run("Доки.Логистика")
     set_run_font(run, size=13, bold=True, color=DARK)
+    run = products.add_run("  и  ")
+    set_run_font(run, size=12, color=GRAY)
+    run = products.add_run("1С-ЭПД")
+    set_run_font(run, size=12, bold=True, color=GRAY)
 
-    intro = doc.add_paragraph()
-    intro.paragraph_format.space_after = Pt(8)
-    run = intro.add_run(
-        "С 01.09.2026 г. вступает в силу Федеральный закон от 07.06.2025 № 140-ФЗ: "
-        "переход на электронные перевозочные документы (ЭТрН, ЭЗЗ, экспедиторские документы, ЭПЛ) "
-        "становится обязательным. ГК «Форус» предлагает два готовых решения для быстрого и "
-        "законного старта обмена ЭПД — "
+    # --- Обращение ---
+    add_body(
+        doc,
+        "Уважаемые коллеги!",
+        size=11,
+        bold=True,
+        space_after=4,
     )
-    set_run_font(run, size=10, color=DARK)
-    run = intro.add_run("1С-ЭПД")
-    set_run_font(run, size=10, bold=True, color=DARK)
-    run = intro.add_run(" и ")
-    set_run_font(run, size=10, color=DARK)
-    run = intro.add_run("Доки.Логистика")
-    set_run_font(run, size=10, bold=True, color=DARK)
-    run = intro.add_run(".")
-    set_run_font(run, size=10, color=DARK)
+    add_body(
+        doc,
+        "Группа компаний «Форус» благодарит вас за интерес к нашим решениям и готовность "
+        "выстроить удобный электронный документооборот по грузоперевозкам.",
+        size=10,
+        space_after=6,
+    )
+    add_body(
+        doc,
+        "С 1 сентября 2026 года вступает в силу Федеральный закон от 07.06.2025 № 140-ФЗ. "
+        "Организации, которые участвуют в автомобильных грузоперевозках, переходят на "
+        "электронные перевозочные документы: электронную транспортную накладную, "
+        "электронный заказ-заявку, экспедиторские документы и электронный путевой лист "
+        "(в установленных законом случаях). Бумажный обмен по этим документам больше "
+        "не будет соответствовать требованиям законодательства.",
+        size=10,
+        space_after=6,
+    )
+    add_rich(
+        doc,
+        [
+            (
+                "Мы поможем вашей компании подключиться вовремя, без лишней нагрузки на бухгалтерию "
+                "и логистику. Ниже — два решения, которые мы предлагаем. Наше приоритетное "
+                "рекомендование для большинства клиентов — сервис ",
+                False,
+                DARK,
+            ),
+            ("Доки.Логистика", True, DARK),
+            (
+                ": он удобнее в ежедневной работе, гибче по сценариям и позволяет вести "
+                "весь электронный документооборот в одном окне.",
+                False,
+                DARK,
+            ),
+        ],
+        size=10,
+        space_after=8,
+    )
 
-    # --- Плюсы двух продуктов в две колонки ---
-    section_title(doc, "Плюсы каждого сервиса")
+    # --- Рекомендуем Доки ---
+    section_title(doc, "Рекомендуем: Доки.Логистика")
 
-    pros = doc.add_table(rows=2, cols=2)
-    pros.autofit = True
-    set_table_borders(pros, color=YELLOW_HEX, sz="10")
+    recommend = doc.add_table(rows=1, cols=1)
+    set_table_borders(recommend, color=YELLOW_HEX, sz="12")
+    box = recommend.rows[0].cells[0]
+    set_cell_shading(box, SOFT_YELLOW)
+    clear_cell(box)
+    p = box.paragraphs[0]
+    run = p.add_run("Почему мы советуем начать именно с Доки.Логистика")
+    set_run_font(run, size=11, bold=True, color=DARK)
 
-    h1, h2 = pros.rows[0].cells
-    fill_header_cell(h1, "1С-ЭПД")
-    fill_header_cell(h2, "Доки.Логистика")
-
-    c1, c2 = pros.rows[1].cells
-    set_cell_shading(c1, SOFT_YELLOW)
-    set_cell_shading(c2, "F7F7FB")
-
-    clear_cell(c1)
-    items_epd = [
-        "Встроено в типовые конфигурации 1С — без доп. расширений",
-        "Поддержка всех форматов ЭПД, требуемых ФНС",
-        "Роуминг с другими операторами ИС ЭПД",
-        "Мобильное подписание водителем (УКЭП) в ЭТрН",
-        "Работа из привычной учётной системы 1С",
-        "Бесплатная настройка рабочего места при покупке пакета от 1 000 титулов (акция)",
-        "Можно начать с бесплатной конфигурации «1С:Клиент ЭДО»",
+    recommend_points = [
+        "Сервис работает сразу в трёх средах: в программе 1С, в веб-кабинете через браузер и в мобильном приложении. Можно пользоваться всеми вариантами сразу или выбрать один — например, только телефон или только браузер.",
+        "Подходит компаниям без 1С, с редко обновляемой 1С, а также тем, у кого логист, водитель или руководитель склада не работают в учётной базе бухгалтера.",
+        "В одном сервисе — и перевозочные документы, и обычный электронный документооборот с контрагентами: счета, акты, универсальные передаточные документы, договоры.",
+        "Документы хранятся в защищённом облачном архиве. Даже если с компьютером или базой 1С что-то случится, история обмена не потеряется.",
+        "Для новых клиентов действует промотариф: 3 месяца работы без ограничений по количеству отправок (при подключении пакета документов).",
+        "Водитель может подписать документы с телефона: простой электронной подписью, усиленной квалифицированной электронной подписью или через Госключ.",
     ]
-    for i, t in enumerate(items_epd):
-        p = c1.paragraphs[0] if i == 0 else c1.add_paragraph()
+    for t in recommend_points:
+        p = box.add_paragraph()
         p.paragraph_format.space_after = Pt(3)
         p.paragraph_format.space_before = Pt(2)
         m = p.add_run("●  ")
@@ -298,131 +308,203 @@ def build():
         r = p.add_run(t)
         set_run_font(r, size=9, color=DARK)
 
-    clear_cell(c2)
-    items_doki = [
-        "Работа в 1С, веб-кабинете и мобильном приложении независимо",
-        "ЭПД, УПД, акты, счета и договоры — все документы в одном сервисе",
-        "Подходит без 1С, без ПК или при редко обновляемой 1С",
-        "Облачный архив: документы не потеряются при сбое базы",
-        "Разделение доступа по сотрудникам и подразделениям",
-        "Промотариф: 3 месяца безлимита для новых клиентов",
-        "Мобильное подписание водителем (ПЭП / УКЭП / Госключ)",
+    add_body(
+        doc,
+        "Доки.Логистика — это сервис группы компаний «Астрал», надёжного оператора "
+        "электронного документооборота. Подключение и сопровождение для вас выполняет "
+        "ГК «Форус»: настройка, обучение, поддержка и подбор тарифа под ваш объём документов.",
+        size=9,
+        color=GRAY,
+        space_before=6,
+        space_after=4,
+    )
+
+    # --- Подробные плюсы Доки ---
+    section_title(doc, "Доки.Логистика — возможности для вашей компании")
+
+    doki_blocks = [
+        (
+            "Удобно бухгалтеру и логисту",
+            [
+                "Из 1С документы уходят в электронный обмен в один клик — без выгрузки файлов и ручной пересылки.",
+                "Входящие документы можно сразу превратить в учётные документы 1С: меньше расхождений в реквизитах и ручного ввода.",
+                "Остаток пакета и статус тарифа видны прямо в 1С и в веб-кабинете.",
+                "Руководитель может подписать документ из дома, командировки или с телефона — бухгалтеру не нужно ждать его у рабочего компьютера.",
+            ],
+        ),
+        (
+            "Гибкая работа без привязки к одному компьютеру",
+            [
+                "Веб-кабинет синхронизирован с 1С: статусы документов обновляются сразу в обоих интерфейсах.",
+                "Мобильное приложение позволяет водителю подтвердить погрузку и выгрузку на месте.",
+                "Можно разделить доступ по сотрудникам и подразделениям: бухгалтер, логист и склад работают в своих зонах ответственности.",
+                "Подходит, если бухгалтер не готов пускать логиста в основную базу 1С — обмен ведётся в отдельном удобном контуре.",
+            ],
+        ),
+        (
+            "Экономия и прозрачность",
+            [
+                "Отправка электронного документа в несколько раз дешевле печати, конверта и курьерской доставки (для сравнения: бумажный документ часто обходится около 50 рублей).",
+                "Статус документа всегда на виду: отправлен, получен, подписан, требуется действие.",
+                "Быстрее закрываете период и ускоряете получение оплаты за счёт мгновенной доставки закрывающих документов.",
+                "Чем больше пакет документов — тем ниже цена одной отправки. Неиспользованный остаток переносится при своевременном продлении.",
+            ],
+        ),
     ]
-    for i, t in enumerate(items_doki):
-        p = c2.paragraphs[0] if i == 0 else c2.add_paragraph()
-        p.paragraph_format.space_after = Pt(3)
-        p.paragraph_format.space_before = Pt(2)
+
+    for title_text, items in doki_blocks:
+        add_body(doc, title_text, size=10, bold=True, space_before=4, space_after=3)
+        for item in items:
+            p = doc.add_paragraph()
+            p.paragraph_format.space_after = Pt(2)
+            p.paragraph_format.left_indent = Cm(0.2)
+            m = p.add_run("●  ")
+            set_run_font(m, size=9, color=YELLOW, bold=True)
+            r = p.add_run(item)
+            set_run_font(r, size=9, color=DARK)
+
+    # --- 1С-ЭПД кратко ---
+    section_title(doc, "Альтернатива: сервис 1С-ЭПД")
+
+    add_body(
+        doc,
+        "1С-ЭПД — типовое решение фирмы «1С» для обмена электронными перевозочными "
+        "документами внутри программ 1С. Оно хорошо подходит компаниям, которые уже "
+        "активно работают в актуальной типовой 1С, регулярно обновляются и хотят вести "
+        "перевозочный обмен прямо в учётной системе без отдельного веб-кабинета.",
+        size=10,
+        space_after=4,
+    )
+
+    epd_points = [
+        "Встроено в типовые конфигурации 1С — отдельное расширение обычно не требуется.",
+        "Поддерживает форматы электронных перевозочных документов, которые требует налоговая служба.",
+        "Есть обмен с другими операторами электронных перевозочных документов.",
+        "Водитель может подписывать документы в мобильном приложении усиленной квалифицированной электронной подписью.",
+        "При покупке пакета от 1 000 документов действует акция: бесплатная настройка одного рабочего места.",
+    ]
+    for t in epd_points:
+        p = doc.add_paragraph()
+        p.paragraph_format.space_after = Pt(2)
         m = p.add_run("●  ")
-        set_run_font(m, size=9, color=YELLOW, bold=True)
+        set_run_font(m, size=9, color=GRAY, bold=True)
         r = p.add_run(t)
         set_run_font(r, size=9, color=DARK)
 
-    # --- Отличия ---
-    section_title(doc, "Основные отличия")
+    add_body(
+        doc,
+        "Ограничение: мобильное приложение 1С-ЭПД сейчас работает в связке с 1С. "
+        "Если у сотрудников нет постоянного доступа к базе 1С, им нужен только телефон "
+        "или браузер, либо вы хотите совместить перевозочные и обычные документы "
+        "в одном сервисе — удобнее выбрать Доки.Логистика.",
+        size=9,
+        color=GRAY,
+        space_before=4,
+        space_after=4,
+    )
+
+    # --- Сравнение (в пользу Доки) ---
+    section_title(doc, "Сравнение по возможностям")
+
+    add_body(
+        doc,
+        "Ниже — наглядное сравнение. Мы специально выделили параметры, которые важны "
+        "бухгалтерии, логистике и руководству в повседневной работе.",
+        size=9,
+        color=GRAY,
+        space_after=4,
+    )
 
     diff = doc.add_table(rows=1, cols=3)
     set_table_borders(diff, color="DDDDDD", sz="4")
-    fill_header_cell(diff.rows[0].cells[0], "Критерий", center=False)
-    fill_header_cell(diff.rows[0].cells[1], "1С-ЭПД")
-    fill_header_cell(diff.rows[0].cells[2], "Доки.Логистика")
+    fill_header_cell(diff.rows[0].cells[0], "Что важно клиенту", center=False)
+    fill_header_cell(diff.rows[0].cells[1], "Доки.Логистика")
+    fill_header_cell(diff.rows[0].cells[2], "1С-ЭПД")
 
     rows_data = [
-        ("Где работает", "Внутри типовой 1С (+ моб. приложение)", "1С + веб + мобильное приложение"),
-        ("Кому подходит", "Учёт в 1С, регулярные обновления, уже есть 1С-ЭДО", "Нет 1С / нет ПК / логисты вне базы / редкие обновления"),
-        ("Установка", "Типовой функционал, без расширений", "Расширение в 1С (веб и мобильный — сразу)"),
-        ("Типы документов", "Фокус на ЭПД (ЭТрН, ЭЗЗ, ЭПЛ и др.)", "ЭПД + полный ЭДО с контрагентами"),
-        ("Хранение", "В информационной базе 1С", "Облачный архив + синхронизация"),
-        ("Старт для новичков", "1С:Клиент ЭДО (бесплатно)", "Промотариф 3 мес. безлимит*"),
-        ("Модель оплаты", "Пакеты титулов / постоплата 7 ₽", "Годовые пакеты исходящих документов"),
+        (
+            "Где можно работать",
+            "В 1С, в браузере и в мобильном приложении — независимо друг от друга",
+            "В основном внутри программы 1С (+ мобильное приложение в связке с 1С)",
+        ),
+        (
+            "Нужна ли 1С для старта",
+            "Не обязательна: можно начать с веб-кабинета или телефона",
+            "Нужна база 1С (или бесплатная конфигурация «1С:Клиент ЭДО»)",
+        ),
+        (
+            "Кто может работать в сервисе",
+            "Бухгалтер, логист, склад, руководитель, водитель — с разграничением прав",
+            "Пользователи, у которых есть доступ к базе 1С",
+        ),
+        (
+            "Какие документы доступны",
+            "Перевозочные документы + полный электронный документооборот с контрагентами",
+            "Фокус на электронных перевозочных документах",
+        ),
+        (
+            "Где хранятся документы",
+            "Надёжный облачный архив + синхронизация с 1С",
+            "В информационной базе 1С",
+        ),
+        (
+            "Подписание вне офиса",
+            "Удобно из браузера и с телефона без доступа к рабочему компьютеру",
+            "Возможно через мобильное приложение при настроенной связке с 1С",
+        ),
+        (
+            "Сценарий «логист отдельно от бухгалтера»",
+            "Да: логист работает в сервисе, не заходя в основную базу 1С",
+            "Как правило, работа идёт через учётную систему 1С",
+        ),
+        (
+            "Старт для новых клиентов",
+            "Промотариф: 3 месяца безлимитных отправок при покупке пакета",
+            "Акция: бесплатная настройка рабочего места при пакете от 1 000 документов",
+        ),
+        (
+            "Ежедневное удобство",
+            "Одно окно для перевозок и обычного обмена документами",
+            "Отдельный контур для перевозочных документов в 1С",
+        ),
     ]
     for i, (a, b, c) in enumerate(rows_data):
         row = diff.add_row().cells
-        shade = LIGHT_GRAY if i % 2 == 0 else WHITE
+        shade = SOFT_DOKI if i % 2 == 0 else WHITE
         fill_cell(row[0], a, bold=True, size=8, align=WD_ALIGN_PARAGRAPH.LEFT, shade=shade)
         fill_cell(row[1], b, size=8, align=WD_ALIGN_PARAGRAPH.LEFT, shade=shade)
-        fill_cell(row[2], c, size=8, align=WD_ALIGN_PARAGRAPH.LEFT, shade=shade)
+        fill_cell(row[2], c, size=8, align=WD_ALIGN_PARAGRAPH.LEFT, shade=LIGHT_GRAY if i % 2 == 0 else WHITE)
 
-    note = doc.add_paragraph()
-    note.paragraph_format.space_before = Pt(4)
-    note.paragraph_format.space_after = Pt(4)
-    run = note.add_run(
-        "* Промотариф Доки недоступен клиентам с учётной записью в сервисе Астрал.ЭДО. "
-        "Ключевое отличие: 1С-ЭПД — типовое решение внутри 1С; Доки.Логистика работает "
-        "независимо в 1С, вебе и мобильном приложении."
+    add_body(
+        doc,
+        "Итог для большинства компаний: Доки.Логистика даёт больше свободы в организации "
+        "работы и закрывает и перевозки, и обычный электронный документооборот. "
+        "1С-ЭПД оставляем как вариант для тех, кто хочет остаться строго внутри типовой 1С.",
+        size=9,
+        bold=True,
+        space_before=6,
+        space_after=6,
     )
-    set_run_font(run, size=8, color=GRAY)
-
-    # --- Тарифы 1С-ЭПД ---
-    section_title(doc, "Стоимость пакетов документов")
-
-    h = doc.add_paragraph()
-    h.paragraph_format.space_before = Pt(2)
-    h.paragraph_format.space_after = Pt(4)
-    run = h.add_run("1С-ЭПД — предоплатные пакеты титулов (12 месяцев)")
-    set_run_font(run, size=11, bold=True, color=DARK)
-
-    note2 = doc.add_paragraph()
-    note2.paragraph_format.space_after = Pt(4)
-    run = note2.add_run(
-        "Постоплатная модель: 7 ₽ за 1 титул. Титулы в ЭЗЗ бесплатны для ГО и перевозчика; "
-        "в ЭТрН оплачиваются Т1 (ГО) и Т2 (перевозчик); в ЭПЛ — Т4. Актуально до 31.12.2026."
-    )
-    set_run_font(run, size=8, color=GRAY)
-
-    t_epd = doc.add_table(rows=1, cols=3)
-    set_table_borders(t_epd, color="DDDDDD", sz="4")
-    fill_header_cell(t_epd.rows[0].cells[0], "Пакет", center=False)
-    fill_header_cell(t_epd.rows[0].cells[1], "Цена за 1 документ, ₽")
-    fill_header_cell(t_epd.rows[0].cells[2], "Стоимость пакета, ₽")
-
-    epd_packages = [
-        ("«1С-ЭДО. ЭПД-600»", "6,00", "3 600"),
-        ("«1С-ЭДО. ЭПД-1000»", "5,00", "5 000"),
-        ("«1С-ЭДО. ЭПД-5000»", "4,50", "22 500"),
-        ("«1С-ЭДО. ЭПД-10000»", "4,00", "40 000"),
-        ("«1С-ЭДО. ЭПД-50000»", "3,00", "150 000"),
-        ("«1С-ЭДО. ЭПД-100000»", "2,50", "250 000"),
-    ]
-    for i, (name, per, total) in enumerate(epd_packages):
-        row = t_epd.add_row().cells
-        shade = SOFT_YELLOW if i % 2 == 0 else WHITE
-        fill_cell(row[0], name, bold=True, size=9, align=WD_ALIGN_PARAGRAPH.LEFT, shade=shade)
-        fill_cell(row[1], per, size=9, shade=shade)
-        fill_cell(row[2], total, bold=True, size=9, shade=shade)
-
-    promo = doc.add_paragraph()
-    promo.paragraph_format.space_before = Pt(6)
-    promo.paragraph_format.space_after = Pt(8)
-    run = promo.add_run("Акция: ")
-    set_run_font(run, size=9, bold=True, color=DARK)
-    run = promo.add_run(
-        "при покупке пакета от 1 000 титулов — бесплатная настройка 1 рабочего места "
-        "для работы с ЭПД (активация сервиса, КриптоПро, УКЭП, МЧД, до 3 контрагентов). "
-        "Лицензия СКЗИ и сертификаты 1С:Подпись оплачиваются отдельно."
-    )
-    set_run_font(run, size=9, color=DARK)
 
     # --- Тарифы Доки ---
-    h = doc.add_paragraph()
-    h.paragraph_format.space_before = Pt(4)
-    h.paragraph_format.space_after = Pt(4)
-    run = h.add_run("Доки.Логистика — тарифы на исходящие документы (12 месяцев)")
-    set_run_font(run, size=11, bold=True, color=DARK)
+    section_title(doc, "Стоимость пакетов документов Доки.Логистика")
 
-    note3 = doc.add_paragraph()
-    note3.paragraph_format.space_after = Pt(4)
-    run = note3.add_run(
-        "Входящие документы подписываются без тарифа. Чем больше пакет — тем ниже цена "
-        "одного документа. Неизрасходованный остаток переносится при своевременном продлении. "
-        "Для сравнения: стоимость бумажного документа ≈ 50 ₽."
+    add_body(
+        doc,
+        "Вы оплачиваете годовой пакет исходящих документов. Входящие документы от "
+        "контрагентов можно получать и подписывать без покупки тарифа. Чем больше пакет — "
+        "тем ниже цена одной отправки. Срок действия тарифа — 12 месяцев. "
+        "Неизрасходованный остаток переносится на следующий период, если новый пакет "
+        "куплен вовремя и стоит в очереди на активацию.",
+        size=9,
+        space_after=4,
     )
-    set_run_font(run, size=8, color=GRAY)
 
     t_doki = doc.add_table(rows=1, cols=3)
     set_table_borders(t_doki, color="DDDDDD", sz="4")
-    fill_header_cell(t_doki.rows[0].cells[0], "Кол-во документов / год", center=False)
-    fill_header_cell(t_doki.rows[0].cells[1], "Стоимость 1 док-та, ₽")
-    fill_header_cell(t_doki.rows[0].cells[2], "Стоимость тарифа, ₽ / год")
+    fill_header_cell(t_doki.rows[0].cells[0], "Количество документов в год", center=False)
+    fill_header_cell(t_doki.rows[0].cells[1], "Цена за 1 документ, руб.")
+    fill_header_cell(t_doki.rows[0].cells[2], "Стоимость тарифа, руб. / год")
 
     doki_packages = [
         ("200", "9,00", "1 800"),
@@ -439,59 +521,200 @@ def build():
     ]
     for i, (qty, per, total) in enumerate(doki_packages):
         row = t_doki.add_row().cells
-        shade = "F0EEF8" if i % 2 == 0 else WHITE
+        shade = SOFT_DOKI if i % 2 == 0 else WHITE
         fill_cell(row[0], qty, bold=True, size=9, align=WD_ALIGN_PARAGRAPH.LEFT, shade=shade)
         fill_cell(row[1], per, size=9, shade=shade)
         fill_cell(row[2], total, bold=True, size=9, shade=shade)
 
-    promo2 = doc.add_paragraph()
-    promo2.paragraph_format.space_before = Pt(6)
-    promo2.paragraph_format.space_after = Pt(6)
-    run = promo2.add_run("Акция «15 месяцев по цене 12»: ")
-    set_run_font(run, size=9, bold=True, color=DARK)
-    run = promo2.add_run(
-        "при покупке любого пакета Доки + 1 часа линии консультаций (3 660 ₽) — "
-        "дополнительно 3 месяца демо-доступа. Оплаченный пакет активируется после демо-периода."
+    promo = doc.add_table(rows=1, cols=1)
+    set_table_borders(promo, color=YELLOW_HEX, sz="10")
+    pc = promo.rows[0].cells[0]
+    set_cell_shading(pc, SOFT_YELLOW)
+    clear_cell(pc)
+    p = pc.paragraphs[0]
+    run = p.add_run("Акция «15 месяцев по цене 12»")
+    set_run_font(run, size=10, bold=True, color=DARK)
+    p = pc.add_paragraph()
+    p.paragraph_format.space_before = Pt(2)
+    run = p.add_run(
+        "При покупке любого пакета Доки и 1 часа линии консультаций за 3 660 рублей "
+        "мы даём дополнительно 3 месяца демо-доступа. Сначала вы пользуетесь демо-периодом, "
+        "затем автоматически активируется оплаченный пакет. Итого — 15 месяцев работы "
+        "вместо 12. Промотариф на 3 месяца безлимита доступен новым клиентам "
+        "(не применяется, если уже есть учётная запись в сервисе Астрал.ЭДО)."
     )
     set_run_font(run, size=9, color=DARK)
+
+    # --- Тарифы 1С-ЭПД ---
+    section_title(doc, "Стоимость пакетов документов 1С-ЭПД")
+
+    add_body(
+        doc,
+        "Для 1С-ЭПД доступны предоплатные пакеты на 12 месяцев и постоплатная модель "
+        "(7 рублей за один отправленный титул документа). "
+        "Важные правила оплаты титулов: в электронном заказе-заявке титулы бесплатны "
+        "для грузоотправителя и перевозчика; в электронной транспортной накладной "
+        "оплачиваются титул грузоотправителя и титул перевозчика; в электронном "
+        "путевом листе оплачивается один титул. Правила актуальны до 31.12.2026.",
+        size=9,
+        space_after=4,
+    )
+
+    t_epd = doc.add_table(rows=1, cols=3)
+    set_table_borders(t_epd, color="DDDDDD", sz="4")
+    fill_header_cell(t_epd.rows[0].cells[0], "Пакет на 12 месяцев", center=False)
+    fill_header_cell(t_epd.rows[0].cells[1], "Цена за 1 документ, руб.")
+    fill_header_cell(t_epd.rows[0].cells[2], "Стоимость пакета, руб.")
+
+    epd_packages = [
+        ("Пакет на 600 документов", "6,00", "3 600"),
+        ("Пакет на 1 000 документов", "5,00", "5 000"),
+        ("Пакет на 5 000 документов", "4,50", "22 500"),
+        ("Пакет на 10 000 документов", "4,00", "40 000"),
+        ("Пакет на 50 000 документов", "3,00", "150 000"),
+        ("Пакет на 100 000 документов", "2,50", "250 000"),
+    ]
+    for i, (name, per, total) in enumerate(epd_packages):
+        row = t_epd.add_row().cells
+        shade = SOFT_YELLOW if i % 2 == 0 else WHITE
+        fill_cell(row[0], name, bold=True, size=9, align=WD_ALIGN_PARAGRAPH.LEFT, shade=shade)
+        fill_cell(row[1], per, size=9, shade=shade)
+        fill_cell(row[2], total, bold=True, size=9, shade=shade)
+
+    add_body(
+        doc,
+        "Акция по 1С-ЭПД: при покупке пакета от 1 000 документов — бесплатная настройка "
+        "одного рабочего места (активация сервиса, КриптоПро, электронная подпись, "
+        "машиночитаемая доверенность, приглашение до трёх контрагентов). "
+        "Лицензия средства криптозащиты и сертификаты электронной подписи оплачиваются отдельно.",
+        size=9,
+        space_before=4,
+        space_after=6,
+    )
 
     # --- Дополнительно ---
     section_title(doc, "Что может понадобиться дополнительно")
 
     extra = doc.add_table(rows=1, cols=3)
     set_table_borders(extra, color="DDDDDD", sz="4")
-    fill_header_cell(extra.rows[0].cells[0], "Наименование", center=False)
-    fill_header_cell(extra.rows[0].cells[1], "Цена")
-    fill_header_cell(extra.rows[0].cells[2], "Комментарий", center=False)
+    fill_header_cell(extra.rows[0].cells[0], "Услуга или продукт", center=False)
+    fill_header_cell(extra.rows[0].cells[1], "Стоимость")
+    fill_header_cell(extra.rows[0].cells[2], "Для чего нужно", center=False)
 
     extras = [
-        ("Линия консультаций 1С (1–3 ч)", "3 660 ₽/час", "Удалённая техподдержка и настройка"),
-        ("Подготовка 1 рабочего места 1С-ЭПД", "7 320 ₽", "Обучение + настройка / экспресс-анализ"),
-        ("Лицензия КриптоПро CSP (бессрочно)", "3 700 ₽", "СКЗИ для работы с ЭП"),
-        ("УКЭП (1С:Подпись)", "1 050 ₽", "На каждого подписанта"),
-        ("Рутокен 3.0 / NFC-токен", "от 2 700 ₽", "Носитель для мобильного подписания"),
-        ("Договор 1С:ИТС", "от 3 273 ₽/мес.", "Сопровождение и обновления 1С"),
+        (
+            "Линия консультаций 1С (от 1 до 3 часов)",
+            "3 660 руб./час",
+            "Удалённая помощь по настройке и вопросам работы",
+        ),
+        (
+            "Подготовка одного рабочего места под электронные перевозочные документы",
+            "7 320 руб.",
+            "Обучение, экспресс-анализ сценариев, базовая настройка",
+        ),
+        (
+            "Лицензия КриптоПро CSP (бессрочно, 1 рабочее место)",
+            "3 700 руб.",
+            "Программа для работы с электронной подписью",
+        ),
+        (
+            "Усиленная квалифицированная электронная подпись",
+            "1 050 руб.",
+            "Выпускается на каждого сотрудника, который подписывает документы",
+        ),
+        (
+            "Рутокен 3.0 или NFC-токен для подписи",
+            "от 2 700 руб.",
+            "Носитель подписи; NFC нужен для подписания с телефона",
+        ),
+        (
+            "Договор 1С:ИТС",
+            "от 3 273 руб./мес.",
+            "Сопровождение и обновление программ 1С",
+        ),
     ]
-    for i, (n, p, c) in enumerate(extras):
+    for i, (n, price, c) in enumerate(extras):
         row = extra.add_row().cells
         shade = LIGHT_GRAY if i % 2 == 0 else WHITE
         fill_cell(row[0], n, bold=True, size=8, align=WD_ALIGN_PARAGRAPH.LEFT, shade=shade)
-        fill_cell(row[1], p, size=8, shade=shade)
+        fill_cell(row[1], price, size=8, shade=shade)
         fill_cell(row[2], c, size=8, align=WD_ALIGN_PARAGRAPH.LEFT, shade=shade)
 
-    # --- Контакты менеджера ---
-    spacer = doc.add_paragraph()
-    spacer.paragraph_format.space_before = Pt(10)
-    spacer.paragraph_format.space_after = Pt(0)
-    pPr = spacer._p.get_or_add_pPr()
-    pBdr = OxmlElement("w:pBdr")
-    bottom = OxmlElement("w:bottom")
-    bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), "24")
-    bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), YELLOW_HEX)
-    pBdr.append(bottom)
-    pPr.append(pBdr)
+    # --- О компании Форус ---
+    section_title(doc, "Почему Форус")
+
+    about = doc.add_table(rows=1, cols=1)
+    set_table_borders(about, color=YELLOW_HEX, sz="12")
+    ac = about.rows[0].cells[0]
+    set_cell_shading(ac, SOFT_YELLOW)
+    clear_cell(ac)
+    p = ac.paragraphs[0]
+    run = p.add_run("Группа компаний «Форус»")
+    set_run_font(run, size=11, bold=True, color=DARK)
+    p = ac.add_paragraph()
+    p.paragraph_format.space_before = Pt(3)
+    run = p.add_run(
+        "Крупнейшая IT-компания Иркутской области, на рынке с 1992 года. "
+        "Входим в ТОП-50 крупнейших IT-компаний России. В штате более 300 "
+        "сертифицированных специалистов. Первые в рейтинге фирмы «1С» по числу "
+        "аттестованных специалистов по «1С:Предприятие 8» в Иркутской области. "
+        "Система менеджмента качества соответствует международному стандарту ISO 9001."
+    )
+    set_run_font(run, size=9, color=DARK)
+
+    statuses = doc.add_table(rows=2, cols=3)
+    set_table_borders(statuses, color="DDDDDD", sz="4")
+    status_items = [
+        "1С: Центр ERP",
+        "Центр сопровождения 1С",
+        "Центр компетенции 1С: КОРП",
+        "Центр реальной автоматизации",
+        "Центр компетенции по документообороту",
+        "Центр компетенции по кадровому электронному документообороту",
+    ]
+    # fill 2x3
+    for idx, text in enumerate(status_items):
+        r, c = divmod(idx, 3)
+        cell = statuses.rows[r].cells[c]
+        set_cell_shading(cell, WHITE)
+        clear_cell(cell)
+        p = cell.paragraphs[0]
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        m = p.add_run("● ")
+        set_run_font(m, size=8, color=YELLOW, bold=True)
+        run = p.add_run(text)
+        set_run_font(run, size=8, bold=True, color=DARK)
+
+    add_body(
+        doc,
+        "Мы не просто продаём доступ к сервису: помогаем выбрать решение под ваши процессы, "
+        "настраиваем рабочее место, выпускаем электронные подписи, обучаем сотрудников "
+        "и сопровождаем после запуска. Вы всегда можете обратиться к персональному менеджеру "
+        "и на линию консультаций Форус.",
+        size=9,
+        space_before=6,
+        space_after=6,
+    )
+
+    # --- Следующие шаги ---
+    section_title(doc, "Как начать работу")
+
+    steps = [
+        "Короткий созвон или встреча: уточняем ваши сценарии перевозок и объём документов.",
+        "Подбираем пакет Доки.Логистика (или 1С-ЭПД, если это ваш осознанный выбор) и считаем итоговую стоимость.",
+        "Подключаем сервис, настраиваем подписи и права доступа, приглашаем ключевых контрагентов.",
+        "Обучаем сотрудников и сопровождаем на старте, чтобы обмен пошёл без сбоев.",
+    ]
+    for i, t in enumerate(steps, 1):
+        p = doc.add_paragraph()
+        p.paragraph_format.space_after = Pt(3)
+        n = p.add_run(f"{i}. ")
+        set_run_font(n, size=10, bold=True, color=YELLOW)
+        r = p.add_run(t)
+        set_run_font(r, size=10, color=DARK)
+
+    # --- Контакты ---
+    yellow_rule(doc, space_before=10, space_after=8)
 
     contact_box = doc.add_table(rows=1, cols=2)
     set_table_borders(contact_box, color=YELLOW_HEX, sz="12")
@@ -509,13 +732,12 @@ def build():
     run = p.add_run("Оглоблина Софья")
     set_run_font(run, size=13, bold=True, color=DARK)
     p = left_c.add_paragraph()
-    p.paragraph_format.space_before = Pt(0)
-    run = p.add_run("Менеджер по продаже 1С-ЭПД")
-    set_run_font(run, size=9, color=DARK)
+    run = p.add_run("Менеджер по продаже решений для электронных перевозочных документов")
+    set_run_font(run, size=8, color=DARK)
     for line in [
-        "E-mail: sogloblina@forus.ru",
-        "Тел.: +7 (3952) 78-00-00, доб. 1861",
-        "Москва +5 часов",
+        "Электронная почта: sogloblina@forus.ru",
+        "Телефон: +7 (3952) 78-00-00, доб. 1861",
+        "Разница со временем Москвы: +5 часов",
     ]:
         p = left_c.add_paragraph()
         p.paragraph_format.space_before = Pt(1)
@@ -525,7 +747,7 @@ def build():
 
     clear_cell(right_c)
     p = right_c.paragraphs[0]
-    run = p.add_run("Контакты ГК «Форус»")
+    run = p.add_run("Контакты группы компаний «Форус»")
     set_run_font(run, size=9, color=GRAY)
     p = right_c.add_paragraph()
     p.paragraph_format.space_before = Pt(2)
@@ -533,8 +755,8 @@ def build():
     set_run_font(run, size=12, bold=True, color=DARK)
     for line in [
         "664047, г. Иркутск, ул. Ямская, 1/1, офис 1",
-        "Тел.: +7 (3952) 78-00-00, 72-87-02",
-        "E-mail: info@forus.ru",
+        "Телефон: +7 (3952) 78-00-00, 72-87-02",
+        "Электронная почта: info@forus.ru",
         "Сайт: www.forus.ru",
         "ИНН 3812023430  ·  ОГРН 1023801752633",
     ]:
@@ -548,26 +770,28 @@ def build():
     closing.alignment = WD_ALIGN_PARAGRAPH.CENTER
     closing.paragraph_format.space_before = Pt(12)
     run = closing.add_run(
-        "Готовы подобрать оптимальный пакет и провести демонстрацию сервиса.\n"
-        "Ожидаем обратную связь и надеемся на плодотворное сотрудничество!"
+        "Готовы подобрать пакет под ваш объём документов и провести демонстрацию Доки.Логистика.\n"
+        "Будем рады ответить на вопросы и помочь с быстрым запуском."
     )
     set_run_font(run, size=9, color=GRAY)
 
     doc.save(OUT)
+    root_copy = ROOT / "КП_1С-ЭПД_и_Доки_Логистика.docx"
+    doc.save(root_copy)
     print(f"Saved: {OUT}")
+    print(f"Saved: {root_copy}")
     return OUT
 
 
 if __name__ == "__main__":
-    # Ensure logo exists
     from PIL import Image, ImageDraw, ImageFont
-    import os
 
-    ASSETS.mkdir(parents=True, exist_ok=True)
-    logo_path = ASSETS / "brand" / "forus_logo_clean.png"
+    brand = ASSETS / "brand"
+    brand.mkdir(parents=True, exist_ok=True)
+    logo_path = brand / "forus_logo_word.png"
     if not logo_path.exists():
         font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-        img = Image.new("RGBA", (420, 120), (255, 255, 255, 0))
+        img = Image.new("RGBA", (420, 120), (255, 255, 255, 255))
         d = ImageDraw.Draw(img)
         font = ImageFont.truetype(font_path, 64)
         text = "Форус"
@@ -580,6 +804,6 @@ if __name__ == "__main__":
         ox = x + fw + 2
         oy = y - 6
         d.rounded_rectangle([ox, oy, ox + ow - 2, oy + 9], radius=2, fill=(232, 184, 74, 255))
-        img.save(logo_path)
+        img.convert("RGB").save(logo_path)
 
     build()
