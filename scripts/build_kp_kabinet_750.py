@@ -359,7 +359,7 @@ def build_pdf():
         "Работы выполняются удалённо. Выезд и нетиповые доработки печатных форм — по отдельному согласованию.",
         "Коммерческое предложение действует 30 календарных дней с даты направления.",
     ]:
-        L.check(t, size=7.7, leading=10.5)
+        L.check(t, size=7.4, leading=9.6)
     L.gap(3 * mm)
 
     L.title("2. Сроки")
@@ -388,7 +388,7 @@ def build_pdf():
         c.drawString(xs[i] + 2 * mm, L.y - hh + 2.2 * mm, h)
     L.y -= hh
     for ri, (a, b, d) in enumerate(rows):
-        rh = 7.5 * mm
+        rh = 6.8 * mm
         c.setFillColor(YELLOW_SOFT if ri in (1, 5) else (LIGHT if ri % 2 == 0 else white))
         c.rect(ML, L.y - rh, CW, rh, fill=1, stroke=0)
         c.setStrokeColor(LINE)
@@ -439,7 +439,7 @@ def build_pdf():
         c.drawString(xs[i] + 2 * mm, L.y - hh + 2.2 * mm, h)
     L.y -= hh
     for ri, (a, b, d) in enumerate(data):
-        rh = 7.8 * mm
+        rh = 6.8 * mm
         c.setFillColor(YELLOW_SOFT if ri > 0 else LIGHT)
         c.rect(ML, L.y - rh, CW, rh, fill=1, stroke=0)
         c.setStrokeColor(LINE)
@@ -490,7 +490,7 @@ def build_pdf():
         c.drawCentredString(xs[i] + cols[i] / 2, L.y - hh + 2 * mm, h)
     L.y -= hh
     for ri, (a, b, d) in enumerate(cmp):
-        rh = 7 * mm
+        rh = 6.2 * mm
         for ci, (cell, w) in enumerate(zip((a, b, d), cols)):
             x = xs[ci]
             if ci == 1:
@@ -512,31 +512,31 @@ def build_pdf():
                 c.drawCentredString(x + w / 2, L.y - rh + 2.3 * mm, cell)
         L.y -= rh
 
-    L.gap(5 * mm)
-    # CTA + manager
+    # CTA + manager — фиксируем у низа страницы, чтобы блок не «уплывал»
+    cta_top = MB + 34 * mm
     c.setFillColor(DARK)
-    c.roundRect(ML, L.y - 28 * mm, CW, 28 * mm, 6, fill=1, stroke=0)
+    c.roundRect(ML, cta_top - 28 * mm, CW, 28 * mm, 6, fill=1, stroke=0)
     c.setFillColor(YELLOW)
     c.setFont("DejaVuBold", 10)
-    c.drawCentredString(PAGE_W / 2, L.y - 6 * mm, "Готовы подключить 750 кабинетов и помочь с запуском")
+    c.drawCentredString(PAGE_W / 2, cta_top - 6 * mm, "Готовы подключить 750 кабинетов и помочь с запуском")
     c.setFillColor(white)
     c.setFont("DejaVu", 7.5)
-    c.drawCentredString(PAGE_W / 2, L.y - 11 * mm, "Проведём демонстрацию для кадровой службы и ИТ-отдела и ответим на вопросы.")
+    c.drawCentredString(PAGE_W / 2, cta_top - 11 * mm, "Проведём демонстрацию для кадровой службы и ИТ-отдела и ответим на вопросы.")
 
     c.setFillColor(YELLOW_SOFT)
-    c.roundRect(ML + 4 * mm, L.y - 25 * mm, CW - 8 * mm, 12 * mm, 4, fill=1, stroke=0)
+    c.roundRect(ML + 4 * mm, cta_top - 25 * mm, CW - 8 * mm, 12 * mm, 4, fill=1, stroke=0)
     c.setFillColor(DARK)
     c.setFont("DejaVuBold", 8.5)
-    c.drawString(ML + 6 * mm, L.y - 17 * mm, f"Ваш менеджер: {MANAGER}")
+    c.drawString(ML + 6 * mm, cta_top - 17 * mm, f"Ваш менеджер: {MANAGER}")
     c.setFont("DejaVu", 7.3)
     c.setFillColor(GRAY)
-    c.drawString(ML + 6 * mm, L.y - 21.5 * mm, f"{MANAGER_EMAIL}   ·   {MANAGER_PHONE}")
+    c.drawString(ML + 6 * mm, cta_top - 21.5 * mm, f"{MANAGER_EMAIL}   ·   {MANAGER_PHONE}")
     c.setFillColor(DARK)
     c.setFont("DejaVuBold", 7.5)
-    c.drawRightString(PAGE_W - MR - 6 * mm, L.y - 17 * mm, "ГК «Форус»")
+    c.drawRightString(PAGE_W - MR - 6 * mm, cta_top - 17 * mm, "ГК «Форус»")
     c.setFont("DejaVu", 7)
     c.setFillColor(GRAY)
-    c.drawRightString(PAGE_W - MR - 6 * mm, L.y - 21.5 * mm, "www.forus.ru")
+    c.drawRightString(PAGE_W - MR - 6 * mm, cta_top - 21.5 * mm, "www.forus.ru")
 
     footer(c, 2)
     c.save()
