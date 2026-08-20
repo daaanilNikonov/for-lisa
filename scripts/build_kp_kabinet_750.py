@@ -25,6 +25,9 @@ OUT_DOCX = ROOT / "output" / "КП_ТФМ_Спецтехника_КЭДО_750.do
 CABINETS = 223_200
 GIFT_VALUE = 18_300
 PER_MONTH = 25
+HOUR_RATE = 3_660  # цена часа линии до 4 часов
+SETUP_HOURS_COST = 14_640  # 4 × 3 660
+RESERVE_HOUR_COST = 3_660
 
 MANAGER = "Данил Кургузов"
 EMAIL = "dkurguzov@forus.ru"
@@ -38,13 +41,25 @@ BAD = RGBColor(0xB7, 0x1C, 0x1C)
 GOLD = RGBColor(0x9A, 0x7A, 0x10)
 
 
-def set_run(run, size=10, bold=False, color=None):
+def set_run(run, size=10, bold=False, color=None, strike=False):
     run.font.name = "Arial"
     run._element.rPr.rFonts.set(qn("w:eastAsia"), "Arial")
     run.font.size = Pt(size)
     run.bold = bold
+    run.font.strike = strike
     if color:
         run.font.color.rgb = color
+
+
+def amount_struck_zero(paragraph, struck, *, size=9):
+    """Зачёркнутая старая цена красным + 0 ₽ зелёным."""
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    r1 = paragraph.add_run(struck)
+    set_run(r1, size=size, bold=True, color=BAD, strike=True)
+    r2 = paragraph.add_run("  →  ")
+    set_run(r2, size=size, color=GRAY)
+    r3 = paragraph.add_run("0 ₽")
+    set_run(r3, size=size, bold=True, color=OK)
 
 
 def shade(cell, hexfill):
@@ -272,46 +287,81 @@ def build_docx():
         set_cell_margins(cell, 20, 20, 30, 30)
         set_run(cell.paragraphs[0].add_run(h), size=8, bold=True, color=DARK)
 
-    price_rows = [
-        (
-            "1С:Кабинет сотрудника, 750 кабинетов на 12 месяцев",
-            "Пакеты: 500 + 200 + 50 кабинетов",
-            f"{CABINETS:,}".replace(",", " "),
-            False,
+    # строка кабинетов
+    row = pt.add_row().cells
+    for cell in row:
+        shade(cell, "FFFBEA")
+        clear(cell)
+        set_cell_margins(cell, 18, 18, 30, 30)
+    set_run(row[0].paragraphs[0].add_run("1С:Кабинет сотрудника, 750 кабинетов на 12 месяцев"), size=8, bold=False, color=DARK)
+    set_run(row[1].paragraphs[0].add_run("Пакеты: 500 + 200 + 50 кабинетов"), size=7.5, color=GRAY)
+    row[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    set_run(row[2].paragraphs[0].add_run(f"{CABINETS:,}".replace(",", " ")), size=9, bold=True, color=DARK)
+
+    # настройка ≈4 часа
+    row = pt.add_row().cells
+    for cell in row:
+        shade(cell, "FFF6D8")
+        clear(cell)
+        set_cell_margins(cell, 18, 18, 30, 30)
+    set_run(row[0].paragraphs[0].add_run("Настройка и запуск сервиса (≈4 часа)"), size=8, bold=True, color=DARK)
+    set_run(
+        row[1].paragraphs[0].add_run(
+            "Подключить сервис, сделать первичные настройки КЭДО, создать первые 5 кабинетов"
         ),
-        (
-            "Настройка и запуск сервиса (≈4 часа)",
-            "Покрывается подарочными часами линии консультаций",
-            "0 ₽",
-            True,
-        ),
-        (
-            "Запас на вопросы по 1С (1 час)",
-            "Покрывается подарочными часами линии консультаций",
-            "0 ₽",
-            True,
-        ),
-        (
-            "ПОДАРОК: 5 часов линии консультаций",
-            f"Акция «Больше, чем кешбэк!» — выгода {GIFT_VALUE:,} ₽".replace(",", " "),
-            "0 ₽",
-            True,
-        ),
-    ]
-    for label, note, amount, gift in price_rows:
-        row = pt.add_row().cells
-        fill = "FFF6D8" if gift else "FFFBEA"
-        for cell in row:
-            shade(cell, fill)
-            clear(cell)
-            set_cell_margins(cell, 18, 18, 30, 30)
-        set_run(row[0].paragraphs[0].add_run(label), size=8, bold=gift, color=DARK)
-        set_run(row[1].paragraphs[0].add_run(note), size=7.5, color=GRAY)
-        row[2].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-        set_run(row[2].paragraphs[0].add_run(amount), size=9, bold=True, color=OK if gift else DARK)
+        size=7.5, color=GRAY,
+    )
+    amount_struck_zero(row[2].paragraphs[0], f"{SETUP_HOURS_COST:,}".replace(",", " "))
+
+    # запас 1 час
+    row = pt.add_row().cells
+    for cell in row:
+        shade(cell, "FFF6D8")
+        clear(cell)
+        set_cell_margins(cell, 18, 18, 30, 30)
+    set_run(row[0].paragraphs[0].add_run("Запас на вопросы по 1С (1 час)"), size=8, bold=True, color=DARK)
+    set_run(row[1].paragraphs[0].add_run("в подарок"), size=7.5, color=GRAY)
+    amount_struck_zero(row[2].paragraphs[0], f"{RESERVE_HOUR_COST:,}".replace(",", " "))
     keep_together(pt)
 
-    # Total — compact yellow bar (smaller sum so it stays on page 1)
+    # Отдельный акцент: внедрение 0 ₽
+    zero_box = doc.add_table(rows=1, cols=1)
+    set_borders(zero_box, "2E7D32", "12")
+    zc = zero_box.rows[0].cells[0]
+    shade(zc, "E8F5E9")
+    set_cell_margins(zc, 28, 28, 50, 50)
+    clear(zc)
+    set_run(zc.paragraphs[0].add_run("Внедрение — 0 ₽"), size=10, bold=True, color=OK)
+    p = zc.add_paragraph()
+    p.paragraph_format.space_before = Pt(1)
+    p.paragraph_format.space_after = Pt(0)
+    set_run(
+        p.add_run(
+            f"Настройка и стартовая поддержка покрываются подарочными часами линии консультаций "
+            f"(выгода {SETUP_HOURS_COST + RESERVE_HOUR_COST:,} ₽).".replace(",", " ")
+        ),
+        size=7.5, color=DARK,
+    )
+
+    # Плашка: 45 дней в подарок
+    gift_days = doc.add_table(rows=1, cols=1)
+    set_borders(gift_days, "F0C14A", "14")
+    gc = gift_days.rows[0].cells[0]
+    shade(gc, "FFF6D8")
+    set_cell_margins(gc, 28, 28, 50, 50)
+    clear(gc)
+    set_run(gc.paragraphs[0].add_run("45 дней пользования — в подарок"), size=10, bold=True, color=DARK)
+    p = gc.add_paragraph()
+    p.paragraph_format.space_before = Pt(1)
+    p.paragraph_format.space_after = Pt(0)
+    set_run(
+        p.add_run(
+            "При покупке на 12 месяцев дарим ещё 45 дней. Итого 13,5 месяцев пользования по цене 12 месяцев."
+        ),
+        size=8, color=DARK,
+    )
+
+    # Total — compact yellow bar
     tot = doc.add_table(rows=1, cols=2)
     set_borders(tot, "F0C14A", "12")
     left, right = tot.rows[0].cells
@@ -326,7 +376,7 @@ def build_docx():
     p.paragraph_format.space_before = Pt(1)
     p.paragraph_format.space_after = Pt(0)
     set_run(
-        p.add_run("Только пакет кабинетов. Настройка и поддержка — из подарка. Подпись сотрудникам — бесплатно."),
+        p.add_run("Только пакет кабинетов. Внедрение — 0 ₽. Подпись сотрудникам — бесплатно."),
         size=7.5, color=DARK,
     )
     right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
