@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Коммерческое предложение-листовка: 1С:Кабинет сотрудника (750).
+"""Листовка КП: 1С:Кабинет сотрудника — 750 кабинетов.
 
-PDF в стиле листовок Форус + DOCX в том же содержании.
-Менеджер: Данил Кургузов.
-5 часов линии в подарок: ~4 на настройку, 1 на доп. вопросы. Клиент за часы не платит.
+Жёлтый фирменный стиль Форус, без повторов, понятное ценообразование.
+PDF + DOCX. Менеджер: Данил Кургузов.
+5 часов в подарок (≈4 настройка + 1 вопросы). Клиент за часы не платит.
 """
 
 from __future__ import annotations
@@ -16,68 +16,47 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from reportlab.lib.utils import ImageReader
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Mm, Pt, RGBColor as DocRGB
+from docx.shared import Cm, Mm, Pt, RGBColor, Twips
 
 ROOT = Path(__file__).resolve().parents[1]
+BRAND = ROOT / "assets_forus" / "brand"
 OUT_PDF = ROOT / "output" / "КП_ТФМ_Спецтехника_КЭДО_750.pdf"
 OUT_DOCX = ROOT / "output" / "КП_ТФМ_Спецтехника_КЭДО_750.docx"
-BRAND = ROOT / "assets_forus" / "brand"
 
-YELLOW = HexColor("#F0C14A")
-YELLOW_SOFT = HexColor("#FFF8E8")
-DARK = HexColor("#1A1A1A")
-GRAY = HexColor("#5A5A5A")
-LIGHT = HexColor("#F7F7F7")
-LINE = HexColor("#E5E5E5")
-GREEN_BG = HexColor("#EAF6EA")
-GREEN = HexColor("#1F6B2E")
-RED_BG = HexColor("#F9EAEA")
-RED = HexColor("#8C2020")
+# Палитра Форус — больше жёлтого, меньше чёрного
+Y = HexColor("#F0C14A")
+Y2 = HexColor("#FFE08A")
+YSOFT = HexColor("#FFF6D8")
+YCARD = HexColor("#FFFBEA")
+DARK = HexColor("#2B2B2B")
+GRAY = HexColor("#666666")
+MUTED = HexColor("#8A8A8A")
+LINE = HexColor("#F0C14A")
+WHITE = white
+OK = HexColor("#2E7D32")
+OKBG = HexColor("#E8F5E9")
+BAD = HexColor("#C62828")
+BADBG = HexColor("#FFEBEE")
 
 pdfmetrics.registerFont(TTFont("DejaVu", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"))
 pdfmetrics.registerFont(TTFont("DejaVuBold", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"))
 
-PAGE_W, PAGE_H = A4
-ML, MR = 14 * mm, 14 * mm
-MT, MB = 12 * mm, 12 * mm
-CW = PAGE_W - ML - MR
+W, H = A4
+L, R = 13 * mm, 13 * mm
+CW = W - L - R
 
 CABINETS = 223_200
-GIFT_HOURS = 5
 GIFT_VALUE = 18_300
-TOTAL = CABINETS
+PER_MONTH = 25  # approx
 
 MANAGER = "Данил Кургузов"
-MANAGER_EMAIL = "dkurguzov@forus.ru"
-MANAGER_PHONE = "+7 (3952) 78-00-00"
-
-
-# ---------- helpers PDF ----------
-
-def wave(c, x, y, w, h, flip=False):
-    c.setFillColor(YELLOW)
-    p = c.beginPath()
-    if not flip:
-        p.moveTo(x, y)
-        p.curveTo(x + w * 0.3, y + h, x + w * 0.55, y - h * 0.2, x + w * 0.8, y + h * 0.7)
-        p.curveTo(x + w * 0.92, y + h, x + w, y + h * 0.3, x + w, y + h * 0.5)
-        p.lineTo(x + w, y + h * 1.5)
-        p.lineTo(x, y + h * 1.5)
-        p.close()
-    else:
-        p.moveTo(x, y + h)
-        p.curveTo(x + w * 0.25, y, x + w * 0.5, y + h * 1.1, x + w * 0.75, y + h * 0.25)
-        p.curveTo(x + w * 0.9, y, x + w, y + h * 0.4, x + w, y)
-        p.lineTo(x + w, y - h)
-        p.lineTo(x, y - h)
-        p.close()
-    c.drawPath(p, fill=1, stroke=0)
+EMAIL = "dkurguzov@forus.ru"
+PHONE = "+7 (3952) 78-00-00"
 
 
 def wrap(c, text, font, size, max_w):
@@ -95,480 +74,430 @@ def wrap(c, text, font, size, max_w):
     return lines
 
 
-class Layout:
-    def __init__(self, c: canvas.Canvas):
-        self.c = c
-        self.y = PAGE_H - MT
-
-    def gap(self, h):
-        self.y -= h
-
-    def ensure(self, need):
-        """If not enough space, caller should have started new page."""
-        return self.y - MB >= need
-
-    def rule(self, thick=2.2):
-        self.c.setFillColor(YELLOW)
-        self.c.rect(ML, self.y, CW, thick, fill=1, stroke=0)
-        self.y -= 4 * mm
-
-    def title(self, text, size=11):
-        self.c.setFont("DejaVuBold", size)
-        self.c.setFillColor(DARK)
-        self.c.drawString(ML, self.y, text)
-        self.y -= 2.2 * mm
-        self.rule(1.6)
-
-    def text(self, text, size=8.2, color=DARK, leading=None, bold=False, indent=0):
-        leading = leading or (size + 2.4)
-        font = "DejaVuBold" if bold else "DejaVu"
-        self.c.setFont(font, size)
-        self.c.setFillColor(color)
-        for line in wrap(self.c, text, font, size, CW - indent):
-            self.c.drawString(ML + indent, self.y, line)
-            self.y -= leading * mm / 2.834  # wrong - leading should be in points
-        # fix: use points properly
-        return
-
-    def para(self, text, size=8.2, color=DARK, leading=11, bold=False, indent=0):
-        font = "DejaVuBold" if bold else "DejaVu"
-        self.c.setFont(font, size)
-        self.c.setFillColor(color)
-        for line in wrap(self.c, text, font, size, CW - indent):
-            self.c.drawString(ML + indent, self.y, line)
-            self.y -= leading
-
-    def check(self, text, size=8, leading=11):
-        self.c.setFillColor(YELLOW)
-        self.c.setFont("DejaVuBold", size + 1)
-        self.c.drawString(ML, self.y - 1, "✓")
-        font = "DejaVu"
-        self.c.setFont(font, size)
-        self.c.setFillColor(DARK)
-        x0 = ML + 5 * mm
-        lines = wrap(self.c, text, font, size, CW - 5 * mm)
-        for i, line in enumerate(lines):
-            self.c.drawString(x0, self.y, line)
-            self.y -= leading
-        self.y -= 1.5
-
-    def box(self, h, fill=YELLOW_SOFT, stroke=YELLOW, pad=False):
-        self.c.setFillColor(fill)
-        self.c.setStrokeColor(stroke)
-        self.c.setLineWidth(1.2)
-        self.c.roundRect(ML, self.y - h, CW, h, 5, fill=1, stroke=1)
-        return self.y - h
+def draw_waves(c):
+    tr = BRAND / "wave_tr.png"
+    bl = BRAND / "wave_bl.png"
+    if tr.exists():
+        c.drawImage(str(tr), W - 55 * mm, H - 28 * mm, width=55 * mm, height=18 * mm, mask="auto")
+    if bl.exists():
+        c.drawImage(str(bl), 0, 0, width=50 * mm, height=16 * mm, mask="auto")
 
 
 def header(c):
+    draw_waves(c)
     logo = BRAND / "forus_logo_word.png"
     if logo.exists():
-        c.drawImage(str(logo), ML, PAGE_H - MT - 12 * mm, width=34 * mm, height=12 * mm,
-                    mask="auto", preserveAspectRatio=True, anchor="sw")
+        c.drawImage(str(logo), L, H - 18 * mm, width=32 * mm, height=11 * mm, mask="auto", preserveAspectRatio=True)
     c.setFillColor(GRAY)
-    c.setFont("DejaVu", 7.2)
-    lines = [
-        "Группа компаний «Форус»",
-        "Центр компетенции по кадровому электронному документообороту",
-        f"{MANAGER_PHONE}   ·   www.forus.ru",
-    ]
-    yy = PAGE_H - MT - 3 * mm
-    for line in lines:
-        c.drawRightString(PAGE_W - MR, yy, line)
-        yy -= 9
-    wave(c, PAGE_W - 52 * mm, PAGE_H - 14 * mm, 52 * mm, 7 * mm)
-    c.setFillColor(YELLOW)
-    c.rect(ML, PAGE_H - MT - 14.5 * mm, CW, 2.4, fill=1, stroke=0)
+    c.setFont("DejaVu", 7)
+    c.drawRightString(W - R, H - 8 * mm, "Группа компаний «Форус»")
+    c.drawRightString(W - R, H - 12 * mm, f"{PHONE}  ·  www.forus.ru")
+    # yellow line
+    c.setFillColor(Y)
+    c.roundRect(L, H - 21 * mm, CW, 2.8, 1.4, fill=1, stroke=0)
 
 
-def footer(c, page, pages=2):
-    wave(c, 0, 2 * mm, 48 * mm, 6 * mm, flip=True)
-    c.setFillColor(YELLOW)
-    c.rect(ML, MB - 1 * mm, CW, 1.8, fill=1, stroke=0)
-    c.setFont("DejaVu", 6.8)
-    c.setFillColor(GRAY)
-    c.drawString(ML, MB - 5.5 * mm, "www.forus.ru  ·  г. Иркутск, ул. Ямская, 1/1")
-    c.drawRightString(PAGE_W - MR, MB - 5.5 * mm, f"{page} / {pages}")
+def footer(c, n):
+    c.setFillColor(Y)
+    c.roundRect(L, 8 * mm, CW, 2, 1, fill=1, stroke=0)
+    c.setFillColor(MUTED)
+    c.setFont("DejaVu", 6.5)
+    c.drawString(L, 4.5 * mm, "www.forus.ru  ·  г. Иркутск, ул. Ямская, 1/1")
+    c.drawRightString(W - R, 4.5 * mm, f"{n} / 2")
 
 
-def draw_benefit_card(c, x, y, w, h, title, body):
-    c.setFillColor(LIGHT)
-    c.roundRect(x, y - h, w, h, 4, fill=1, stroke=0)
-    c.setFillColor(YELLOW)
-    c.rect(x, y - h, 2 * mm, h, fill=1, stroke=0)
+def yellow_chip(c, x, y, text, size=7.5):
+    c.setFont("DejaVuBold", size)
+    tw = c.stringWidth(text, "DejaVuBold", size) + 8 * mm
+    c.setFillColor(Y)
+    c.roundRect(x, y - 1.5 * mm, tw, 6.5 * mm, 3.2, fill=1, stroke=0)
     c.setFillColor(DARK)
-    c.setFont("DejaVuBold", 7.8)
-    c.drawString(x + 4 * mm, y - 4.5 * mm, title)
-    c.setFont("DejaVu", 6.9)
+    c.drawString(x + 4 * mm, y, text)
+    return tw
+
+
+def callout(c, x, y, w, h, title, body, fill=YSOFT):
+    """Eye-catching info block with yellow left bar."""
+    c.setFillColor(fill)
+    c.setStrokeColor(Y)
+    c.setLineWidth(1.4)
+    c.roundRect(x, y - h, w, h, 6, fill=1, stroke=1)
+    c.setFillColor(Y)
+    c.roundRect(x, y - h, 3.2 * mm, h, 1.5, fill=1, stroke=0)
+    c.setFillColor(DARK)
+    c.setFont("DejaVuBold", 8.5)
+    c.drawString(x + 6 * mm, y - 5.5 * mm, title)
+    c.setFont("DejaVu", 7.4)
     c.setFillColor(GRAY)
-    yy = y - 8.5 * mm
-    for line in wrap(c, body, "DejaVu", 6.9, w - 7 * mm):
-        c.drawString(x + 4 * mm, yy, line)
-        yy -= 9
+    yy = y - 10.5 * mm
+    for line in wrap(c, body, "DejaVu", 7.4, w - 10 * mm):
+        c.drawString(x + 6 * mm, yy, line)
+        yy -= 9.5
+    return y - h
+
+
+def num_circle(c, x, y, num):
+    c.setFillColor(Y)
+    c.circle(x, y, 6.5, fill=1, stroke=0)
+    c.setFillColor(DARK)
+    c.setFont("DejaVuBold", 9)
+    c.drawCentredString(x, y - 3, str(num))
 
 
 def build_pdf():
     OUT_PDF.parent.mkdir(parents=True, exist_ok=True)
     c = canvas.Canvas(str(OUT_PDF), pagesize=A4)
-    c.setTitle("Коммерческое предложение — 1С:Кабинет сотрудника")
+    c.setTitle("1С:Кабинет сотрудника — коммерческое предложение")
     c.setAuthor(f"ГК Форус · {MANAGER}")
 
-    # ===== PAGE 1 =====
+    # ========== PAGE 1 ==========
     header(c)
-    L = Layout(c)
-    L.y = PAGE_H - MT - 18 * mm
+    y = H - 28 * mm
 
-    c.setFont("DejaVuBold", 18)
+    # Title block
     c.setFillColor(DARK)
-    c.drawCentredString(PAGE_W / 2, L.y, "1С:Кабинет сотрудника")
-    L.gap(6 * mm)
-    c.setFont("DejaVu", 9.5)
+    c.setFont("DejaVuBold", 20)
+    c.drawString(L, y, "1С:Кабинет сотрудника")
+    y -= 7 * mm
+    c.setFont("DejaVu", 10)
     c.setFillColor(GRAY)
-    c.drawCentredString(PAGE_W / 2, L.y, "Коммерческое предложение")
-    L.gap(5 * mm)
-    c.setFont("DejaVuBold", 9)
-    c.setFillColor(DARK)
-    c.drawCentredString(
-        PAGE_W / 2, L.y,
-        "Автоматизируйте рутину — экономьте до 70% времени и сократите траты на расходники",
+    c.drawString(L, y, "Коммерческое предложение  ·  750 личных кабинетов")
+    y -= 5 * mm
+    yellow_chip(c, L, y, "самое простое внедрение  ·  без отдельной платформы")
+    y -= 10 * mm
+
+    # Big value callout
+    y = callout(
+        c, L, y, CW, 22 * mm,
+        "Выгода, которую сразу видно",
+        "Вы платите только за личные кабинеты. Настройка и поддержка на старте — в подарок. "
+        "Сервис уже внутри 1С: не нужно покупать и внедрять отдельную кадровую систему.",
+        fill=YSOFT,
     )
-    L.gap(7 * mm)
+    y -= 5 * mm
 
-    # hero with image if available
-    devices = BRAND / "devices_mockup.png"
-    if not devices.exists():
-        devices = BRAND / "leaflet_img_1.png"
-    box_h = 28 * mm
-    c.setFillColor(YELLOW_SOFT)
-    c.setStrokeColor(YELLOW)
-    c.setLineWidth(1.3)
-    c.roundRect(ML, L.y - box_h, CW, box_h, 6, fill=1, stroke=1)
-    text_w = CW - 48 * mm if devices.exists() else CW - 6 * mm
+    # Two columns: benefits + pricing tease
+    left_w = CW * 0.55
+    right_w = CW * 0.42
+    gap = CW - left_w - right_w
+
+    # Left: what changes for the company
+    c.setFillColor(DARK)
+    c.setFont("DejaVuBold", 11)
+    c.drawString(L, y, "Что меняется в работе")
+    c.setFillColor(Y)
+    c.roundRect(L, y - 2.2 * mm, 42 * mm, 2, 1, fill=1, stroke=0)
+    y_left = y - 7 * mm
+
+    benefits = [
+        ("Расчётные листки и справки — в телефоне",
+         "Сотрудник сам открывает документы в личном кабинете. Меньше очередей у кадровика."),
+        ("Заявления и согласования online",
+         "Отпуск, отгул, командировка: сотрудник подал — руководитель утвердил с телефона — данные в 1С."),
+        ("Удалённый приём без визита в офис",
+         "Трудовой договор и ознакомление с правилами подписываются дистанционно."),
+        ("Документы без бумаги и мессенджеров",
+         "Ознакомление в один клик, подтверждение получения, обмен внутри системы — по закону о персональных данных."),
+        ("Кадровик остаётся в привычной 1С",
+         "Заявления автоматически становятся приказами. Меньше ручного ввода и ошибок."),
+    ]
+    for title, body in benefits:
+        # mini yellow card
+        h = 17 * mm
+        c.setFillColor(YCARD)
+        c.setStrokeColor(Y2)
+        c.setLineWidth(0.9)
+        c.roundRect(L, y_left - h, left_w, h, 4, fill=1, stroke=1)
+        c.setFillColor(Y)
+        c.circle(L + 4.5 * mm, y_left - 5 * mm, 2.2, fill=1, stroke=0)
+        c.setFillColor(DARK)
+        c.setFont("DejaVuBold", 7.6)
+        c.drawString(L + 9 * mm, y_left - 4.5 * mm, title)
+        c.setFont("DejaVu", 6.8)
+        c.setFillColor(GRAY)
+        yy = y_left - 9 * mm
+        for line in wrap(c, body, "DejaVu", 6.8, left_w - 12 * mm):
+            c.drawString(L + 9 * mm, yy, line)
+            yy -= 8.2
+        y_left -= h + 2.2 * mm
+
+    # Right column sticky pricing
+    rx = L + left_w + gap
+    ry = y
+    c.setFillColor(Y)
+    c.roundRect(rx, ry - 78 * mm, right_w, 78 * mm, 8, fill=1, stroke=0)
+    # white inner
+    c.setFillColor(WHITE)
+    c.roundRect(rx + 2.5 * mm, ry - 75.5 * mm, right_w - 5 * mm, 62 * mm, 6, fill=1, stroke=0)
+
     c.setFillColor(DARK)
     c.setFont("DejaVuBold", 9)
-    c.drawString(ML + 4 * mm, L.y - 5 * mm, "Почему компании переходят на кадровый электронный документооборот")
-    yy = L.y - 10 * mm
-    for t in [
-        "Согласования занимают минуты, а не дни.",
-        "Меньше бумаги, печати, курьеров и риска потерять оригинал.",
-        "Удалённые сотрудники подписывают документы без поездок в офис.",
-        "Кадровики и бухгалтерия тратят меньше времени на рутину.",
-    ]:
-        c.setFillColor(YELLOW)
-        c.setFont("DejaVuBold", 8)
-        c.drawString(ML + 4 * mm, yy, "✓")
-        c.setFillColor(DARK)
-        c.setFont("DejaVu", 7.6)
-        c.drawString(ML + 8 * mm, yy, t)
-        yy -= 4.2 * mm
-    if devices.exists():
-        c.drawImage(
-            str(devices), PAGE_W - MR - 44 * mm, L.y - box_h + 2 * mm,
-            width=42 * mm, height=24 * mm, mask="auto", preserveAspectRatio=True, anchor="sw",
-        )
-    L.y -= box_h + 5 * mm
-
-    L.title("Что умеет сервис")
-    benefits = [
-        ("Удобная работа с «неуловимыми» сотрудниками",
-         "Расчётные листки, справки и запросы по отпускам доступны удалённо каждому сотруднику в личном кабинете."),
-        ("Ознакомление с документами в один клик",
-         "Не нужно распечатывать, собирать подписи и хранить горы бумаг. Отправили документ — сотрудник ознакомился и подтвердил получение."),
-        ("Удалённый приём на работу",
-         "Новый сотрудник оформляет трудовой договор, заявление и ознакомление с правилами дистанционно, не приезжая в офис."),
-        ("Меньше ручного ввода и ошибок",
-         "Данные от сотрудников автоматически попадают в 1С. Заявления превращаются в готовые приказы и записи."),
-        ("Согласование без походов по кабинетам",
-         "Отпуск, командировка, отгул — руководитель согласовывает с телефона, данные сразу уходят в 1С."),
-        ("Общение без сторонних мессенджеров",
-         "Рабочие вопросы и документы — внутри системы, с соблюдением требований закона о персональных данных."),
-        ("Электронный архив и защита от штрафов",
-         "Кадровые документы хранятся в электронном виде. Есть подтверждение, что сотрудник получил расчётный листок и ознакомился с приказом."),
-        ("Простое внедрение для ИТ-отдела",
-         "Сервис встроен в 1С: не нужна отдельная кадровая платформа, новые клиентские лицензии 1С и сложная интеграция «с нуля»."),
-    ]
-    card_w = (CW - 3 * mm) / 2
-    card_h = 20 * mm
-    for i in range(0, 8, 2):
-        for col in range(2):
-            title, body = benefits[i + col]
-            x = ML + col * (card_w + 3 * mm)
-            draw_benefit_card(c, x, L.y, card_w, card_h, title, body)
-        L.y -= card_h + 2.5 * mm
-
-    L.gap(2 * mm)
-    L.title("Акция «Больше, чем кешбэк!»")
-    promo_h = 26 * mm
-    c.setFillColor(DARK)
-    c.roundRect(ML, L.y - promo_h, CW, promo_h, 6, fill=1, stroke=0)
-    c.setFillColor(YELLOW)
-    c.setFont("DejaVuBold", 9.5)
-    c.drawString(ML + 4 * mm, L.y - 5 * mm, "5 часов линии консультаций — в подарок")
-    c.setFillColor(white)
-    c.setFont("DejaVu", 7.8)
-    lines = [
-        "При оплате пакета личных кабинетов мы начисляем на баланс линии консультаций 5 часов бесплатно",
-        f"(выгода {GIFT_VALUE:,} ₽).".replace(",", " "),
-        "Из них в среднем 4 часа уходят на настройку и запуск сервиса.",
-        "Ещё 1 час остаётся у вас на вопросы, консультации и решение возникающих задач по 1С",
-        "с нашими специалистами.",
-        "Отдельно за часы линии консультаций платить не нужно — они полностью покрываются подарком.",
-    ]
-    yy = L.y - 9.5 * mm
-    for line in lines:
-        c.drawString(ML + 4 * mm, yy, line)
-        yy -= 3.3 * mm
-    L.y -= promo_h + 5 * mm
-
-    L.title("Ваш пакет: 750 личных кабинетов на 12 месяцев")
-    c.setFont("DejaVu", 7.8)
-    c.setFillColor(GRAY)
-    c.drawString(ML, L.y, "Состав лицензий: 500 + 200 + 50 кабинетов. Цена за сотрудника — около 25 ₽ в месяц.")
-    L.gap(4 * mm)
-
-    # price strip
-    c.setFillColor(YELLOW)
-    c.roundRect(ML, L.y - 14 * mm, CW, 14 * mm, 5, fill=1, stroke=0)
-    c.setFillColor(DARK)
-    c.setFont("DejaVuBold", 10)
-    c.drawString(ML + 4 * mm, L.y - 5.5 * mm, "1С:Кабинет сотрудника — 750 кабинетов / 12 месяцев")
-    c.setFont("DejaVuBold", 14)
-    c.drawRightString(PAGE_W - MR - 4 * mm, L.y - 6 * mm, f"{TOTAL:,} ₽".replace(",", " "))
+    c.drawCentredString(rx + right_w / 2, ry - 6 * mm, "Цена пакета")
+    c.setFont("DejaVuBold", 18)
+    c.drawCentredString(rx + right_w / 2, ry - 18 * mm, f"{CABINETS:,}".replace(",", " ") + " ₽")
     c.setFont("DejaVu", 7.5)
-    c.drawString(ML + 4 * mm, L.y - 11 * mm, "Настройка, запуск и час поддержки по вопросам 1С — бесплатно в рамках подарочных часов")
-    L.y -= 18 * mm
+    c.setFillColor(GRAY)
+    c.drawCentredString(rx + right_w / 2, ry - 24 * mm, "за 750 кабинетов / 12 месяцев")
+    c.drawCentredString(rx + right_w / 2, ry - 29 * mm, f"≈ {PER_MONTH} ₽ в месяц за сотрудника")
+
+    # divider
+    c.setStrokeColor(Y)
+    c.setLineWidth(1)
+    c.line(rx + 6 * mm, ry - 33 * mm, rx + right_w - 6 * mm, ry - 33 * mm)
+
+    c.setFillColor(DARK)
+    c.setFont("DejaVuBold", 8)
+    c.drawCentredString(rx + right_w / 2, ry - 39 * mm, "В подарок — 5 часов поддержки")
+    c.setFont("DejaVu", 7)
+    c.setFillColor(GRAY)
+    for i, line in enumerate([
+        "выгода 18 300 ₽",
+        "≈4 часа — настройка и запуск",
+        "1 час — ваши вопросы по 1С",
+        "за часы вы не платите",
+    ]):
+        c.drawCentredString(rx + right_w / 2, ry - 45 * mm - i * 4.2 * mm, line)
+
+    c.setFillColor(DARK)
+    c.setFont("DejaVuBold", 8)
+    c.drawCentredString(rx + right_w / 2, ry - 72 * mm, "Итого к оплате = цена пакета")
+
+    y = min(y_left, ry - 82 * mm) - 4 * mm
+
+    # Одна сноска-акцент без повтора цены
+    c.setFillColor(Y)
+    c.roundRect(L, y - 12 * mm, CW, 12 * mm, 6, fill=1, stroke=0)
+    c.setFillColor(DARK)
+    c.setFont("DejaVuBold", 8.5)
+    c.drawString(L + 4 * mm, y - 5 * mm, "Сноска для ИТ-отдела")
+    c.setFont("DejaVu", 7.5)
+    c.drawString(
+        L + 4 * mm, y - 9.5 * mm,
+        "Сотрудники не получают прямой доступ к базе 1С. Отдельные клиентские лицензии 1С на каждого сотрудника не нужны.",
+    )
 
     footer(c, 1)
 
-    # ===== PAGE 2 =====
+    # ========== PAGE 2 ==========
     c.showPage()
     header(c)
-    L = Layout(c)
-    L.y = PAGE_H - MT - 18 * mm
+    y = H - 28 * mm
 
-    L.title("1. Условия")
-    for t in [
-        "Подключаем сервис «1С:Кабинет сотрудника» на 750 личных кабинетов сроком на 12 месяцев.",
-        "В запуск входит: подключение к вашей 1С, настройка ролей и правил, помощь с выпуском электронных подписей, "
-        "запуск пилотной группы и инструкции для сотрудников.",
-        "5 часов линии консультаций начисляются в подарок. Около 4 часов — настройка и запуск; 1 час остаётся "
-        "на дополнительные вопросы и помощь по 1С.",
-        "За часы линии консультаций клиент не платит.",
-        "Электронная подпись для сотрудников (усиленная неквалифицированная) — бесплатно.",
-        "Предоставляем шаблоны документов для перехода: положение, уведомления, согласия.",
-        "Работы выполняются удалённо. Выезд и нетиповые доработки печатных форм — по отдельному согласованию.",
-        "Коммерческое предложение действует 30 календарных дней с даты направления.",
-    ]:
-        L.check(t, size=7.4, leading=9.6)
-    L.gap(3 * mm)
-
-    L.title("2. Сроки")
-    c.setFont("DejaVu", 7.5)
-    c.setFillColor(GRAY)
-    c.drawString(ML, L.y, "Внедрение простое: без отдельной платформы и без долгого проектного цикла.")
-    L.gap(4 * mm)
-
-    rows = [
-        ("Договор и доступы к 1С", "2–4 рабочих дня", "Можно начинать настройку"),
-        ("Настройка и запуск (около 4 часов)", "1 рабочий день", "Сервис подключен, роли и подписи настроены"),
-        ("Пилот на небольшой группе", "3–7 рабочих дней", "Проверен рабочий сценарий"),
-        ("Обучение ключевых сотрудников", "параллельно", "Видеоуроки и короткие инструкции"),
-        ("Подключение всех 750 сотрудников", "2–3 недели", "Массовый запуск личных кабинетов"),
-        ("Резерв 1 час поддержки", "по запросу", "Вопросы и помощь по 1С после запуска"),
-    ]
-    cols = [58 * mm, 40 * mm, CW - 98 * mm]
-    # header
-    hh = 7 * mm
     c.setFillColor(DARK)
-    c.rect(ML, L.y - hh, CW, hh, fill=1, stroke=0)
-    c.setFillColor(white)
-    c.setFont("DejaVuBold", 7.5)
-    xs = [ML, ML + cols[0], ML + cols[0] + cols[1]]
-    for i, h in enumerate(["Этап", "Срок", "Результат"]):
-        c.drawString(xs[i] + 2 * mm, L.y - hh + 2.2 * mm, h)
-    L.y -= hh
-    for ri, (a, b, d) in enumerate(rows):
-        rh = 6.8 * mm
-        c.setFillColor(YELLOW_SOFT if ri in (1, 5) else (LIGHT if ri % 2 == 0 else white))
-        c.rect(ML, L.y - rh, CW, rh, fill=1, stroke=0)
-        c.setStrokeColor(LINE)
-        c.setLineWidth(0.4)
-        c.rect(ML, L.y - rh, CW, rh, fill=0, stroke=1)
-        c.setFillColor(DARK)
-        c.setFont("DejaVuBold", 7)
-        c.drawString(xs[0] + 2 * mm, L.y - rh + 2.5 * mm, a)
-        c.setFillColor(HexColor("#8A6A12"))
-        c.setFont("DejaVuBold", 7)
-        c.drawString(xs[1] + 2 * mm, L.y - rh + 2.5 * mm, b)
-        c.setFillColor(GRAY)
-        c.setFont("DejaVu", 6.8)
-        c.drawString(xs[2] + 2 * mm, L.y - rh + 2.5 * mm, d)
-        L.y -= rh
+    c.setFont("DejaVuBold", 14)
+    c.drawString(L, y, "Почему это легче и выгоднее других решений")
+    c.setFillColor(Y)
+    c.roundRect(L, y - 2.2 * mm, 55 * mm, 2, 1, fill=1, stroke=0)
+    y -= 8 * mm
 
-    L.gap(4 * mm)
-    c.setFillColor(GREEN_BG)
-    c.setStrokeColor(GREEN)
-    c.setLineWidth(1)
-    c.roundRect(ML, L.y - 10 * mm, CW, 10 * mm, 4, fill=1, stroke=1)
-    c.setFillColor(GREEN)
-    c.setFont("DejaVuBold", 7.8)
-    c.drawString(ML + 3 * mm, L.y - 4 * mm, "Итоговый ориентир")
-    c.setFont("DejaVu", 7.5)
-    c.drawString(ML + 35 * mm, L.y - 4 * mm, "настройка за 1 день · пилот за 1–2 недели · все 750 кабинетов за 1–1,5 месяца")
-    c.setFont("DejaVu", 6.8)
-    c.drawString(ML + 3 * mm, L.y - 7.8 * mm, "Не нужно выделять большую проектную команду и внедрять отдельную кадровую систему.")
-    L.y -= 14 * mm
-
-    L.title("3. Бюджет")
-    # table
-    headers = ["Статья", "Пояснение", "Сумма"]
-    data = [
-        ("Личные кабинеты, 750 шт. / 12 месяцев", "Пакеты 500 + 200 + 50", f"{TOTAL:,} ₽".replace(",", " ")),
-        ("Настройка и запуск (~4 часа)", "Из подарочных часов линии консультаций", "0 ₽"),
-        ("Резерв на вопросы по 1С (1 час)", "Из подарочных часов линии консультаций", "0 ₽"),
-        ("Подарок: 5 часов линии консультаций", f"Акция «Больше, чем кешбэк!» · выгода {GIFT_VALUE:,} ₽".replace(",", " "), "0 ₽"),
+    # 3 yellow argument cards
+    cards = [
+        ("01", "Без новой платформы",
+         "Сотрудники и кадры работают через 1С и личный кабинет. ИТ-отделу не нужно поднимать отдельную систему и долгую интеграцию."),
+        ("02", "Запуск за часы, не месяцы",
+         "Типовая настройка занимает около одного рабочего дня. Пилот — за 1–2 недели, все 750 кабинетов — за 1–1,5 месяца."),
+        ("03", "Прозрачная цена",
+         "В счёте — только пакет кабинетов. Часы на настройку и стартовые вопросы уже внутри подарка по акции."),
     ]
-    cols = [68 * mm, 78 * mm, CW - 146 * mm]
-    hh = 7 * mm
-    c.setFillColor(DARK)
-    c.rect(ML, L.y - hh, CW, hh, fill=1, stroke=0)
-    c.setFillColor(white)
-    c.setFont("DejaVuBold", 7.5)
-    xs = [ML, ML + cols[0], ML + cols[0] + cols[1]]
-    for i, h in enumerate(headers):
-        c.drawString(xs[i] + 2 * mm, L.y - hh + 2.2 * mm, h)
-    L.y -= hh
-    for ri, (a, b, d) in enumerate(data):
-        rh = 6.8 * mm
-        c.setFillColor(YELLOW_SOFT if ri > 0 else LIGHT)
-        c.rect(ML, L.y - rh, CW, rh, fill=1, stroke=0)
-        c.setStrokeColor(LINE)
-        c.setLineWidth(0.4)
-        c.rect(ML, L.y - rh, CW, rh, fill=0, stroke=1)
+    cw = (CW - 6 * mm) / 3
+    for i, (num, title, body) in enumerate(cards):
+        x = L + i * (cw + 3 * mm)
+        c.setFillColor(YCARD)
+        c.setStrokeColor(Y)
+        c.setLineWidth(1.2)
+        c.roundRect(x, y - 42 * mm, cw, 42 * mm, 7, fill=1, stroke=1)
+        num_circle(c, x + 8 * mm, y - 8 * mm, num)
         c.setFillColor(DARK)
-        c.setFont("DejaVuBold", 7)
-        c.drawString(xs[0] + 2 * mm, L.y - rh + 2.7 * mm, a[:42])
-        c.setFont("DejaVu", 6.7)
-        c.setFillColor(GRAY)
-        c.drawString(xs[1] + 2 * mm, L.y - rh + 2.7 * mm, b[:48])
         c.setFont("DejaVuBold", 8)
-        c.setFillColor(GREEN if ri > 0 else DARK)
-        c.drawRightString(PAGE_W - MR - 2 * mm, L.y - rh + 2.7 * mm, d)
-        L.y -= rh
+        c.drawString(x + 15 * mm, y - 9.5 * mm, title)
+        c.setFont("DejaVu", 6.9)
+        c.setFillColor(GRAY)
+        yy = y - 16 * mm
+        for line in wrap(c, body, "DejaVu", 6.9, cw - 8 * mm):
+            c.drawString(x + 4 * mm, yy, line)
+            yy -= 9
+    y -= 48 * mm
 
-    L.gap(4 * mm)
+    # Comparison - yellow header not black
     c.setFillColor(DARK)
-    c.roundRect(ML, L.y - 16 * mm, CW, 16 * mm, 6, fill=1, stroke=0)
-    c.setFillColor(YELLOW)
-    c.setFont("DejaVuBold", 10)
-    c.drawString(ML + 4 * mm, L.y - 6 * mm, "Итого к оплате")
-    c.setFont("DejaVuBold", 16)
-    c.drawRightString(PAGE_W - MR - 4 * mm, L.y - 6.5 * mm, f"{TOTAL:,} ₽".replace(",", " "))
-    c.setFillColor(white)
-    c.setFont("DejaVu", 7.5)
-    c.drawString(ML + 4 * mm, L.y - 12 * mm, "Только пакет кабинетов. Часы линии консультаций — бесплатно. Подпись сотрудникам — бесплатно.")
-    L.y -= 20 * mm
+    c.setFont("DejaVuBold", 11)
+    c.drawString(L, y, "Сравнение для выбора подрядчика")
+    c.setFillColor(Y)
+    c.roundRect(L, y - 2.2 * mm, 48 * mm, 2, 1, fill=1, stroke=0)
+    y -= 7 * mm
 
-    L.title("Сравнение с другими решениями")
-    cmp = [
-        ("Сложность запуска", "Типовая настройка около 4 часов", "Часто долгое внедрение новой системы"),
-        ("Где работают сотрудники", "В привычной 1С и личном кабинете", "Отдельная кадровая платформа"),
-        ("Нагрузка на ИТ-отдел", "Без новых клиентских лицензий 1С", "Новые доступы, интеграции, сопровождение"),
-        ("Где хранятся документы", "В вашей базе 1С", "Облако оператора, часто за отдельную плату"),
-        ("Оплата запуска", "Часы поддержки — в подарок", "Внедрение обычно оплачивается отдельно"),
+    cols = [40 * mm, 72 * mm, CW - 112 * mm]
+    rows = [
+        ("Запуск", "Около 4 часов настройки", "Часто долгое внедрение"),
+        ("Система", "Внутри вашей 1С", "Отдельная кадровая платформа"),
+        ("ИТ-нагрузка", "Без новых клиентских лицензий 1С", "Новые доступы и интеграции"),
+        ("Документы", "В вашей базе 1С", "Облако оператора, часто платно"),
+        ("Оплата старта", "Часы поддержки — подарок", "Внедрение обычно отдельной строкой"),
     ]
-    cols = [42 * mm, 72 * mm, CW - 114 * mm]
-    hh = 6.5 * mm
+    hh = 7 * mm
+    # yellow header
+    c.setFillColor(Y)
+    c.roundRect(L, y - hh, CW, hh, 3, fill=1, stroke=0)
     c.setFillColor(DARK)
-    c.rect(ML, L.y - hh, CW, hh, fill=1, stroke=0)
-    c.setFillColor(YELLOW)
-    c.rect(ML + cols[0], L.y - hh, cols[1], hh, fill=1, stroke=0)
-    c.setFont("DejaVuBold", 7)
-    xs = [ML, ML + cols[0], ML + cols[0] + cols[1]]
-    for i, h in enumerate(["Критерий", "Форус + 1С:Кабинет сотрудника", "Другие операторы"]):
-        c.setFillColor(DARK if i == 1 else white)
-        c.drawCentredString(xs[i] + cols[i] / 2, L.y - hh + 2 * mm, h)
-    L.y -= hh
-    for ri, (a, b, d) in enumerate(cmp):
-        rh = 6.2 * mm
-        for ci, (cell, w) in enumerate(zip((a, b, d), cols)):
+    c.setFont("DejaVuBold", 7.5)
+    xs = [L, L + cols[0], L + cols[0] + cols[1]]
+    for i, htxt in enumerate(["Критерий", "Предложение Форус", "Типичные альтернативы"]):
+        c.drawCentredString(xs[i] + cols[i] / 2, y - hh + 2.2 * mm, htxt)
+    y -= hh
+    for ri, (a, b, d) in enumerate(rows):
+        rh = 7.2 * mm
+        for ci, (val, w) in enumerate(zip((a, b, d), cols)):
             x = xs[ci]
             if ci == 1:
-                bg, tc = GREEN_BG, GREEN
+                bg, tc = OKBG, OK
             elif ci == 2:
-                bg, tc = RED_BG, RED
+                bg, tc = BADBG, BAD
             else:
-                bg, tc = (LIGHT if ri % 2 == 0 else white), DARK
+                bg, tc = (YSOFT if ri % 2 == 0 else WHITE), DARK
             c.setFillColor(bg)
-            c.rect(x, L.y - rh, w, rh, fill=1, stroke=0)
-            c.setStrokeColor(LINE)
-            c.setLineWidth(0.3)
-            c.rect(x, L.y - rh, w, rh, fill=0, stroke=1)
+            c.rect(x, y - rh, w, rh, fill=1, stroke=0)
+            c.setStrokeColor(Y2)
+            c.setLineWidth(0.5)
+            c.rect(x, y - rh, w, rh, fill=0, stroke=1)
             c.setFillColor(tc)
-            c.setFont("DejaVuBold" if ci == 0 else "DejaVu", 6.4)
+            c.setFont("DejaVuBold" if ci == 0 else "DejaVu", 6.6)
             if ci == 0:
-                c.drawString(x + 1.5 * mm, L.y - rh + 2.3 * mm, cell)
+                c.drawString(x + 2 * mm, y - rh + 2.4 * mm, val)
             else:
-                c.drawCentredString(x + w / 2, L.y - rh + 2.3 * mm, cell)
-        L.y -= rh
+                c.drawCentredString(x + w / 2, y - rh + 2.4 * mm, val)
+        y -= rh
 
-    # CTA + manager — фиксируем у низа страницы, чтобы блок не «уплывал»
-    cta_top = MB + 34 * mm
+    y -= 6 * mm
+
+    # Timeline as yellow steps (not dense table)
     c.setFillColor(DARK)
-    c.roundRect(ML, cta_top - 28 * mm, CW, 28 * mm, 6, fill=1, stroke=0)
-    c.setFillColor(YELLOW)
-    c.setFont("DejaVuBold", 10)
-    c.drawCentredString(PAGE_W / 2, cta_top - 6 * mm, "Готовы подключить 750 кабинетов и помочь с запуском")
-    c.setFillColor(white)
+    c.setFont("DejaVuBold", 11)
+    c.drawString(L, y, "Как проходит запуск")
+    c.setFillColor(Y)
+    c.roundRect(L, y - 2.2 * mm, 36 * mm, 2, 1, fill=1, stroke=0)
+    y -= 8 * mm
+
+    steps = [
+        ("1", "Договор\nи доступы", "2–4 дня"),
+        ("2", "Настройка\n≈4 часа", "1 день"),
+        ("3", "Пилот\nна группе", "до 1 недели"),
+        ("4", "Все\n750 кабинетов", "2–3 недели"),
+        ("5", "1 час\nв запасе", "по запросу"),
+    ]
+    sw = CW / 5
+    for i, (n, title, timing) in enumerate(steps):
+        x = L + i * sw + sw / 2
+        num_circle(c, x, y - 2 * mm, n)
+        c.setFillColor(DARK)
+        c.setFont("DejaVuBold", 7)
+        lines = title.split("\n")
+        for li, line in enumerate(lines):
+            c.drawCentredString(x, y - 11 * mm - li * 3.2 * mm, line)
+        c.setFillColor(HexColor("#9A7A10"))
+        c.setFont("DejaVu", 6.5)
+        c.drawCentredString(x, y - 20 * mm, timing)
+        if i < len(steps) - 1:
+            c.setStrokeColor(Y)
+            c.setLineWidth(2)
+            c.line(x + 8 * mm, y - 2 * mm, x + sw - 8 * mm, y - 2 * mm)
+    y -= 26 * mm
+
+    # Pricing breakdown - crystal clear once
+    c.setFillColor(DARK)
+    c.setFont("DejaVuBold", 11)
+    c.drawString(L, y, "Ценообразование — одной таблицей")
+    c.setFillColor(Y)
+    c.roundRect(L, y - 2.2 * mm, 48 * mm, 2, 1, fill=1, stroke=0)
+    y -= 7 * mm
+
+    price_rows = [
+        ("750 личных кабинетов на 12 месяцев (пакеты 500+200+50)", f"{CABINETS:,} ₽".replace(",", " "), False),
+        ("Настройка и запуск сервиса (≈4 часа поддержки)", "0 ₽ — из подарка", True),
+        ("Запас на вопросы по 1С после запуска (1 час)", "0 ₽ — из подарка", True),
+        ("Подарок по акции «Больше, чем кешбэк!» — 5 часов", f"выгода {GIFT_VALUE:,} ₽".replace(",", " "), True),
+    ]
+    for label, amount, gift in price_rows:
+        rh = 8 * mm
+        c.setFillColor(YSOFT if gift else YCARD)
+        c.setStrokeColor(Y)
+        c.setLineWidth(0.9)
+        c.roundRect(L, y - rh, CW, rh, 3, fill=1, stroke=1)
+        c.setFillColor(DARK)
+        c.setFont("DejaVu", 7.4)
+        c.drawString(L + 3 * mm, y - rh + 2.8 * mm, label)
+        c.setFont("DejaVuBold", 8)
+        c.setFillColor(OK if gift else DARK)
+        c.drawRightString(W - R - 3 * mm, y - rh + 2.8 * mm, amount)
+        y -= rh + 1.5 * mm
+
+    y -= 2 * mm
+    # Total - yellow not black
+    c.setFillColor(Y)
+    c.roundRect(L, y - 16 * mm, CW, 16 * mm, 7, fill=1, stroke=0)
+    c.setFillColor(DARK)
+    c.setFont("DejaVuBold", 11)
+    c.drawString(L + 4 * mm, y - 6.5 * mm, "Итого к оплате")
+    c.setFont("DejaVuBold", 16)
+    c.drawRightString(W - R - 4 * mm, y - 7 * mm, f"{CABINETS:,} ₽".replace(",", " "))
     c.setFont("DejaVu", 7.5)
-    c.drawCentredString(PAGE_W / 2, cta_top - 11 * mm, "Проведём демонстрацию для кадровой службы и ИТ-отдела и ответим на вопросы.")
+    c.drawString(L + 4 * mm, y - 12.5 * mm, "Только пакет кабинетов. Настройка и стартовая поддержка — бесплатно. Подпись сотрудникам — бесплатно.")
+    y -= 20 * mm
 
-    c.setFillColor(YELLOW_SOFT)
-    c.roundRect(ML + 4 * mm, cta_top - 25 * mm, CW - 8 * mm, 12 * mm, 4, fill=1, stroke=0)
+    # Важно знать — 2×2 жёлтые сноски (без повтора цены)
     c.setFillColor(DARK)
-    c.setFont("DejaVuBold", 8.5)
-    c.drawString(ML + 6 * mm, cta_top - 17 * mm, f"Ваш менеджер: {MANAGER}")
-    c.setFont("DejaVu", 7.3)
-    c.setFillColor(GRAY)
-    c.drawString(ML + 6 * mm, cta_top - 21.5 * mm, f"{MANAGER_EMAIL}   ·   {MANAGER_PHONE}")
+    c.setFont("DejaVuBold", 10)
+    c.drawString(L, y, "Важно знать")
+    c.setFillColor(Y)
+    c.roundRect(L, y - 2 * mm, 24 * mm, 2, 1, fill=1, stroke=0)
+    y -= 6 * mm
+
+    notes = [
+        ("Подпись бесплатно", "Электронная подпись сотрудникам выпускается бесплатно."),
+        ("Шаблоны документов", "Положение, уведомления и согласия для перехода — в комплекте."),
+        ("Формат работ", "Удалённо. Выезд и нетиповые доработки — отдельно."),
+        ("Срок предложения", "Действует 30 дней с даты отправки."),
+    ]
+    nw = (CW - 3 * mm) / 2
+    nh = 14 * mm
+    for i, (title, body) in enumerate(notes):
+        col = i % 2
+        row = i // 2
+        x = L + col * (nw + 3 * mm)
+        yy = y - row * (nh + 2.5 * mm)
+        c.setFillColor(YCARD)
+        c.setStrokeColor(Y)
+        c.setLineWidth(1)
+        c.roundRect(x, yy - nh, nw, nh, 5, fill=1, stroke=1)
+        c.setFillColor(Y)
+        c.circle(x + 4 * mm, yy - 4.5 * mm, 2, fill=1, stroke=0)
+        c.setFillColor(DARK)
+        c.setFont("DejaVuBold", 7.5)
+        c.drawString(x + 8 * mm, yy - 5 * mm, title)
+        c.setFont("DejaVu", 6.8)
+        c.setFillColor(GRAY)
+        c.drawString(x + 4 * mm, yy - 10.5 * mm, body[:52])
+
+    # Manager — жёстко у низа страницы
+    c.setFillColor(Y)
+    c.roundRect(L, 14 * mm, CW, 20 * mm, 7, fill=1, stroke=0)
     c.setFillColor(DARK)
-    c.setFont("DejaVuBold", 7.5)
-    c.drawRightString(PAGE_W - MR - 6 * mm, cta_top - 17 * mm, "ГК «Форус»")
-    c.setFont("DejaVu", 7)
-    c.setFillColor(GRAY)
-    c.drawRightString(PAGE_W - MR - 6 * mm, cta_top - 21.5 * mm, "www.forus.ru")
+    c.setFont("DejaVuBold", 10)
+    c.drawString(L + 4 * mm, 27 * mm, f"Ваш менеджер: {MANAGER}")
+    c.setFont("DejaVu", 8)
+    c.drawString(L + 4 * mm, 21 * mm, f"{EMAIL}   ·   {PHONE}")
+    c.setFont("DejaVuBold", 8)
+    c.drawRightString(W - R - 4 * mm, 27 * mm, "Готовы подключить и показать на демо")
+    c.setFont("DejaVu", 7.2)
+    c.drawRightString(W - R - 4 * mm, 21 * mm, "для кадровой службы и ИТ-отдела")
 
     footer(c, 2)
     c.save()
-    print("PDF:", OUT_PDF)
+    print("PDF OK", OUT_PDF)
 
 
-# ---------- DOCX ----------
+# ---------------- DOCX ----------------
 
-def shade(cell, hex_color):
-    tc = cell._tc
-    tcPr = tc.get_or_add_tcPr()
-    shd = OxmlElement("w:shd")
-    shd.set(qn("w:fill"), hex_color)
-    shd.set(qn("w:val"), "clear")
-    tcPr.append(shd)
-
-
-def borders(table, color="CCCCCC"):
-    tbl = table._tbl
-    tblPr = tbl.tblPr if tbl.tblPr is not None else OxmlElement("w:tblPr")
-    borders_el = OxmlElement("w:tblBorders")
-    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
-        el = OxmlElement(f"w:{edge}")
-        el.set(qn("w:val"), "single")
-        el.set(qn("w:sz"), "4")
-        el.set(qn("w:space"), "0")
-        el.set(qn("w:color"), color)
-        borders_el.append(el)
-    tblPr.append(borders_el)
-
-
-def run_font(run, size=10, bold=False, color=None):
+def set_run(run, size=10, bold=False, color=None):
     run.font.name = "Arial"
     run._element.rPr.rFonts.set(qn("w:eastAsia"), "Arial")
     run.font.size = Pt(size)
@@ -577,37 +506,70 @@ def run_font(run, size=10, bold=False, color=None):
         run.font.color.rgb = color
 
 
-def add_p(doc, text, *, size=10, bold=False, color=DocRGB(0x1A, 0x1A, 0x1A), space_after=6, align="left"):
+def shade(cell, hexfill):
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:fill"), hexfill)
+    shd.set(qn("w:val"), "clear")
+    tcPr.append(shd)
+
+
+def set_borders(table, color="F0C14A", sz="8"):
+    tbl = table._tbl
+    tblPr = tbl.tblPr if tbl.tblPr is not None else OxmlElement("w:tblPr")
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        el = OxmlElement(f"w:{edge}")
+        el.set(qn("w:val"), "single")
+        el.set(qn("w:sz"), sz)
+        el.set(qn("w:space"), "0")
+        el.set(qn("w:color"), color)
+        borders.append(el)
+    tblPr.append(borders)
+
+
+def clear(cell):
+    cell.paragraphs[0].clear()
+
+
+def p_add(doc, text, *, size=10, bold=False, color=RGBColor(0x2B, 0x2B, 0x2B), after=6, center=False):
     p = doc.add_paragraph()
-    p.paragraph_format.space_after = Pt(space_after)
+    p.paragraph_format.space_after = Pt(after)
     p.paragraph_format.space_before = Pt(0)
-    if align == "center":
+    if center:
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     r = p.add_run(text)
-    run_font(r, size=size, bold=bold, color=color)
+    set_run(r, size=size, bold=bold, color=color)
     return p
 
 
-def add_check(doc, text):
-    p = doc.add_paragraph()
-    p.paragraph_format.space_after = Pt(3)
-    p.paragraph_format.space_before = Pt(0)
-    m = p.add_run("✓  ")
-    run_font(m, size=10, bold=True, color=DocRGB(0xF0, 0xC1, 0x4A))
-    r = p.add_run(text)
-    run_font(r, size=10, color=DocRGB(0x1A, 0x1A, 0x1A))
-
-
-def yellow_underline(p):
+def yellow_title(doc, text):
+    p = p_add(doc, text, size=13, bold=True, after=2)
     pPr = p._p.get_or_add_pPr()
     pBdr = OxmlElement("w:pBdr")
     bottom = OxmlElement("w:bottom")
     bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), "18")
+    bottom.set(qn("w:sz"), "20")
     bottom.set(qn("w:space"), "2")
     bottom.set(qn("w:color"), "F0C14A")
     pBdr.append(bottom)
     pPr.append(pBdr)
+    return p
+
+
+def info_box(doc, title, body, fill="FFF6D8"):
+    t = doc.add_table(rows=1, cols=1)
+    set_borders(t, "F0C14A", "12")
+    cell = t.rows[0].cells[0]
+    shade(cell, fill)
+    clear(cell)
+    r = cell.paragraphs[0].add_run(title)
+    set_run(r, size=11, bold=True, color=RGBColor(0x2B, 0x2B, 0x2B))
+    p = cell.add_paragraph()
+    r = p.add_run(body)
+    set_run(r, size=9, color=RGBColor(0x66, 0x66, 0x66))
+    doc.add_paragraph().paragraph_format.space_after = Pt(8)
 
 
 def build_docx():
@@ -615,267 +577,248 @@ def build_docx():
     sec = doc.sections[0]
     sec.page_width = Mm(210)
     sec.page_height = Mm(297)
-    sec.left_margin = Mm(14)
-    sec.right_margin = Mm(14)
+    for m in ("left_margin", "right_margin"):
+        setattr(sec, m, Mm(14))
     sec.top_margin = Mm(12)
     sec.bottom_margin = Mm(12)
 
-    # header table
+    # Header
     ht = doc.add_table(rows=1, cols=2)
-    left, right = ht.rows[0].cells
-    left.paragraphs[0].clear()
+    a, b = ht.rows[0].cells
+    clear(a)
     logo = BRAND / "forus_logo_word.png"
     if logo.exists():
-        left.paragraphs[0].add_run().add_picture(str(logo), width=Cm(3.6))
-    else:
-        r = left.paragraphs[0].add_run("Форус")
-        run_font(r, size=18, bold=True)
-    right.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    for i, line in enumerate([
-        "Группа компаний «Форус»",
-        "Центр компетенции по кадровому электронному документообороту",
-        f"{MANAGER_PHONE}  ·  www.forus.ru",
-    ]):
-        p = right.paragraphs[0] if i == 0 else right.add_paragraph()
+        a.paragraphs[0].add_run().add_picture(str(logo), width=Cm(3.4))
+    clear(b)
+    b.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    for i, line in enumerate(["Группа компаний «Форус»", f"{PHONE}  ·  www.forus.ru"]):
+        p = b.paragraphs[0] if i == 0 else b.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         p.paragraph_format.space_after = Pt(0)
-        r = p.add_run(line)
-        run_font(r, size=8, bold=(i == 0), color=DocRGB(0x5A, 0x5A, 0x5A) if i else DocRGB(0x1A, 0x1A, 0x1A))
+        set_run(p.add_run(line), size=8, bold=(i == 0), color=RGBColor(0x66, 0x66, 0x66))
 
     rule = doc.add_paragraph()
-    yellow_underline(rule)
-    rule.paragraph_format.space_after = Pt(8)
+    rule.paragraph_format.space_after = Pt(10)
+    pPr = rule._p.get_or_add_pPr()
+    pBdr = OxmlElement("w:pBdr")
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), "24")
+    bottom.set(qn("w:space"), "1")
+    bottom.set(qn("w:color"), "F0C14A")
+    pBdr.append(bottom)
+    pPr.append(pBdr)
 
-    add_p(doc, "1С:Кабинет сотрудника", size=18, bold=True, align="center", space_after=2)
-    add_p(doc, "Коммерческое предложение", size=11, color=DocRGB(0x5A, 0x5A, 0x5A), align="center", space_after=4)
-    add_p(
+    p_add(doc, "1С:Кабинет сотрудника", size=20, bold=True, center=True, after=2)
+    p_add(doc, "Коммерческое предложение  ·  750 личных кабинетов", size=11, color=RGBColor(0x66, 0x66, 0x66), center=True, after=4)
+    p_add(doc, "Самое простое внедрение  ·  без отдельной платформы", size=10, bold=True, color=RGBColor(0x9A, 0x7A, 0x10), center=True, after=10)
+
+    info_box(
         doc,
-        "Автоматизируйте рутину — экономьте до 70% времени и сократите траты на расходники",
-        size=10, bold=True, align="center", space_after=10,
+        "Выгода, которую сразу видно",
+        "Вы платите только за личные кабинеты. Настройка и поддержка на старте — в подарок. "
+        "Сервис уже внутри 1С: не нужно покупать и внедрять отдельную кадровую систему.",
     )
 
-    add_p(doc, "Почему компании переходят на кадровый электронный документооборот", size=12, bold=True, space_after=4)
-    yellow_underline(doc.paragraphs[-1])
-    for t in [
-        "Согласования занимают минуты, а не дни.",
-        "Меньше бумаги, печати, курьеров и риска потерять оригинал.",
-        "Удалённые сотрудники подписывают документы без поездок в офис.",
-        "Кадровики и бухгалтерия тратят меньше времени на рутину.",
+    yellow_title(doc, "Что меняется в работе")
+    for title, body in [
+        ("Расчётные листки и справки — в телефоне",
+         "Сотрудник сам открывает документы в личном кабинете. Меньше очередей у кадровика."),
+        ("Заявления и согласования online",
+         "Отпуск, отгул, командировка: сотрудник подал — руководитель утвердил с телефона — данные в 1С."),
+        ("Удалённый приём без визита в офис",
+         "Трудовой договор и ознакомление с правилами подписываются дистанционно."),
+        ("Документы без бумаги и мессенджеров",
+         "Ознакомление в один клик, подтверждение получения, обмен внутри системы — по закону о персональных данных."),
+        ("Кадровик остаётся в привычной 1С",
+         "Заявления автоматически становятся приказами. Меньше ручного ввода и ошибок."),
     ]:
-        add_check(doc, t)
-
-    add_p(doc, "Что умеет сервис", size=12, bold=True, space_after=4, color=DocRGB(0x1A, 0x1A, 0x1A))
-    yellow_underline(doc.paragraphs[-1])
-    features = [
-        ("Удобная работа с «неуловимыми» сотрудниками",
-         "Расчётные листки, справки и запросы по отпускам доступны удалённо каждому сотруднику в личном кабинете."),
-        ("Ознакомление с документами в один клик",
-         "Не нужно распечатывать, собирать подписи и хранить горы бумаг. Отправили документ — сотрудник ознакомился и подтвердил получение."),
-        ("Удалённый приём на работу",
-         "Новый сотрудник оформляет трудовой договор, заявление и ознакомление с правилами дистанционно."),
-        ("Меньше ручного ввода и ошибок",
-         "Данные от сотрудников автоматически попадают в 1С. Заявления превращаются в готовые приказы и записи."),
-        ("Согласование без походов по кабинетам",
-         "Отпуск, командировка, отгул — руководитель согласовывает с телефона, данные сразу уходят в 1С."),
-        ("Общение без сторонних мессенджеров",
-         "Рабочие вопросы и документы — внутри системы, с соблюдением требований закона о персональных данных."),
-        ("Электронный архив и защита от штрафов",
-         "Кадровые документы хранятся в электронном виде. Есть подтверждение получения расчётного листка и ознакомления с приказом."),
-        ("Простое внедрение для ИТ-отдела",
-         "Сервис встроен в 1С: не нужна отдельная кадровая платформа, новые клиентские лицензии 1С и сложная интеграция."),
-    ]
-    for title, body in features:
-        add_p(doc, title, size=10, bold=True, space_after=1)
-        add_p(doc, body, size=9, color=DocRGB(0x5A, 0x5A, 0x5A), space_after=6)
-
-    # promo
-    add_p(doc, "Акция «Больше, чем кешбэк!»", size=12, bold=True, space_after=4)
-    yellow_underline(doc.paragraphs[-1])
-    promo = doc.add_table(rows=1, cols=1)
-    borders(promo, "F0C14A")
-    cell = promo.rows[0].cells[0]
-    shade(cell, "1A1A1A")
-    cell.paragraphs[0].clear()
-    p = cell.paragraphs[0]
-    r = p.add_run("5 часов линии консультаций — в подарок")
-    run_font(r, size=11, bold=True, color=DocRGB(0xF0, 0xC1, 0x4A))
-    for line in [
-        f"При оплате пакета личных кабинетов мы начисляем 5 часов линии консультаций бесплатно (выгода {GIFT_VALUE:,} ₽).".replace(",", " "),
-        "Из них в среднем 4 часа уходят на настройку и запуск сервиса.",
-        "Ещё 1 час остаётся у вас на вопросы, консультации и решение возникающих задач по 1С с нашими специалистами.",
-        "Отдельно за часы линии консультаций платить не нужно — они полностью покрываются подарком.",
-    ]:
+        t = doc.add_table(rows=1, cols=1)
+        set_borders(t, "FFE08A", "6")
+        cell = t.rows[0].cells[0]
+        shade(cell, "FFFBEA")
+        clear(cell)
+        set_run(cell.paragraphs[0].add_run(title), size=10, bold=True)
         p = cell.add_paragraph()
-        r = p.add_run(line)
-        run_font(r, size=9, color=DocRGB(0xFF, 0xFF, 0xFF))
+        set_run(p.add_run(body), size=9, color=RGBColor(0x66, 0x66, 0x66))
+        doc.add_paragraph().paragraph_format.space_after = Pt(4)
 
-    add_p(doc, "Ваш пакет: 750 личных кабинетов на 12 месяцев", size=12, bold=True, space_after=4)
-    yellow_underline(doc.paragraphs[-1])
-    add_p(doc, "Состав лицензий: 500 + 200 + 50 кабинетов. Цена за сотрудника — около 25 ₽ в месяц.", size=9, color=DocRGB(0x5A, 0x5A, 0x5A))
+    # Price block
+    yellow_title(doc, "Цена пакета")
+    pt = doc.add_table(rows=3, cols=1)
+    set_borders(pt, "F0C14A", "14")
+    cells = pt.rows
+    shade(cells[0].cells[0], "F0C14A")
+    clear(cells[0].cells[0])
+    cells[0].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_run(cells[0].cells[0].paragraphs[0].add_run(f"{CABINETS:,} ₽".replace(",", " ")), size=22, bold=True)
+    shade(cells[1].cells[0], "FFFFFF")
+    clear(cells[1].cells[0])
+    cells[1].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_run(cells[1].cells[0].paragraphs[0].add_run("за 750 кабинетов на 12 месяцев  ·  ≈ 25 ₽ в месяц за сотрудника"), size=10, color=RGBColor(0x66, 0x66, 0x66))
+    shade(cells[2].cells[0], "FFF6D8")
+    clear(cells[2].cells[0])
+    cells[2].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    set_run(
+        cells[2].cells[0].paragraphs[0].add_run(
+            "В подарок 5 часов поддержки (выгода 18 300 ₽): ≈4 часа — настройка и запуск, 1 час — вопросы по 1С. За часы вы не платите."
+        ),
+        size=9, bold=True,
+    )
 
-    price = doc.add_table(rows=1, cols=2)
-    borders(price, "F0C14A")
-    a, b = price.rows[0].cells
-    shade(a, "FFF8E8")
-    shade(b, "FFF8E8")
-    a.paragraphs[0].clear()
-    r = a.paragraphs[0].add_run("1С:Кабинет сотрудника — 750 кабинетов / 12 месяцев")
-    run_font(r, size=10, bold=True)
-    b.paragraphs[0].clear()
-    b.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    r = b.paragraphs[0].add_run(f"{TOTAL:,} ₽".replace(",", " "))
-    run_font(r, size=14, bold=True)
-    add_p(doc, "Настройка, запуск и час поддержки по вопросам 1С — бесплатно в рамках подарочных часов.", size=9, color=DocRGB(0x5A, 0x5A, 0x5A), space_after=10)
-
-    add_p(doc, "1. Условия", size=12, bold=True, space_after=4)
-    yellow_underline(doc.paragraphs[-1])
-    for t in [
-        "Подключаем сервис «1С:Кабинет сотрудника» на 750 личных кабинетов сроком на 12 месяцев.",
-        "В запуск входит: подключение к вашей 1С, настройка ролей и правил, помощь с выпуском электронных подписей, запуск пилотной группы и инструкции для сотрудников.",
-        "5 часов линии консультаций начисляются в подарок. Около 4 часов — настройка и запуск; 1 час остаётся на дополнительные вопросы и помощь по 1С.",
-        "За часы линии консультаций клиент не платит.",
-        "Электронная подпись для сотрудников (усиленная неквалифицированная) — бесплатно.",
-        "Предоставляем шаблоны документов для перехода: положение, уведомления, согласия.",
-        "Работы выполняются удалённо. Выезд и нетиповые доработки — по отдельному согласованию.",
-        "Коммерческое предложение действует 30 календарных дней с даты направления.",
+    p_add(doc, "", after=8)
+    yellow_title(doc, "Почему это легче и выгоднее")
+    for num, title, body in [
+        ("01", "Без новой платформы", "Сотрудники и кадры работают через 1С и личный кабинет. ИТ-отделу не нужно поднимать отдельную систему."),
+        ("02", "Запуск за часы, не месяцы", "Типовая настройка — около одного рабочего дня. Пилот за 1–2 недели, все 750 кабинетов за 1–1,5 месяца."),
+        ("03", "Прозрачная цена", "В счёте — только пакет кабинетов. Часы на настройку и стартовые вопросы уже внутри подарка."),
     ]:
-        add_check(doc, t)
+        t = doc.add_table(rows=1, cols=2)
+        set_borders(t, "F0C14A", "8")
+        n, body_cell = t.rows[0].cells
+        shade(n, "F0C14A")
+        shade(body_cell, "FFFBEA")
+        clear(n)
+        n.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_run(n.paragraphs[0].add_run(num), size=14, bold=True)
+        n.width = Cm(1.5)
+        clear(body_cell)
+        set_run(body_cell.paragraphs[0].add_run(title), size=10, bold=True)
+        p = body_cell.add_paragraph()
+        set_run(p.add_run(body), size=9, color=RGBColor(0x66, 0x66, 0x66))
+        doc.add_paragraph().paragraph_format.space_after = Pt(4)
 
-    add_p(doc, "2. Сроки", size=12, bold=True, space_after=4)
-    yellow_underline(doc.paragraphs[-1])
-    add_p(doc, "Внедрение простое: без отдельной платформы и без долгого проектного цикла.", size=9, color=DocRGB(0x5A, 0x5A, 0x5A))
-    t = doc.add_table(rows=1, cols=3)
-    borders(t)
-    for i, h in enumerate(["Этап", "Срок", "Результат"]):
-        cell = t.rows[0].cells[i]
-        shade(cell, "1A1A1A")
-        cell.paragraphs[0].clear()
-        r = cell.paragraphs[0].add_run(h)
-        run_font(r, size=9, bold=True, color=DocRGB(0xFF, 0xFF, 0xFF))
-    for a, b, d in [
-        ("Договор и доступы к 1С", "2–4 рабочих дня", "Можно начинать настройку"),
-        ("Настройка и запуск (около 4 часов)", "1 рабочий день", "Сервис подключен, роли и подписи настроены"),
-        ("Пилот на небольшой группе", "3–7 рабочих дней", "Проверен рабочий сценарий"),
-        ("Обучение ключевых сотрудников", "параллельно", "Видеоуроки и короткие инструкции"),
-        ("Подключение всех 750 сотрудников", "2–3 недели", "Массовый запуск личных кабинетов"),
-        ("Резерв 1 час поддержки", "по запросу", "Вопросы и помощь по 1С после запуска"),
-    ]:
-        row = t.add_row().cells
-        for i, val in enumerate((a, b, d)):
-            row[i].paragraphs[0].clear()
-            r = row[i].paragraphs[0].add_run(val)
-            run_font(r, size=8, bold=(i < 2))
-    add_p(doc, "Ориентир: настройка за 1 день · пилот за 1–2 недели · все 750 кабинетов за 1–1,5 месяца.", size=9, bold=True, space_after=10)
-
-    add_p(doc, "3. Бюджет", size=12, bold=True, space_after=4)
-    yellow_underline(doc.paragraphs[-1])
-    bt = doc.add_table(rows=1, cols=3)
-    borders(bt)
-    for i, h in enumerate(["Статья", "Пояснение", "Сумма"]):
-        cell = bt.rows[0].cells[i]
-        shade(cell, "1A1A1A")
-        cell.paragraphs[0].clear()
-        r = cell.paragraphs[0].add_run(h)
-        run_font(r, size=9, bold=True, color=DocRGB(0xFF, 0xFF, 0xFF))
-    for a, b, d, gift in [
-        ("Личные кабинеты, 750 шт. / 12 месяцев", "Пакеты 500 + 200 + 50", f"{TOTAL:,} ₽".replace(",", " "), False),
-        ("Настройка и запуск (~4 часа)", "Из подарочных часов линии консультаций", "0 ₽", True),
-        ("Резерв на вопросы по 1С (1 час)", "Из подарочных часов линии консультаций", "0 ₽", True),
-        ("Подарок: 5 часов линии консультаций", f"Акция «Больше, чем кешбэк!» · выгода {GIFT_VALUE:,} ₽".replace(",", " "), "0 ₽", True),
-    ]:
-        row = bt.add_row().cells
-        for i, val in enumerate((a, b, d)):
-            if gift:
-                shade(row[i], "FFF8E8")
-            row[i].paragraphs[0].clear()
-            r = row[i].paragraphs[0].add_run(val)
-            run_font(r, size=8, bold=(i == 0 or i == 2), color=DocRGB(0x1F, 0x6B, 0x2E) if (gift and i == 2) else DocRGB(0x1A, 0x1A, 0x1A))
-
-    total_t = doc.add_table(rows=1, cols=2)
-    borders(total_t, "F0C14A")
-    a, b = total_t.rows[0].cells
-    shade(a, "1A1A1A")
-    shade(b, "1A1A1A")
-    a.paragraphs[0].clear()
-    r = a.paragraphs[0].add_run("Итого к оплате")
-    run_font(r, size=11, bold=True, color=DocRGB(0xF0, 0xC1, 0x4A))
-    p = a.add_paragraph()
-    r = p.add_run("Только пакет кабинетов. Часы линии — бесплатно.")
-    run_font(r, size=8, color=DocRGB(0xFF, 0xFF, 0xFF))
-    b.paragraphs[0].clear()
-    b.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    r = b.paragraphs[0].add_run(f"{TOTAL:,} ₽".replace(",", " "))
-    run_font(r, size=16, bold=True, color=DocRGB(0xF0, 0xC1, 0x4A))
-
-    add_p(doc, "Сравнение с другими решениями", size=12, bold=True, space_after=4)
-    yellow_underline(doc.paragraphs[-1])
+    yellow_title(doc, "Сравнение для выбора подрядчика")
     ct = doc.add_table(rows=1, cols=3)
-    borders(ct)
-    for i, h in enumerate(["Критерий", "Форус + 1С:Кабинет сотрудника", "Другие операторы"]):
+    set_borders(ct, "F0C14A")
+    for i, h in enumerate(["Критерий", "Предложение Форус", "Типичные альтернативы"]):
         cell = ct.rows[0].cells[i]
-        shade(cell, "F0C14A" if i == 1 else "1A1A1A")
-        cell.paragraphs[0].clear()
-        r = cell.paragraphs[0].add_run(h)
-        run_font(r, size=8, bold=True, color=DocRGB(0x1A, 0x1A, 0x1A) if i == 1 else DocRGB(0xFF, 0xFF, 0xFF))
+        shade(cell, "F0C14A")
+        clear(cell)
+        set_run(cell.paragraphs[0].add_run(h), size=9, bold=True)
     for a, b, d in [
-        ("Сложность запуска", "Типовая настройка около 4 часов", "Часто долгое внедрение новой системы"),
-        ("Где работают сотрудники", "В привычной 1С и личном кабинете", "Отдельная кадровая платформа"),
-        ("Нагрузка на ИТ-отдел", "Без новых клиентских лицензий 1С", "Новые доступы, интеграции, сопровождение"),
-        ("Где хранятся документы", "В вашей базе 1С", "Облако оператора, часто за отдельную плату"),
-        ("Оплата запуска", "Часы поддержки — в подарок", "Внедрение обычно оплачивается отдельно"),
+        ("Запуск", "Около 4 часов настройки", "Часто долгое внедрение"),
+        ("Система", "Внутри вашей 1С", "Отдельная кадровая платформа"),
+        ("ИТ-нагрузка", "Без новых клиентских лицензий 1С", "Новые доступы и интеграции"),
+        ("Документы", "В вашей базе 1С", "Облако оператора, часто платно"),
+        ("Оплата старта", "Часы поддержки — подарок", "Внедрение обычно отдельной строкой"),
     ]:
         row = ct.add_row().cells
-        shade(row[1], "EAF6EA")
-        shade(row[2], "F9EAEA")
+        shade(row[1], "E8F5E9")
+        shade(row[2], "FFEBEE")
         for i, val in enumerate((a, b, d)):
-            row[i].paragraphs[0].clear()
-            r = row[i].paragraphs[0].add_run(val)
-            col = DocRGB(0x1F, 0x6B, 0x2E) if i == 1 else (DocRGB(0x8C, 0x20, 0x20) if i == 2 else DocRGB(0x1A, 0x1A, 0x1A))
-            run_font(r, size=8, bold=(i == 0), color=col)
+            clear(row[i])
+            col = RGBColor(0x2E, 0x7D, 0x32) if i == 1 else (RGBColor(0xC6, 0x28, 0x28) if i == 2 else RGBColor(0x2B, 0x2B, 0x2B))
+            set_run(row[i].paragraphs[0].add_run(val), size=8, bold=(i == 0), color=col)
 
-    add_p(doc, "", space_after=6)
-    add_p(doc, "Готовы подключить 750 кабинетов и помочь с запуском", size=11, bold=True, align="center")
-    add_p(doc, "Проведём демонстрацию для кадровой службы и ИТ-отдела и ответим на вопросы.", size=9, align="center", color=DocRGB(0x5A, 0x5A, 0x5A))
+    p_add(doc, "", after=8)
+    yellow_title(doc, "Как проходит запуск")
+    st = doc.add_table(rows=1, cols=5)
+    set_borders(st, "F0C14A")
+    steps = [
+        ("1", "Договор и доступы", "2–4 дня"),
+        ("2", "Настройка ≈4 часа", "1 день"),
+        ("3", "Пилот на группе", "до 1 недели"),
+        ("4", "Все 750 кабинетов", "2–3 недели"),
+        ("5", "1 час в запасе", "по запросу"),
+    ]
+    for i, (n, title, timing) in enumerate(steps):
+        cell = st.rows[0].cells[i]
+        shade(cell, "FFFBEA")
+        clear(cell)
+        cell.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_run(cell.paragraphs[0].add_run(n), size=12, bold=True, color=RGBColor(0x9A, 0x7A, 0x10))
+        p = cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_run(p.add_run(title), size=8, bold=True)
+        p = cell.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        set_run(p.add_run(timing), size=8, color=RGBColor(0x66, 0x66, 0x66))
+
+    p_add(doc, "", after=8)
+    yellow_title(doc, "Ценообразование — одной таблицей")
+    bt = doc.add_table(rows=1, cols=2)
+    set_borders(bt, "F0C14A")
+    for i, h in enumerate(["Статья", "Сумма"]):
+        cell = bt.rows[0].cells[i]
+        shade(cell, "F0C14A")
+        clear(cell)
+        set_run(cell.paragraphs[0].add_run(h), size=9, bold=True)
+    for label, amount, gift in [
+        ("750 личных кабинетов на 12 месяцев (пакеты 500+200+50)", f"{CABINETS:,} ₽".replace(",", " "), False),
+        ("Настройка и запуск сервиса (≈4 часа поддержки)", "0 ₽ — из подарка", True),
+        ("Запас на вопросы по 1С после запуска (1 час)", "0 ₽ — из подарка", True),
+        ("Подарок по акции — 5 часов линии консультаций", f"выгода {GIFT_VALUE:,} ₽".replace(",", " "), True),
+    ]:
+        row = bt.add_row().cells
+        shade(row[0], "FFF6D8" if gift else "FFFBEA")
+        shade(row[1], "FFF6D8" if gift else "FFFBEA")
+        clear(row[0])
+        clear(row[1])
+        set_run(row[0].paragraphs[0].add_run(label), size=9)
+        row[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        set_run(row[1].paragraphs[0].add_run(amount), size=10, bold=True, color=RGBColor(0x2E, 0x7D, 0x32) if gift else RGBColor(0x2B, 0x2B, 0x2B))
+
+    tot = doc.add_table(rows=1, cols=2)
+    set_borders(tot, "F0C14A", "14")
+    a, b = tot.rows[0].cells
+    shade(a, "F0C14A")
+    shade(b, "F0C14A")
+    clear(a)
+    clear(b)
+    set_run(a.paragraphs[0].add_run("Итого к оплате"), size=12, bold=True)
+    p = a.add_paragraph()
+    set_run(p.add_run("Только пакет кабинетов. Настройка и стартовая поддержка — бесплатно."), size=8)
+    b.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    set_run(b.paragraphs[0].add_run(f"{CABINETS:,} ₽".replace(",", " ")), size=18, bold=True)
+
+    p_add(doc, "", after=8)
+    yellow_title(doc, "Важно знать")
+    notes = [
+        ("Подпись бесплатно", "Электронная подпись сотрудникам выпускается бесплатно."),
+        ("Шаблоны документов", "Положение, уведомления и согласия для перехода — в комплекте."),
+        ("Формат работ", "Удалённо. Выезд и нетиповые доработки — отдельно."),
+        ("Срок предложения", "Действует 30 дней с даты отправки."),
+    ]
+    nt = doc.add_table(rows=2, cols=2)
+    set_borders(nt, "F0C14A", "8")
+    for i, (title, body) in enumerate(notes):
+        cell = nt.rows[i // 2].cells[i % 2]
+        shade(cell, "FFFBEA")
+        clear(cell)
+        set_run(cell.paragraphs[0].add_run(title), size=10, bold=True)
+        p = cell.add_paragraph()
+        set_run(p.add_run(body), size=9, color=RGBColor(0x66, 0x66, 0x66))
 
     mt = doc.add_table(rows=1, cols=2)
-    borders(mt, "F0C14A")
+    set_borders(mt, "F0C14A", "12")
     a, b = mt.rows[0].cells
-    shade(a, "FFF8E8")
-    shade(b, "FFF8E8")
-    a.paragraphs[0].clear()
-    r = a.paragraphs[0].add_run("Ваш менеджер")
-    run_font(r, size=8, color=DocRGB(0x5A, 0x5A, 0x5A))
+    shade(a, "FFF6D8")
+    shade(b, "FFF6D8")
+    clear(a)
+    clear(b)
+    set_run(a.paragraphs[0].add_run("Ваш менеджер"), size=8, color=RGBColor(0x66, 0x66, 0x66))
     p = a.add_paragraph()
-    r = p.add_run(MANAGER)
-    run_font(r, size=12, bold=True)
-    for line in [MANAGER_EMAIL, MANAGER_PHONE]:
+    set_run(p.add_run(MANAGER), size=13, bold=True)
+    for line in [EMAIL, PHONE]:
         p = a.add_paragraph()
-        r = p.add_run(line)
-        run_font(r, size=9)
-    b.paragraphs[0].clear()
-    r = b.paragraphs[0].add_run("ГК «Форус»")
-    run_font(r, size=11, bold=True)
-    for line in ["www.forus.ru", "г. Иркутск, ул. Ямская, 1/1"]:
+        set_run(p.add_run(line), size=9)
+    set_run(b.paragraphs[0].add_run("ГК «Форус»"), size=11, bold=True)
+    for line in ["Готовы подключить и показать на демо", "для кадровой службы и ИТ-отдела", "www.forus.ru"]:
         p = b.add_paragraph()
-        r = p.add_run(line)
-        run_font(r, size=9, color=DocRGB(0x5A, 0x5A, 0x5A))
+        set_run(p.add_run(line), size=9, color=RGBColor(0x66, 0x66, 0x66))
 
     doc.save(OUT_DOCX)
-    print("DOCX:", OUT_DOCX)
+    print("DOCX OK", OUT_DOCX)
 
 
 def main():
     build_pdf()
     build_docx()
-    # copies to root
-    for src, name in [
-        (OUT_PDF, "КП_ТФМ_Спецтехника_КЭДО_750.pdf"),
-        (OUT_DOCX, "КП_ТФМ_Спецтехника_КЭДО_750.docx"),
-        (OUT_PDF, "КП_Кабинет_сотрудника_750.pdf"),
-    ]:
-        dst = ROOT / name
-        dst.write_bytes(src.read_bytes())
-        print("copy", dst)
+    for src in (OUT_PDF, OUT_DOCX):
+        (ROOT / src.name).write_bytes(src.read_bytes())
+        print("->", ROOT / src.name)
+    (ROOT / "КП_Кабинет_сотрудника_750.pdf").write_bytes(OUT_PDF.read_bytes())
 
 
 if __name__ == "__main__":
