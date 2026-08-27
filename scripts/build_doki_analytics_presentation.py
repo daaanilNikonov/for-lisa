@@ -98,31 +98,6 @@ def add_textbox(
     return box
 
 
-def add_multiline(
-    slide,
-    left,
-    top,
-    width,
-    height,
-    lines,
-    size_pt=13,
-    bold=False,
-    color=WHITE,
-    line_space=Pt(6),
-    align=PP_ALIGN.LEFT,
-):
-    box = slide.shapes.add_textbox(left, top, width, height)
-    tf = box.text_frame
-    tf.word_wrap = True
-    set_anchor(tf, MSO_ANCHOR.TOP)
-    for i, line in enumerate(lines):
-        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.alignment = align
-        p.space_after = line_space
-        set_run(p.add_run(), line, size_pt, bold, color)
-    return box
-
-
 def add_card(slide, left, top, width, height, fill=CARD, corner=0.08):
     shape = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
     shape.fill.solid()
@@ -221,8 +196,8 @@ def build_slide_1(prs):
             p = tf.paragraphs[0]
             set_run(
                 p.add_run(),
-                "2 гипотезы  ·  18 подключений  ·  оффер: 3 месяца безлимит бесплатно",
-                13,
+                "2 гипотезы  ·  18 подключений  ·  ЭДО + ЭПД в одном продукте  ·  оффер: 3 месяца безлимит",
+                12,
                 False,
                 SOFT,
             )
@@ -252,8 +227,8 @@ def build_slide_2(prs):
         (
             "icon_70.png",
             "Результат для защиты",
-            "Показать цифры, что сработало, что готово к передаче "
-            "и какие вопросы ещё нужно закрыть перед масштабом.",
+            "Показать цифры, выгоду для показателей ЭДО и ЭПД, "
+            "что готово к передаче и как пользоваться материалами.",
         ),
         (
             "icon_27.png",
@@ -338,7 +313,7 @@ def build_slide_3(prs):
 def build_slide_4(prs):
     """Гипотеза 1."""
     slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
-    fill_title(slide, "Гипотеза 1. Доки вместо 1С-ЭПД", 26)
+    fill_title(slide, "Гипотеза 1. Доки по базе ЭПД (вместо 1С-ЭПД)", 24)
     clear_body_placeholders(slide)
 
     add_card(slide, emu(0.97), emu(1.55), emu(11.4), emu(1.15), CARD, 0.08)
@@ -353,9 +328,9 @@ def build_slide_4(prs):
     )
 
     left_items = [
-        ("Кто клиент", "Компании, которым нужен ЭДО, но 1С-ЭПД слишком узкий или неудобный."),
-        ("Почему Доки", "Универсальный обмен документами, веб и 1С, облачный архив."),
-        ("Что продаём", "Альтернативу там, где логистический ЭПД не закрывает задачу."),
+        ("Кто клиент", "Компании из базы ЭПД, для которых 1С-ЭПД слишком узкий, тяжёлый или неудобный."),
+        ("Почему Доки", "Универсальный ЭДО + при необходимости Доки.Логистика (ЭПД) — шире, чем только 1С-ЭПД."),
+        ("Что продаём", "Альтернативу там, где узкий логистический ЭПД не закрывает задачу клиента."),
     ]
 
     y = emu(2.95)
@@ -407,7 +382,7 @@ def build_slide_5(prs):
         ("1", "Кабинет\nсотрудника", "Вход через HR/кадровый контур"),
         ("2", "Доки", "ЭДО с контрагентами"),
         ("3", "Смартвей", "Командировки и поездки"),
-        ("4", "Доки.\nЛогистика", "Перевозочные документы"),
+        ("4", "Доки.\nЛогистика", "Перевозочные документы (ЭПД)"),
     ]
 
     left0, top0 = emu(0.97), emu(2.8)
@@ -490,6 +465,57 @@ def build_slide_6(prs):
 
 
 def build_slide_7(prs):
+    """Выгода для показателей: ЭДО + ЭПД."""
+    slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
+    fill_title(slide, "Выгода для показателей: ЭДО + ЭПД", 26)
+    clear_body_placeholders(slide)
+
+    add_textbox(
+        slide,
+        emu(0.97),
+        emu(1.4),
+        emu(11.4),
+        emu(0.45),
+        "«Доки» — это не один продукт в одном показателе. Это два контура в одной продаже.",
+        14,
+        False,
+        SOFT,
+    )
+
+    # Two big KPI cards
+    add_card(slide, emu(0.97), emu(1.95), emu(5.5), emu(2.55), CARD, 0.1)
+    add_textbox(slide, emu(1.25), emu(2.15), emu(5.0), emu(0.35), "Показатель 1 — ЭДО", 14, True, BLUE)
+    add_textbox(
+        slide, emu(1.25), emu(2.6), emu(5.0), emu(1.6),
+        "Доки закрывает обычный электронный\nдокументооборот: УПД, счета, акты,\nдоговоры. Клиент обменивается\nдокументами с контрагентами.",
+        13, False, WHITE,
+    )
+
+    add_card(slide, emu(6.7), emu(1.95), emu(5.65), emu(2.55), CARD, 0.1)
+    add_textbox(slide, emu(7.0), emu(2.15), emu(5.1), emu(0.35), "Показатель 2 — ЭПД", 14, True, BLUE)
+    add_textbox(
+        slide, emu(7.0), emu(2.6), emu(5.1), emu(1.6),
+        "Доки.Логистика закрывает\nперевозочные документы (ЭПД):\nнакладные, путевые — там, где\nнужен логистический контур.",
+        13, False, WHITE,
+    )
+
+    # Bottom highlight
+    add_card(slide, emu(0.97), emu(4.7), emu(11.4), emu(1.55), BLUE, 0.1)
+    add_textbox(
+        slide, emu(1.3), emu(4.9), emu(10.8), emu(0.4),
+        "Почему это важно для продаж и KPI", 15, True, WHITE,
+    )
+    add_textbox(
+        slide, emu(1.3), emu(5.4), emu(10.8), emu(0.65),
+        "Одна сделка по «Доки» может закрывать сразу два показателя — ЭДО и ЭПД. "
+        "Это сильнее, чем продажа узкого 1С-ЭПД только в один контур. "
+        "При тиражировании менеджеру выгодно предлагать полный контур: Доки + Доки.Логистика.",
+        13, False, WHITE,
+    )
+    return slide
+
+
+def build_slide_8(prs):
     """Что подготовили."""
     slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT2])
     fill_title(slide, "Что уже готово к передаче", 26)
@@ -499,7 +525,7 @@ def build_slide_7(prs):
         (
             "icon_55.png",
             "Скрипты продаж",
-            "Скрипт холодного звонка: Кабинет сотрудника → Доки → Смартвей → Доки.Логистика, "
+            "Скрипт: Кабинет сотрудника → Доки → Смартвей → Доки.Логистика, "
             "плюс отработка возражений.",
         ),
         (
@@ -510,7 +536,7 @@ def build_slide_7(prs):
         (
             "icon_59.png",
             "Сравнение 1С-ЭПД и Доки",
-            "Обзор и сравнение: когда предлагать 1С-ЭПД, а когда — Доки / Доки.Логистика.",
+            "Когда предлагать 1С-ЭПД, а когда — Доки / Доки.Логистика. Обзор и сравнение.",
         ),
         (
             "icon_67.png",
@@ -540,7 +566,90 @@ def build_slide_7(prs):
     return slide
 
 
-def build_slide_8(prs):
+def build_slide_9(prs):
+    """Как использовать материалы — практический гайд для новой группы."""
+    slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
+    fill_title(slide, "Как использовать материалы", 26)
+    clear_body_placeholders(slide)
+
+    add_textbox(
+        slide,
+        emu(0.97),
+        emu(1.35),
+        emu(11.4),
+        emu(0.4),
+        "Простая схема для новой группы: что брать в работу и в какой момент.",
+        13,
+        False,
+        SOFT,
+    )
+
+    steps = [
+        (
+            "1",
+            "Выбрать вход",
+            "База ЭПД → Доки\nили скрипт связки\nКабС–Доки–Смартвей–Доки.Логистика",
+        ),
+        (
+            "2",
+            "Открыть скрипт",
+            "Файл скрипта в\nрепозитории — вести\nразговор по шагам",
+        ),
+        (
+            "3",
+            "Дать материал",
+            "Сравнение / КП /\nшаблон презентации /\nблок в рассылку",
+        ),
+        (
+            "4",
+            "Закрыть оффером",
+            "3 месяца безлимит\nбесплатно → подключение\n→ контроль продления",
+        ),
+    ]
+
+    left0, top0 = emu(0.97), emu(1.85)
+    card_w, card_h, gap = emu(2.7), emu(2.55), emu(0.2)
+    for i, (num, title, body) in enumerate(steps):
+        left = left0 + i * (card_w + gap)
+        add_card(slide, left, top0, card_w, card_h, CARD, 0.08)
+        circ = slide.shapes.add_shape(
+            MSO_SHAPE.OVAL, left + emu(1.05), top0 + emu(0.2), emu(0.55), emu(0.55)
+        )
+        circ.fill.solid()
+        circ.fill.fore_color.rgb = BLUE
+        circ.line.fill.background()
+        add_textbox(
+            slide, left + emu(1.05), top0 + emu(0.2), emu(0.55), emu(0.55),
+            num, 16, True, WHITE, PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE,
+        )
+        add_textbox(
+            slide, left + emu(0.15), top0 + emu(0.9), card_w - emu(0.3), emu(0.4),
+            title, 13, True, BLUE, PP_ALIGN.CENTER,
+        )
+        add_textbox(
+            slide, left + emu(0.15), top0 + emu(1.35), card_w - emu(0.3), emu(1.05),
+            body, 11, False, WHITE, PP_ALIGN.CENTER,
+        )
+
+    add_textbox(
+        slide,
+        emu(0.97),
+        emu(4.6),
+        emu(11.4),
+        emu(1.5),
+        "Памятка по файлам:\n"
+        "• Скрипт КабС / Доки / Смартвей — вести звонок\n"
+        "• Сравнение 1С-ЭПД и Доки — объяснить, что выбрать клиенту\n"
+        "• Шаблон презентации Доки + КП / тарифы — отправить после интереса\n"
+        "• Блок в рассылку — для массовых касаний и партнёров",
+        12,
+        False,
+        WHITE,
+    )
+    return slide
+
+
+def build_slide_10(prs):
     """Оффер."""
     slide = prs.slides.add_slide(prs.slide_layouts[L_BG])
     fill_title(slide, "Оффер, с которым подключали", 26)
@@ -577,7 +686,7 @@ def build_slide_8(prs):
     return slide
 
 
-def build_slide_9(prs):
+def build_slide_11(prs):
     """Выводы."""
     slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
     fill_title(slide, "Выводы по проекту", 26)
@@ -591,8 +700,8 @@ def build_slide_9(prs):
         ),
         (
             "2",
-            "Доки продаётся как отдельно, так и в связке",
-            "Работает и как альтернатива 1С-ЭПД, и как часть скрипта с КабС / Смартвей / Доки.Логистика.",
+            "Доки закрывает сразу два показателя",
+            "ЭДО (Доки) + ЭПД (Доки.Логистика). Одна продажа сильнее узкого 1С-ЭПД по вкладу в KPI.",
         ),
         (
             "3",
@@ -602,7 +711,7 @@ def build_slide_9(prs):
         (
             "4",
             "Пилот закрыл вопрос «продаётся ли»",
-            "Следующий этап — не поиск идеи, а системный процесс: объём, конверсия, продление после 3 месяцев.",
+            "Следующий этап — не поиск идеи, а процесс: объём, конверсия, использование и оплата после 3 месяцев.",
         ),
     ]
 
@@ -625,7 +734,7 @@ def build_slide_9(prs):
     return slide
 
 
-def build_slide_10(prs):
+def build_slide_12(prs):
     """Рекомендации для тиражирования."""
     slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
     fill_title(slide, "Рекомендации для тиражирования", 26)
@@ -639,13 +748,13 @@ def build_slide_10(prs):
         ),
         (
             "icon_54.png",
-            "Единый оффер",
-            "Сохранить 3 месяца безлимита как стандарт входа, но сразу ставить задачу на продление.",
+            "Продавать полный контур",
+            "В каждой сделке закрывать ЭДО (Доки) и, где уместно, ЭПД (Доки.Логистика) — два показателя.",
         ),
         (
             "icon_55.png",
             "Передать пакет as-is",
-            "Скрипты, сравнения, рассылки и КП — базовый набор для новой группы без доработки «с нуля».",
+            "Скрипты, сравнения, рассылки и КП — базовый набор. Идти по схеме «как использовать материалы».",
         ),
         (
             "icon_64.png",
@@ -675,7 +784,7 @@ def build_slide_10(prs):
     return slide
 
 
-def build_slide_11(prs):
+def build_slide_13(prs):
     """Чего не хватает для полной защиты."""
     slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
     fill_title(slide, "Каких данных не хватает для полной защиты", 24)
@@ -699,7 +808,7 @@ def build_slide_11(prs):
         ("Деньги", "Средний чек, выручка сейчас и прогноз после окончания 3 бесплатных месяцев?"),
         ("Активность", "Сколько из 18 реально начали отправлять документы?"),
         ("Отказы", "Типовые причины «нет» и где клиенты отваливаются чаще всего?"),
-        ("Ресурсы", "Сколько часов менеджеров ушло на пилот? Кто ведёт сопровождение после передачи?"),
+        ("Учёт KPI", "Как сейчас фиксируют вклад сделки: только ЭДО, только ЭПД или оба показателя?"),
     ]
 
     left0, top0 = emu(0.97), emu(2.0)
@@ -716,7 +825,7 @@ def build_slide_11(prs):
     return slide
 
 
-def build_slide_12(prs):
+def build_slide_14(prs):
     """Запрос на решение."""
     slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
     fill_title(slide, "Просим принять решение", 26)
@@ -733,7 +842,7 @@ def build_slide_12(prs):
         ),
         (
             "Закрепить KPI на следующий этап",
-            "Подключения + использование + переход на оплату после 3 месяцев.",
+            "Подключения + вклад в ЭДО и ЭПД + переход на оплату после 3 месяцев.",
         ),
     ]
 
@@ -762,7 +871,7 @@ def build_slide_12(prs):
     )
     add_textbox(
         slide, emu(9.6), emu(4.6), emu(2.6), emu(0.7),
-        "18 подключений\n2 рабочих канала", 13, False, WHITE, PP_ALIGN.CENTER,
+        "18 подключений\nЭДО + ЭПД", 13, False, WHITE, PP_ALIGN.CENTER,
     )
     return slide
 
@@ -791,6 +900,8 @@ def main():
     build_slide_10(prs)
     build_slide_11(prs)
     build_slide_12(prs)
+    build_slide_13(prs)
+    build_slide_14(prs)
 
     prs.save(str(OUT))
     print(f"Saved: {OUT}")
