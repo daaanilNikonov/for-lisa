@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Стратегическая сессия по ЭПД — Форус</title>
+  <style>
+    :root {
+      --yellow: #FECF68;
+      --yellow-dark: #F2AF2E;
+      --yellow-soft: #FFF4D6;
+      --black: #2B2B2B;
+      --gray: #5A5A5A;
+      --gray-light: #8A8A8A;
+      --teal: #395F75;
+      --white: #FFFFFF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Verdana, Geneva, sans-serif;
+      background: #e8e8e8;
+      color: var(--black);
+      padding: 24px;
+    }
+    h1.page-title {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 18px;
+      color: var(--gray);
+    }
+    .deck {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      align-items: center;
+    }
+    .slide {
+      width: 1280px;
+      height: 720px;
+      background: var(--white);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 28px rgba(0,0,0,.12);
+    }
+    .brand {
+      position: absolute;
+      top: 34px;
+      left: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: .04em;
+    }
+    .brand-dot {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--yellow);
+    }
+    .footer {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 28px;
+      background: var(--yellow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 52px;
+      font-size: 11px;
+    }
+    .wave-tr, .wave-bl {
+      position: absolute;
+      pointer-events: none;
+      opacity: .95;
+    }
+    .wave-tr { top: -10px; right: -20px; width: 300px; }
+    .wave-bl { bottom: 20px; left: -20px; width: 300px; }
+    .wave-title {
+      position: absolute;
+      right: -40px;
+      bottom: -20px;
+      width: 620px;
+      opacity: .9;
+      pointer-events: none;
+    }
+    .badge {
+      width: 68px;
+      height: 68px;
+      border-radius: 14px;
+      background: var(--yellow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .cards {
+      display: flex;
+      gap: 22px;
+      padding: 0 52px;
+      margin-top: 28px;
+    }
+    .card {
+      flex: 1;
+      background: var(--yellow-soft);
+      border-radius: 14px;
+      padding: 22px 24px 22px 28px;
+      position: relative;
+      min-height: 380px;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 10px;
+      background: var(--yellow);
+      border-radius: 14px 0 0 14px;
+    }
+    .card h3 {
+      font-size: 16px;
+      margin-bottom: 14px;
+    }
+    .card ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card li {
+      font-size: 15px;
+      color: var(--gray);
+      line-height: 1.35;
+      padding-left: 16px;
+      position: relative;
+    }
+    .card li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: var(--black);
+      font-weight: 700;
+    }
+    .topic-head {
+      display: flex;
+      align-items: flex-start;
+      gap: 22px;
+      padding: 96px 52px 0;
+    }
+    .topic-head h2 {
+      font-size: 28px;
+      line-height: 1.2;
+      margin-top: 8px;
+    }
+    .topic-head .sub {
+      margin-top: 8px;
+      color: var(--teal);
+      font-size: 14px;
+    }
+    /* Title */
+    .title-accent {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 18px;
+      background: var(--yellow);
+    }
+    .title-body {
+      padding: 190px 70px 0;
+      position: relative;
+      z-index: 1;
+    }
+    .eyebrow {
+      color: var(--teal);
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: .04em;
+      margin-bottom: 10px;
+    }
+    .hero {
+      font-size: 96px;
+      font-weight: 700;
+      line-height: .95;
+      margin-bottom: 18px;
+    }
+    .lead {
+      font-size: 20px;
+      color: var(--gray);
+      max-width: 720px;
+      line-height: 1.4;
+      margin-bottom: 28px;
+    }
+    .underline {
+      width: 220px;
+      height: 10px;
+      background: var(--yellow);
+      margin-bottom: 22px;
+    }
+    .meta { color: var(--gray-light); font-size: 15px; }
+
+    /* Agenda */
+    .agenda-title {
+      padding: 90px 52px 0;
+      font-size: 34px;
+      font-weight: 700;
+    }
+    .agenda-bar {
+      width: 150px;
+      height: 8px;
+      background: var(--yellow);
+      margin: 14px 52px 28px;
+    }
+    .agenda-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding: 0 52px;
+    }
+    .agenda-item {
+      background: var(--yellow-soft);
+      border-radius: 14px;
+      padding: 22px 24px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-height: 100px;
+    }
+    .agenda-item .num {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--yellow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .agenda-item .txt {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+  </style>
+</head>
+<body>
+  <h1 class="page-title">Стратегическая сессия по ЭПД — ГК Форус</h1>
+  <div class="deck">
+
+    <!-- 1 Title -->
+    <section class="slide" id="s1">
+      <div class="title-accent"></div>
+      <img class="wave-title" src="assets/epd_session/wave_title.png" alt="" />
+      <img class="wave-tr" src="assets/epd_session/wave_tr.png" alt="" />
+      <div class="brand" style="left:68px;top:52px"><div class="brand-dot"></div>ФОРУС</div>
+      <div class="title-body">
+        <div class="eyebrow">СТРАТЕГИЧЕСКАЯ СЕССИЯ</div>
+        <div class="hero">ЭПД</div>
+        <div class="lead">Вопросы к обсуждению: реклама, клиенты,<br/>обратная связь и финансовая модель направления</div>
+        <div class="underline"></div>
+        <div class="meta">6 тем  ·  решения и следующие шаги</div>
+      </div>
+      <div class="footer"><span>ГК Форус  ·  Стратегическая сессия по ЭПД</span><span>1 / 8</span></div>
+    </section>
+
+    <!-- 2 Agenda -->
+    <section class="slide" id="s2">
+      <img class="wave-tr" src="assets/epd_session/wave_tr.png" alt="" />
+      <img class="wave-bl" src="assets/epd_session/wave_bl.png" alt="" />
+      <div class="brand"><div class="brand-dot"></div>ФОРУС</div>
+      <div class="agenda-title">Повестка сессии</div>
+      <div class="agenda-bar"></div>
+      <div class="agenda-grid">
+        <div class="agenda-item"><div class="num">1</div><div class="txt">Поле «время взятия в работу» заявки с РК</div></div>
+        <div class="agenda-item"><div class="num">2</div><div class="txt">Разделение стоимости РК между ЦП и ЦКС</div></div>
+        <div class="agenda-item"><div class="num">3</div><div class="txt">Продление РК и согласование бюджета</div></div>
+        <div class="agenda-item"><div class="num">4</div><div class="txt">ОС от МПП: проблемы, возражения, потребности</div></div>
+        <div class="agenda-item"><div class="num">5</div><div class="txt">Портрет клиента, который купил ЭПД</div></div>
+        <div class="agenda-item"><div class="num">6</div><div class="txt">Финансовая модель направления ЭПД</div></div>
+      </div>
+      <div class="footer"><span>ГК Форус  ·  Стратегическая сессия по ЭПД</span><span>2 / 8</span></div>
+    </section>
+
+    <!-- Topics -->
+    <section class="slide" id="s3">
+      <img class="wave-tr" src="assets/epd_session/wave_tr.png" alt="" />
+      <img class="wave-bl" src="assets/epd_session/wave_bl.png" alt="" />
+      <div class="brand"><div class="brand-dot"></div>ФОРУС</div>
+      <div class="topic-head">
+        <div class="badge">1</div>
+        <div>
+          <h2>Поле «время взятия в работу» заявки с РК</h2>
+          <div class="sub">Операционный трекинг заявок из рекламной кампании</div>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>Что обсуждаем</h3>
+          <ul>
+            <li>Добавить поле фиксации времени взятия заявки в работу</li>
+            <li>Источник заявок — рекламная кампания (РК)</li>
+            <li>Единый стандарт учёта для команды продаж / сопровождения</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Вопросы к решению</h3>
+          <ul>
+            <li>Где фиксируем: CRM / Битрикс / другое?</li>
+            <li>Кто заполняет и в какой момент?</li>
+            <li>Какие метрики считаем: SLA, скорость реакции, конверсия?</li>
+            <li>С какого числа включаем в процесс?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>ГК Форус  ·  Стратегическая сессия по ЭПД</span><span>3 / 8</span></div>
+    </section>
+
+    <section class="slide" id="s4">
+      <img class="wave-tr" src="assets/epd_session/wave_tr.png" alt="" />
+      <img class="wave-bl" src="assets/epd_session/wave_bl.png" alt="" />
+      <div class="brand"><div class="brand-dot"></div>ФОРУС</div>
+      <div class="topic-head">
+        <div class="badge">2</div>
+        <div>
+          <h2>Разделение стоимости РК между ЦП и ЦКС</h2>
+          <div class="sub">Очная встреча 27.08 — согласование модели распределения затрат</div>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>Контекст</h3>
+          <ul>
+            <li>Рекламная кампания — общий инструмент для ЦП и ЦКС</li>
+            <li>Нужна прозрачная схема разделения бюджета</li>
+            <li>Решение фиксируем на очной встрече 27 августа</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>К обсуждению</h3>
+          <ul>
+            <li>Варианты: 50/50, по лидам, по выручке, по заявкам</li>
+            <li>Что входит в стоимость РК?</li>
+            <li>Как учитываем в P&L направлений?</li>
+            <li>Кто владелец бюджета и кто согласует изменения?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>ГК Форус  ·  Стратегическая сессия по ЭПД</span><span>4 / 8</span></div>
+    </section>
+
+    <section class="slide" id="s5">
+      <img class="wave-tr" src="assets/epd_session/wave_tr.png" alt="" />
+      <img class="wave-bl" src="assets/epd_session/wave_bl.png" alt="" />
+      <div class="brand"><div class="brand-dot"></div>ФОРУС</div>
+      <div class="topic-head">
+        <div class="badge">3</div>
+        <div>
+          <h2>Продление РК и согласование бюджета</h2>
+          <div class="sub">Текущая рекламная кампания действует до середины сентября</div>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>Ситуация</h3>
+          <ul>
+            <li>Текущая РК — до середины сентября</li>
+            <li>Нужно решение: продлеваем или останавливаем</li>
+            <li>Без согласования бюджета есть риск паузы в лидогенерации</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Решения на сессии</h3>
+          <ul>
+            <li>Продлеваем / не продлеваем?</li>
+            <li>На какой срок и с каким бюджетом?</li>
+            <li>Какие каналы оставляем / меняем?</li>
+            <li>Кто готовит и кто утверждает бюджет на следующий период?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>ГК Форус  ·  Стратегическая сессия по ЭПД</span><span>5 / 8</span></div>
+    </section>
+
+    <section class="slide" id="s6">
+      <img class="wave-tr" src="assets/epd_session/wave_tr.png" alt="" />
+      <img class="wave-bl" src="assets/epd_session/wave_bl.png" alt="" />
+      <div class="brand"><div class="brand-dot"></div>ФОРУС</div>
+      <div class="topic-head">
+        <div class="badge">4</div>
+        <div>
+          <h2>ОС от МПП по сервису ЭПД</h2>
+          <div class="sub">Что говорят клиенты: проблемы, возражения и потребности</div>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>Задача</h3>
+          <ul>
+            <li>Собрать обратную связь от МПП</li>
+            <li>Зафиксировать типичные возражения клиентов</li>
+            <li>Выделить основные проблемы и неудовлетворённые потребности</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Формат сбора</h3>
+          <ul>
+            <li>Короткий опрос / интервью МПП</li>
+            <li>Единый шаблон: проблема → возражение → потребность</li>
+            <li>Срок сбора и ответственный</li>
+            <li>Как используем ОС: продукт, продажи, маркетинг</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>ГК Форус  ·  Стратегическая сессия по ЭПД</span><span>6 / 8</span></div>
+    </section>
+
+    <section class="slide" id="s7">
+      <img class="wave-tr" src="assets/epd_session/wave_tr.png" alt="" />
+      <img class="wave-bl" src="assets/epd_session/wave_bl.png" alt="" />
+      <div class="brand"><div class="brand-dot"></div>ФОРУС</div>
+      <div class="topic-head">
+        <div class="badge">5</div>
+        <div>
+          <h2>Портрет клиента, который купил ЭПД</h2>
+          <div class="sub">Сегментация платящих клиентов для точного таргета и продаж</div>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>Что собираем</h3>
+          <ul>
+            <li>Отрасль, размер, география</li>
+            <li>Роль ЛПР и триггер покупки</li>
+            <li>Типичный сценарий сделки и средний чек</li>
+            <li>Почему выбрали именно ЭПД</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Зачем это нужно</h3>
+          <ul>
+            <li>Точнее настроить РК и офферы</li>
+            <li>Усилить скрипты МПП</li>
+            <li>Отделить «горячих» от нецелевых лидов</li>
+            <li>Связать портрет с финмоделью и прогнозом конверсий</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>ГК Форус  ·  Стратегическая сессия по ЭПД</span><span>7 / 8</span></div>
+    </section>
+
+    <section class="slide" id="s8">
+      <img class="wave-tr" src="assets/epd_session/wave_tr.png" alt="" />
+      <img class="wave-bl" src="assets/epd_session/wave_bl.png" alt="" />
+      <div class="brand"><div class="brand-dot"></div>ФОРУС</div>
+      <div class="topic-head">
+        <div class="badge">6</div>
+        <div>
+          <h2>Финансовая модель направления ЭПД</h2>
+          <div class="sub">Доходы, затраты, конверсии и сценарии — включая возможный перенос штрафов</div>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h3>Доходы</h3>
+          <ul>
+            <li>Титулы</li>
+            <li>Услуги</li>
+            <li>Продления</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Затраты</h3>
+          <ul>
+            <li>Реклама (РК)</li>
+            <li>Зарплаты</li>
+            <li>Производство / внедрение</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Прогноз и сценарии</h3>
+          <ul>
+            <li>Конверсии по воронке</li>
+            <li>Базовый / оптимистичный / пессимистичный</li>
+            <li>С учётом возможного переноса штрафов</li>
+            <li>Срок подготовки модели и владелец</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>ГК Форус  ·  Стратегическая сессия по ЭПД</span><span>8 / 8</span></div>
+    </section>
+
+  </div>
+</body>
+</html>
