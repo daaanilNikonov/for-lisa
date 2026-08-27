@@ -196,7 +196,7 @@ def build_slide_1(prs):
             p = tf.paragraphs[0]
             set_run(
                 p.add_run(),
-                "2 гипотезы  ·  18 подключений  ·  ЭДО + ЭПД в одном продукте  ·  оффер: 3 месяца безлимит",
+                "1 395 касаний  ·  2 гипотезы  ·  18 подключений  ·  ЭДО + ЭПД  ·  оффер: 3 месяца безлимит",
                 12,
                 False,
                 SOFT,
@@ -266,7 +266,7 @@ def build_slide_3(prs):
     clear_body_placeholders(slide)
 
     metrics = [
-        ("7", "недель", "длительность пилота"),
+        ("1 395", "касаний", "1 084 поток + 311 ЭПД"),
         ("2", "гипотезы", "проверены в поле"),
         ("18", "подключений", "общее число продаж"),
         ("9 / 9", "поровну", "обе гипотезы дали результат"),
@@ -323,7 +323,7 @@ def build_slide_4(prs):
     )
     add_textbox(
         slide, emu(1.2), emu(2.05), emu(11.0), emu(0.5),
-        "Подключать «Доки» клиентам из базы ЭПД, которым не подходит решение 1С-ЭПД.",
+        "Подключать «Доки» клиентам из базы ЭПД, которым не подходит решение 1С-ЭПД. Объём: 316 касаний (311 со скриншота + 5 из аналитики КС).",
         15, False, WHITE,
     )
 
@@ -355,7 +355,7 @@ def build_slide_4(prs):
     )
     add_textbox(
         slide, emu(8.95), emu(4.95), emu(3.05), emu(0.6),
-        "Подтверждена:\nканал из базы ЭПД работает",
+        "316 касаний → 9 продаж\nконверсия 2,8%",
         12, False, WHITE, PP_ALIGN.CENTER,
     )
     return slide
@@ -410,7 +410,7 @@ def build_slide_5(prs):
         emu(5.2),
         emu(8.2),
         emu(0.7),
-        "Результат: 9 продаж (50% пилота). Скрипт связки работает не хуже точечного канала.",
+        "Результат: 9 продаж. Продвижение шло в одном звонке с Кабинетом сотрудника (в потоке 1 084 касаний).",
         14,
         False,
         SOFT,
@@ -433,13 +433,14 @@ def build_slide_6(prs):
         ["Параметр", "Гипотеза 1", "Гипотеза 2"],
         ["Суть", "Доки для тех, кому не подходит 1С-ЭПД", "Доки в связке сервисов"],
         ["Вход", "База ЭПД", "Скрипт: КабС → Доки → Смартвей → Доки.Логистика"],
+        ["Касания", "316", "в потоке 1 084 совместных звонков с КС"],
         ["Продажи", "9", "9"],
         ["Доля пилота", "50%", "50%"],
         ["Статус", "Подтверждена", "Подтверждена"],
     ]
 
     table_shape = slide.shapes.add_table(
-        len(rows), 3, emu(0.97), emu(1.65), emu(11.4), emu(3.7)
+        len(rows), 3, emu(0.97), emu(1.55), emu(11.4), emu(3.9)
     )
     table = table_shape.table
     table.columns[0].width = emu(2.4)
@@ -700,7 +701,7 @@ def build_slide_11(prs):
         (
             "1",
             "Обе гипотезы подтверждены",
-            "По 9 продаж на каждый канал. Нет «слабого» направления — оба входа можно масштабировать.",
+            "По 9 продаж на канал. База ЭПД: 316 касаний → 9 продаж (2,8%). Скрипт связки дал те же 9 в потоке с КС.",
         ),
         (
             "2",
@@ -807,12 +808,12 @@ def build_slide_13(prs):
     )
 
     missing = [
-        ("Воронка", "Сколько касаний / звонков / демо на 18 продаж? Какая конверсия по этапам?"),
-        ("База", "Размер базы ЭПД и сколько контактов обработали по каждой гипотезе?"),
         ("Деньги", "Средний чек, выручка сейчас и прогноз после окончания 3 бесплатных месяцев?"),
         ("Активность", "Сколько из 18 реально начали отправлять документы?"),
-        ("Отказы", "Типовые причины «нет» и где клиенты отваливаются чаще всего?"),
-        ("Учёт KPI", "Как сейчас фиксируют вклад сделки: только ЭДО, только ЭПД или оба показателя?"),
+        ("Отказы по Доки", "Типовые причины «нет» именно по Доки (не только по Кабинету сотрудника)?"),
+        ("Воронка ЭПД", "По базе ЭПД (316): сколько успешных / сделок / демо — кроме итога 9 продаж?"),
+        ("Разделение скрипта", "Из 1 084 совместных звонков сколько шли именно по скрипту связки сервисов?"),
+        ("Учёт KPI", "Как фиксируют вклад сделки: только ЭДО, только ЭПД или оба показателя?"),
     ]
 
     left0, top0 = emu(0.97), emu(2.0)
@@ -846,7 +847,7 @@ def build_slide_14(prs):
         ),
         (
             "Закрепить KPI на следующий этап",
-            "Подключения + вклад в ЭДО и ЭПД + переход на оплату после 3 месяцев.",
+            "Касания → подключения → вклад в ЭДО/ЭПД → оплата после 3 месяцев.",
         ),
     ]
 
@@ -880,6 +881,161 @@ def build_slide_14(prs):
     return slide
 
 
+
+def build_slide_processing(prs):
+    """Объём обработки звонков."""
+    slide = prs.slides.add_slide(prs.slide_layouts[L_BG])
+    fill_title(slide, "Обработка: сколько звонили", 26)
+    clear_body_placeholders(slide)
+
+    add_textbox(
+        slide,
+        emu(0.97),
+        emu(1.4),
+        emu(11.4),
+        emu(0.45),
+        "Кабинет сотрудника и Доки продвигали в одном звонке. Цифры потока — из статуса КС (23.07–24.08.2026).",
+        13,
+        False,
+        SOFT,
+    )
+
+    metrics = [
+        ("1 084", "звонков", "совместный поток\nКС + Доки"),
+        ("311", "база ЭПД", "со скриншота\n(гипотеза 1)"),
+        ("+5", "из аналитики КС", "«База клиентов ЭПД»\nв файле КС"),
+        ("1 395", "всего касаний", "1 084 + 311\nс учётом ЭПД-базы"),
+    ]
+
+    left0, top0 = emu(0.97), emu(2.0)
+    card_w, card_h, gap = emu(2.9), emu(3.2), emu(0.2)
+    for i, (num, label, note) in enumerate(metrics):
+        left = left0 + i * (card_w + gap)
+        fill = CARD_LIGHT if i == 3 else (BLUE if i == 1 else CARD)
+        num_c = BLUE if i == 3 else WHITE
+        label_c = NEAR_BLACK if i == 3 else WHITE
+        note_c = GRAY if i == 3 else WHITE
+        add_card(slide, left, top0, card_w, card_h, fill, 0.1)
+        add_textbox(
+            slide, left + emu(0.1), top0 + emu(0.45), card_w - emu(0.2), emu(0.8),
+            num, 28, True, num_c, PP_ALIGN.CENTER,
+        )
+        add_textbox(
+            slide, left + emu(0.1), top0 + emu(1.35), card_w - emu(0.2), emu(0.45),
+            label, 14, True, label_c, PP_ALIGN.CENTER,
+        )
+        add_textbox(
+            slide, left + emu(0.15), top0 + emu(1.9), card_w - emu(0.3), emu(1.0),
+            note, 12, False, note_c, PP_ALIGN.CENTER,
+        )
+
+    add_textbox(
+        slide,
+        emu(0.97),
+        emu(5.4),
+        emu(11.4),
+        emu(0.7),
+        "База ЭПД для гипотезы 1 = 311 + 5 = 316 касаний. Остальной поток 1 084 — совместные звонки, где предлагали и КС, и Доки.",
+        13,
+        False,
+        SOFT,
+    )
+    return slide
+
+
+def build_slide_funnel_managers(prs):
+    """Воронка и менеджеры из статуса КС."""
+    slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
+    fill_title(slide, "Воронка и кто звонил", 26)
+    clear_body_placeholders(slide)
+
+    # Funnel strip
+    funnel = [
+        ("1 084", "прозвонено"),
+        ("483", "успешных"),
+        ("70", "в сделку"),
+        ("12", "записей"),
+        ("11", "демо"),
+    ]
+    left0, top0 = emu(0.97), emu(1.5)
+    card_w, card_h, gap = emu(2.2), emu(1.35), emu(0.15)
+    for i, (num, label) in enumerate(funnel):
+        left = left0 + i * (card_w + gap)
+        fill = BLUE if i == 0 else CARD
+        add_card(slide, left, top0, card_w, card_h, fill, 0.08)
+        add_textbox(
+            slide, left + emu(0.1), top0 + emu(0.2), card_w - emu(0.2), emu(0.55),
+            num, 22, True, WHITE, PP_ALIGN.CENTER,
+        )
+        add_textbox(
+            slide, left + emu(0.1), top0 + emu(0.8), card_w - emu(0.2), emu(0.4),
+            label, 12, False, WHITE, PP_ALIGN.CENTER,
+        )
+
+    add_textbox(
+        slide, emu(0.97), emu(3.0), emu(11.4), emu(0.35),
+        "Менеджеры (из статуса «Кабинет сотрудника», август 2026)", 13, True, BLUE,
+    )
+
+    rows = [
+        ["Менеджер", "Прозвонено", "Успешных", "В сделку", "Записи", "Демо"],
+        ["Юлиана Юнусова", "114", "60", "24", "9", "7"],
+        ["Соня Оглоблина", "555", "238", "29", "2", "3"],
+        ["Данил Кургузов", "415", "185", "17", "1", "1"],
+        ["Итого", "1 084", "483", "70", "12", "11"],
+    ]
+    table_shape = slide.shapes.add_table(len(rows), 6, emu(0.97), emu(3.4), emu(11.4), emu(2.7))
+    table = table_shape.table
+    widths = [3.0, 1.7, 1.7, 1.7, 1.65, 1.65]
+    for i, w in enumerate(widths):
+        table.columns[i].width = emu(w)
+    for r, row in enumerate(rows):
+        for c, val in enumerate(row):
+            table.cell(r, c).text = val
+    style_table(table, emphasize_last=True)
+    return slide
+
+
+def build_slide_bases(prs):
+    """Показатели по базам + ЭПД."""
+    slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
+    fill_title(slide, "Показатели по базам", 26)
+    clear_body_placeholders(slide)
+
+    add_textbox(
+        slide, emu(0.97), emu(1.35), emu(11.4), emu(0.35),
+        "Сводка из статуса КС + отдельно база ЭПД для гипотезы 1 по Доки.",
+        12, False, SOFT,
+    )
+
+    rows = [
+        ["Источник", "Прозвон", "Успешн.", "Сделка", "Запись", "Демо"],
+        ["База ЗУП", "91", "46", "10", "0", "3"],
+        ["База КП", "124", "60", "17", "10", "5"],
+        ["База канбана", "12", "12", "0", "0", "0"],
+        ["База вебинаров", "298", "132", "13", "1", "1"],
+        ["Заявка с сайта", "4", "4", "4", "0", "0"],
+        ["База вахта", "125", "34", "1", "0", "0"],
+        ["База общепит", "266", "124", "13", "0", "0"],
+        ["Холодка общепит", "31", "12", "3", "0", "0"],
+        ["База производства", "123", "54", "8", "1", "2"],
+        ["Новая КС / прочие", "10", "5", "1", "0", "0"],
+        ["Итого поток КС+Доки", "1 084", "483", "70", "12", "11"],
+        ["База ЭПД (гипотеза 1)", "316", "—", "—", "—", "9 продаж"],
+    ]
+
+    table_shape = slide.shapes.add_table(len(rows), 6, emu(0.5), emu(1.7), emu(12.3), emu(5.0))
+    table = table_shape.table
+    widths = [3.4, 1.8, 1.8, 1.8, 1.75, 1.75]
+    for i, w in enumerate(widths):
+        table.columns[i].width = emu(w)
+    for r, row in enumerate(rows):
+        for c, val in enumerate(row):
+            table.cell(r, c).text = val
+    style_table(table, emphasize_last=True)
+    return slide
+
+
 def main():
     if not TEMPLATE.exists():
         raise SystemExit(f"Template not found: {TEMPLATE}")
@@ -895,6 +1051,9 @@ def main():
     build_slide_1(prs)
     build_slide_2(prs)
     build_slide_3(prs)
+    build_slide_processing(prs)
+    build_slide_funnel_managers(prs)
+    build_slide_bases(prs)
     build_slide_4(prs)
     build_slide_5(prs)
     build_slide_6(prs)
