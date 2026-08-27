@@ -50,7 +50,7 @@
           <span class="hero-title">Карта дня</span>
         </h1>
         <p class="hero-lead reveal delay-2">
-          План на день, прогресс по факту, перенос остатков и дашборд KPI менеджеров.
+          План на неделю, прогресс по факту, перенос остатков и окошко задач на завтра.
         </p>
         <p class="hero-date reveal delay-3" id="todayLabel"></p>
       </section>
@@ -82,6 +82,16 @@
                 <button type="button" class="phase-tab" id="tabEvening">Вечер</button>
               </div>
             </div>
+            <div class="week-planner" id="weekPlanner" aria-label="План на неделю">
+              <div class="week-planner-head">
+                <div>
+                  <h3 class="week-title">Неделя вперёд</h3>
+                  <p class="panel-sub">Выберите день и составьте чеклист заранее</p>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" id="saveWeekBtn">Сохранить всю неделю</button>
+              </div>
+              <div class="week-days" id="weekDays" role="tablist"></div>
+            </div>
             <div id="tasksEditor" class="tasks-editor"></div>
             <footer class="panel-foot">
               <div class="foot-left">
@@ -109,6 +119,25 @@
           </div>
         </div>
       </section>
+
+      <aside class="tomorrow-window" id="tomorrowWindow" hidden>
+        <header class="tomorrow-head">
+          <div>
+            <p class="tomorrow-eyebrow">Окошко · завтра</p>
+            <h3 id="tomorrowTitle">Задачи на завтра</h3>
+          </div>
+          <button type="button" class="icon-btn" id="tomorrowClose" aria-label="Свернуть">−</button>
+        </header>
+        <p class="tomorrow-date" id="tomorrowDate"></p>
+        <ul class="tomorrow-list" id="tomorrowList"></ul>
+        <footer class="tomorrow-foot">
+          <button type="button" class="btn btn-ghost btn-sm" id="tomorrowOpenDay">Открыть завтра</button>
+        </footer>
+      </aside>
+      <button type="button" class="tomorrow-fab is-hidden" id="tomorrowFab" aria-label="Задачи на завтра">
+        <span>Завтра</span>
+        <b id="tomorrowFabCount">0</b>
+      </button>
 
       <section class="analytics-section" id="analytics">
         <div class="section-head reveal">

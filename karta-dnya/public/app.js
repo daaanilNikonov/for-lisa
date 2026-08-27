@@ -3,6 +3,7 @@
 
   const state = {
     today: null,
+    tomorrow: null,
     managers: [],
     forms: [],
     boards: {},
@@ -11,14 +12,19 @@
     stickerPack: [],
     analytics: [],
     dashboard: null,
+    tomorrowPreview: [],
     selectedId: "all",
     phase: "morning",
+    planDate: null,
+    weekDrafts: {},
+    tomorrowCollapsed: false,
     draftTasks: [],
     stickerSaveTimer: null,
   };
 
   const COLORS = ["cyan", "amber", "mint", "rose", "violet", "pink"];
   const LINE_COLORS = ["#26a6e0", "#fecf68", "#7dcea0", "#f0a3b0", "#a9b4f5", "#ff8bd2"];
+  const WEEKDAY_SHORT = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 
   const el = {
     todayLabel: document.getElementById("todayLabel"),
@@ -29,6 +35,8 @@
     checklistSub: document.getElementById("checklistSub"),
     boardTitle: document.getElementById("boardTitle"),
     boardSub: document.getElementById("boardSub"),
+    weekDays: document.getElementById("weekDays"),
+    saveWeekBtn: document.getElementById("saveWeekBtn"),
     tasksEditor: document.getElementById("tasksEditor"),
     stickerBoard: document.getElementById("stickerBoard"),
     stickerPack: document.getElementById("stickerPack"),
@@ -48,6 +56,14 @@
     convChart: document.getElementById("convChart"),
     analyticsCards: document.getElementById("analyticsCards"),
     transfersList: document.getElementById("transfersList"),
+    tomorrowWindow: document.getElementById("tomorrowWindow"),
+    tomorrowTitle: document.getElementById("tomorrowTitle"),
+    tomorrowDate: document.getElementById("tomorrowDate"),
+    tomorrowList: document.getElementById("tomorrowList"),
+    tomorrowClose: document.getElementById("tomorrowClose"),
+    tomorrowOpenDay: document.getElementById("tomorrowOpenDay"),
+    tomorrowFab: document.getElementById("tomorrowFab"),
+    tomorrowFabCount: document.getElementById("tomorrowFabCount"),
     promptModal: document.getElementById("promptModal"),
     promptForm: document.getElementById("promptForm"),
     promptTitle: document.getElementById("promptTitle"),
@@ -91,12 +107,45 @@
     return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
   }
 
-  function todaysForm(managerId, date = state.today) {
+  function todaysForm(managerId, date = state.planDate || state.today) {
     return state.forms.find((f) => f.managerId === managerId && f.date === date);
   }
 
+  function weekdayShort(iso) {
+    const [y, m, d] = iso.split("-").map(Number);
+    return WEEKDAY_SHORT[new Date(y, m - 1, d).getDay()];
+  }
+
+  function weekDateList() {
+    return Array.from({ length: 7 }, (_, i) => addDaysISO(state.today, i));
+  }
+
+  function draftKey(managerId, date) {
+    return `${managerId}:${date}`;
+  }
+
+  function stashCurrentDraft() {
+    if (!state.planDate || !state.selectedId || state.selectedId === "all") return;
+    state.weekDrafts[draftKey(state.selectedId, state.planDate)] = state.draftTasks.map((t) => ({
+      ...t,
+    }));
+  }
+
+  function tasksForDate(managerId, date) {
+    const key = draftKey(managerId, date);
+    if (state.weekDrafts[key]) return state.weekDrafts[key].map((t) => ({ ...t }));
+    const form = state.forms.find((f) => f.managerId === managerId && f.date === date);
+    if (form?.tasks?.length) {
+      return form.tasks.map((t) => ({
+        ...t,
+        transferDate: t.transferDate || addDaysISO(date, 1),
+      }));
+    }
+    return blankTaskRow(date);
+  }
+
   function statusFor(managerId) {
-    const form = todaysForm(managerId);
+    const form = state.forms.find((f) => f.managerId === managerId && f.date === state.today);
     if (!form) return { key: "idle", label: "Ещё не начато" };
     if (form.status === "completed") return { key: "done", label: "В архиве" };
     if (form.status === "morning") return { key: "morning", label: "Чеклист задан" };
@@ -128,6 +177,8 @@
   async function loadState() {
     const data = await api("/api/state");
     state.today = data.today;
+    state.tomorrow = data.tomorrow || addDaysISO(data.today, 1);
+    if (!state.planDate) state.planDate = state.today;
     state.managers = data.managers || [];
     state.forms = data.forms || [];
     state.boards = data.boards || {};
@@ -136,6 +187,7 @@
     state.stickerPack = data.stickerPack || [];
     state.analytics = data.analytics || [];
     state.dashboard = data.dashboard || null;
+    state.tomorrowPreview = data.tomorrowPreview || [];
     el.todayLabel.textContent = `Сегодня · ${formatDateRu(state.today)}`;
     if (state.selectedId !== "all" && !state.managers.some((m) => m.id === state.selectedId)) {
       state.selectedId = "all";
@@ -151,6 +203,7 @@
       el.overviewView.classList.remove("is-hidden");
       el.singleView.classList.add("is-hidden");
       renderOverview();
+      hideTomorrowWindow();
     } else {
       el.overviewView.classList.add("is-hidden");
       el.singleView.classList.remove("is-hidden");
@@ -183,6 +236,8 @@
       btn.title = "Клик — открыть · двойной клик — переименовать";
       btn.addEventListener("click", () => {
         state.selectedId = manager.id;
+        state.planDate = state.today;
+        state.weekDrafts = {};
         renderAll();
       });
       btn.addEventListener("dblclick", (e) => {
@@ -196,9 +251,14 @@
   function renderOverview() {
     el.overviewView.innerHTML = "";
     state.managers.forEach((manager) => {
-      const form = todaysForm(manager.id);
+      const form = state.forms.find((f) => f.managerId === manager.id && f.date === state.today);
       const status = statusFor(manager.id);
       const stats = state.analytics.find((a) => a.managerId === manager.id);
+      const tomorrowCount =
+        (state.forms.find((f) => f.managerId === manager.id && f.date === state.tomorrow)?.tasks || [])
+          .length ||
+        state.tomorrowPreview.find((t) => t.managerId === manager.id)?.taskCount ||
+        0;
       const card = document.createElement("article");
       card.className = "overview-card";
       card.innerHTML = `
@@ -209,6 +269,7 @@
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-open>Открыть</button>
         </header>
+        <p class="tomorrow-teaser"></p>
         <div class="overview-grid">
           <div>
             <p class="overview-label">Чеклист</p>
@@ -223,6 +284,9 @@
       const st = card.querySelector(".manager-status");
       st.textContent = status.label;
       st.classList.add(status.key === "done" ? "is-done" : status.key === "morning" ? "is-morning" : "");
+      card.querySelector(".tomorrow-teaser").textContent = tomorrowCount
+        ? `Завтра ждёт: ${tomorrowCount} ${tomorrowCount === 1 ? "задача" : "задач"}`
+        : "Завтра: план пока пуст";
       const list = card.querySelector(".overview-tasks");
       const tasks = form?.tasks || [];
       if (!tasks.length) {
@@ -241,6 +305,7 @@
         <div><b>${stats?.conversion || 0}%</b><span>конверсия</span></div>`;
       card.querySelector("[data-open]").addEventListener("click", () => {
         state.selectedId = manager.id;
+        state.planDate = state.today;
         renderAll();
       });
       el.overviewView.appendChild(card);
@@ -250,31 +315,34 @@
   function loadManagerWorkspace(managerId) {
     const manager = state.managers.find((m) => m.id === managerId);
     if (!manager) return;
-    const form = todaysForm(managerId);
+    if (!state.planDate) state.planDate = state.today;
+    const form = todaysForm(managerId, state.planDate);
+    const isToday = state.planDate === state.today;
     el.checklistTitle.textContent = `Чеклист · ${manager.name}`;
-    el.checklistSub.textContent = `${formatDateRu(state.today)} · «${manager.name} ${state.today}»`;
+    el.checklistSub.textContent = `${formatDateRu(state.planDate)} · «${manager.name} ${state.planDate}»`;
     el.boardTitle.textContent = "Основные приоритеты в работе";
     el.boardSub.textContent = `Доска · ${manager.name}`;
 
+    state.draftTasks = tasksForDate(managerId, state.planDate);
+
     if (form?.status === "completed") {
       state.phase = "evening";
-      state.draftTasks = form.tasks.map((t) => ({ ...t }));
-    } else if (form?.status === "morning") {
-      state.phase = "evening";
-      state.draftTasks = form.tasks.map((t) => ({ ...t }));
+    } else if (isToday && form?.status === "morning") {
+      state.phase = state.phase === "evening" ? "evening" : "morning";
     } else {
       state.phase = "morning";
-      state.draftTasks = blankTaskRow();
     }
 
     setPhase(state.phase);
+    renderWeekDays(managerId);
     renderTasksEditor();
     renderManagerStats(managerId);
     renderStickerPack();
     renderStickers(managerId);
+    renderTomorrowWindow(managerId);
   }
 
-  function blankTaskRow() {
+  function blankTaskRow(date = state.planDate || state.today) {
     return [
       {
         id: `local-${Date.now()}`,
@@ -284,27 +352,41 @@
         unit: "",
         mandatory: false,
         done: false,
-        transferDate: addDaysISO(state.today, 1),
+        transferDate: addDaysISO(date, 1),
       },
     ];
   }
 
   function setPhase(phase) {
+    const isToday = state.planDate === state.today;
+    if (phase === "evening" && !isToday) {
+      phase = "morning";
+      toast("Вечернее закрытие доступно только для сегодняшнего дня");
+    }
     state.phase = phase;
     el.tabMorning.classList.toggle("is-active", phase === "morning");
     el.tabEvening.classList.toggle("is-active", phase === "evening");
-    const form = todaysForm(state.selectedId);
+    el.tabEvening.disabled = !isToday;
+    el.tabEvening.title = isToday ? "" : "Сначала дождитесь этого дня";
+
+    const form = todaysForm(state.selectedId, state.planDate);
     const completed = form?.status === "completed";
     const hasMorning = Boolean(form && (form.status === "morning" || form.status === "completed"));
 
     if (phase === "morning") {
-      el.saveFormBtn.textContent = completed ? "Уже в архиве" : "Сохранить утро";
+      el.saveFormBtn.textContent = completed
+        ? "Уже в архиве"
+        : isToday
+          ? "Сохранить утро"
+          : "Сохранить план дня";
       el.saveFormBtn.disabled = completed;
       el.addTaskBtn.hidden = completed;
       el.seedKpiBtn.hidden = completed;
       el.formHint.textContent = completed
         ? "День уже закрыт. Можно смотреть прогресс и переносы."
-        : "Утро: план и обязательные KPI. Можно задать цель числом (например, 2 демо).";
+        : isToday
+          ? "Утро: план и обязательные KPI. Можно задать цель числом (например, 2 демо)."
+          : "Планируете вперёд: задачи будут ждать менеджера в выбранный день. Вечернее закрытие — только в сам день.";
     } else {
       el.saveFormBtn.textContent = completed ? "Уже в архиве" : "Закрыть день · перенести остатки";
       el.saveFormBtn.disabled = completed || !hasMorning;
@@ -318,11 +400,105 @@
     }
   }
 
+  function renderWeekDays(managerId) {
+    el.weekDays.innerHTML = "";
+    weekDateList().forEach((date) => {
+      const form = state.forms.find((f) => f.managerId === managerId && f.date === date);
+      const draft = state.weekDrafts[draftKey(managerId, date)];
+      const count = draft
+        ? draft.filter((t) => String(t.text || "").trim()).length
+        : (form?.tasks || []).length;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "week-day";
+      if (date === state.planDate) btn.classList.add("is-active");
+      if (date === state.today) btn.classList.add("is-today");
+      if (date === state.tomorrow) btn.classList.add("is-tomorrow");
+      if (form?.status === "completed") btn.classList.add("is-done");
+      else if (count > 0) btn.classList.add("has-tasks");
+      btn.innerHTML = `
+        <span class="wd-name">${weekdayShort(date)}</span>
+        <span class="wd-num">${date.slice(8)}</span>
+        <span class="wd-count">${count ? `${count} зад.` : "пусто"}</span>`;
+      btn.addEventListener("click", () => selectPlanDate(date));
+      el.weekDays.appendChild(btn);
+    });
+  }
+
+  function selectPlanDate(date) {
+    if (!state.selectedId || state.selectedId === "all") return;
+    stashCurrentDraft();
+    state.planDate = date;
+    state.draftTasks = tasksForDate(state.selectedId, date);
+    state.phase = date === state.today && todaysForm(state.selectedId, date)?.status === "morning"
+      ? state.phase
+      : "morning";
+    if (date !== state.today) state.phase = "morning";
+    setPhase(state.phase);
+    renderWeekDays(state.selectedId);
+    renderTasksEditor();
+    const manager = state.managers.find((m) => m.id === state.selectedId);
+    if (manager) {
+      el.checklistSub.textContent = `${formatDateRu(date)} · «${manager.name} ${date}»`;
+    }
+  }
+
+  function hideTomorrowWindow() {
+    el.tomorrowWindow.hidden = true;
+    el.tomorrowFab.classList.add("is-hidden");
+  }
+
+  function renderTomorrowWindow(managerId) {
+    const preview =
+      state.tomorrowPreview.find((t) => t.managerId === managerId) || {
+        date: state.tomorrow,
+        tasks: [],
+        taskCount: 0,
+        managerName: "",
+      };
+    // prefer live draft / forms over stale preview
+    const liveForm = state.forms.find((f) => f.managerId === managerId && f.date === state.tomorrow);
+    const liveDraft = state.weekDrafts[draftKey(managerId, state.tomorrow)];
+    const tasks = (liveDraft || liveForm?.tasks || preview.tasks || []).filter((t) =>
+      String(t.text || "").trim()
+    );
+
+    el.tomorrowFabCount.textContent = String(tasks.length);
+    el.tomorrowTitle.textContent = tasks.length
+      ? `Завтра ждёт ${tasks.length} ${tasks.length === 1 ? "задача" : tasks.length < 5 ? "задачи" : "задач"}`
+      : "На завтра пока пусто";
+    el.tomorrowDate.textContent = formatDateRu(state.tomorrow);
+    el.tomorrowList.innerHTML = "";
+    if (!tasks.length) {
+      el.tomorrowList.innerHTML =
+        `<li class="tomorrow-empty">Составьте план на завтра в ленте «Неделя вперёд»</li>`;
+    } else {
+      tasks.forEach((t) => {
+        const li = document.createElement("li");
+        const carried = t.carriedFrom ? " · перенос" : "";
+        li.innerHTML = `<strong></strong><span></span>`;
+        li.querySelector("strong").textContent = t.text;
+        li.querySelector("span").textContent =
+          `план ${t.target || 1} ${t.unit || "шт."}${t.mandatory ? " · KPI" : ""}${carried}`;
+        el.tomorrowList.appendChild(li);
+      });
+    }
+
+    if (state.tomorrowCollapsed) {
+      el.tomorrowWindow.hidden = true;
+      el.tomorrowFab.classList.remove("is-hidden");
+    } else {
+      el.tomorrowWindow.hidden = false;
+      el.tomorrowFab.classList.add("is-hidden");
+    }
+  }
+
   function renderTasksEditor() {
     el.tasksEditor.innerHTML = "";
     const evening = state.phase === "evening";
-    const form = todaysForm(state.selectedId);
+    const form = todaysForm(state.selectedId, state.planDate);
     const locked = form?.status === "completed";
+    const day = state.planDate || state.today;
 
     state.draftTasks.forEach((task, index) => {
       const row = document.createElement("div");
@@ -364,7 +540,7 @@
       targetInput.value = Math.max(1, Number(task.target) || 1);
       doneInput.value = Math.max(0, Number(task.doneCount) || 0);
       unitInput.value = task.unit || "";
-      transferDate.value = task.transferDate || addDaysISO(state.today, 1);
+      transferDate.value = task.transferDate || addDaysISO(day, 1);
 
       textInput.readOnly = locked || evening;
       mandatory.disabled = locked || evening;
@@ -387,7 +563,7 @@
         task.target = Math.max(1, Number(targetInput.value) || 1);
         task.doneCount = Math.max(0, Math.min(task.target, Number(doneInput.value) || 0));
         task.unit = unitInput.value.trim();
-        task.transferDate = transferDate.value || addDaysISO(state.today, 1);
+        task.transferDate = transferDate.value || addDaysISO(day, 1);
         task.done = task.doneCount >= task.target;
         const p = progressPct(task);
         pctEl.textContent = `${p}%`;
@@ -398,6 +574,14 @@
           rem > 0
             ? `Остаток ${rem} ${task.unit || "шт."} → ${task.transferDate}`
             : "Всё закрыто, перенос не нужен";
+        stashCurrentDraft();
+        clearTimeout(renderTasksEditor._previewTimer);
+        renderTasksEditor._previewTimer = setTimeout(() => {
+          if (state.selectedId && state.selectedId !== "all") {
+            renderWeekDays(state.selectedId);
+            renderTomorrowWindow(state.selectedId);
+          }
+        }, 180);
       };
       sync();
 
@@ -408,8 +592,11 @@
 
       row.querySelector(".task-remove").addEventListener("click", () => {
         state.draftTasks.splice(index, 1);
-        if (!state.draftTasks.length) state.draftTasks = blankTaskRow();
+        if (!state.draftTasks.length) state.draftTasks = blankTaskRow(day);
+        stashCurrentDraft();
         renderTasksEditor();
+        renderWeekDays(state.selectedId);
+        renderTomorrowWindow(state.selectedId);
       });
 
       el.tasksEditor.appendChild(row);
@@ -610,8 +797,10 @@
   async function saveForm() {
     const managerId = state.selectedId;
     if (!managerId || managerId === "all") return;
+    const date = state.planDate || state.today;
     try {
       if (state.phase === "morning") {
+        stashCurrentDraft();
         const tasks = state.draftTasks
           .map((t) => ({
             id: t.id,
@@ -630,18 +819,28 @@
         }
         const data = await api("/api/forms/morning", {
           method: "POST",
-          body: JSON.stringify({ managerId, date: state.today, tasks, seedKpis: false }),
+          body: JSON.stringify({ managerId, date, tasks, seedKpis: false }),
         });
         upsertForm(data.form);
-        toast(data.message || "Утро сохранено");
-        state.phase = "evening";
-        state.draftTasks = data.form.tasks.map((t) => ({
-          ...t,
-          transferDate: t.transferDate || addDaysISO(state.today, 1),
-        }));
+        if (data.tomorrowPreview) state.tomorrowPreview = data.tomorrowPreview;
+        delete state.weekDrafts[draftKey(managerId, date)];
+        toast(data.message || "План сохранён");
+        if (date === state.today) {
+          state.phase = "evening";
+          state.draftTasks = data.form.tasks.map((t) => ({
+            ...t,
+            transferDate: t.transferDate || addDaysISO(date, 1),
+          }));
+        } else {
+          state.draftTasks = data.form.tasks.map((t) => ({ ...t }));
+        }
         await refreshAnalytics();
         renderAll();
       } else {
+        if (date !== state.today) {
+          toast("Закрывать день можно только сегодня");
+          return;
+        }
         const tasks = state.draftTasks.map((t) => ({
           id: t.id,
           text: String(t.text || "").trim(),
@@ -659,15 +858,57 @@
         });
         upsertForm(data.form);
         if (data.destForm) upsertForm(data.destForm);
-        // refresh forms that received transfers
         (data.transfers || []).forEach((tr) => {
           state.transfers.unshift(tr);
         });
         if (data.analytics) state.analytics = data.analytics;
         if (data.dashboard) state.dashboard = data.dashboard;
         toast(data.message || "День закрыт");
+        state.weekDrafts = {};
         await loadState();
       }
+    } catch (err) {
+      toast(err.message);
+    }
+  }
+
+  async function saveWeekPlan() {
+    const managerId = state.selectedId;
+    if (!managerId || managerId === "all") return;
+    stashCurrentDraft();
+    const days = [];
+    for (const date of weekDateList()) {
+      const form = state.forms.find((f) => f.managerId === managerId && f.date === date);
+      if (form?.status === "completed") continue;
+      const tasksSource = state.weekDrafts[draftKey(managerId, date)] || form?.tasks || [];
+      const tasks = tasksSource
+        .map((t) => ({
+          id: t.id,
+          text: String(t.text || "").trim(),
+          target: Math.max(1, Number(t.target) || 1),
+          doneCount: 0,
+          unit: t.unit || "",
+          mandatory: Boolean(t.mandatory),
+          kpiId: t.kpiId || null,
+          carriedFrom: t.carriedFrom || null,
+        }))
+        .filter((t) => t.text);
+      if (tasks.length) days.push({ date, tasks });
+    }
+    if (!days.length) {
+      toast("Нет задач для сохранения на неделю");
+      return;
+    }
+    try {
+      const data = await api("/api/forms/week", {
+        method: "POST",
+        body: JSON.stringify({ managerId, from: state.today, days }),
+      });
+      (data.forms || []).forEach(upsertForm);
+      if (data.tomorrowPreview) state.tomorrowPreview = data.tomorrowPreview;
+      state.weekDrafts = {};
+      toast(data.message || "Неделя сохранена");
+      await loadState();
     } catch (err) {
       toast(err.message);
     }
@@ -958,6 +1199,7 @@
   });
 
   el.seedKpiBtn.addEventListener("click", () => {
+    const day = state.planDate || state.today;
     const existingKpis = new Set(state.draftTasks.filter((t) => t.kpiId).map((t) => t.kpiId));
     const toAdd = state.kpiDefs.filter((k) => !existingKpis.has(k.id));
     if (!toAdd.length) {
@@ -973,24 +1215,29 @@
         unit: k.unit,
         mandatory: true,
         kpiId: k.id,
-        transferDate: addDaysISO(state.today, 1),
+        transferDate: addDaysISO(day, 1),
       });
     });
-    // remove empty placeholder rows
     state.draftTasks = state.draftTasks.filter((t) => t.text || t.kpiId);
+    stashCurrentDraft();
     renderTasksEditor();
+    renderWeekDays(state.selectedId);
     toast("Добавлены обязательные KPI");
   });
 
   el.tabMorning.addEventListener("click", () => {
-    const form = todaysForm(state.selectedId);
+    const form = todaysForm(state.selectedId, state.planDate);
     if (form) state.draftTasks = form.tasks.map((t) => ({ ...t }));
     setPhase("morning");
     renderTasksEditor();
   });
 
   el.tabEvening.addEventListener("click", () => {
-    const form = todaysForm(state.selectedId);
+    if (state.planDate !== state.today) {
+      toast("Вечер доступен только для сегодня");
+      return;
+    }
+    const form = todaysForm(state.selectedId, state.today);
     if (form) {
       state.draftTasks = form.tasks.map((t) => ({
         ...t,
@@ -1002,6 +1249,7 @@
   });
 
   el.addTaskBtn.addEventListener("click", () => {
+    const day = state.planDate || state.today;
     state.draftTasks.push({
       id: `local-${Date.now()}`,
       text: "",
@@ -1009,12 +1257,28 @@
       doneCount: 0,
       unit: "",
       mandatory: false,
-      transferDate: addDaysISO(state.today, 1),
+      transferDate: addDaysISO(day, 1),
     });
+    stashCurrentDraft();
     renderTasksEditor();
   });
 
   el.saveFormBtn.addEventListener("click", saveForm);
+  el.saveWeekBtn.addEventListener("click", saveWeekPlan);
+  el.tomorrowClose.addEventListener("click", () => {
+    state.tomorrowCollapsed = true;
+    if (state.selectedId && state.selectedId !== "all") renderTomorrowWindow(state.selectedId);
+  });
+  el.tomorrowFab.addEventListener("click", () => {
+    state.tomorrowCollapsed = false;
+    if (state.selectedId && state.selectedId !== "all") renderTomorrowWindow(state.selectedId);
+  });
+  el.tomorrowOpenDay.addEventListener("click", () => {
+    if (!state.selectedId || state.selectedId === "all") return;
+    selectPlanDate(state.tomorrow);
+    state.tomorrowCollapsed = false;
+    renderTomorrowWindow(state.selectedId);
+  });
   el.promptForm.addEventListener("click", (e) => {
     const btn = e.target.closest("button[value]");
     if (btn) el.promptModal.returnValue = btn.value;

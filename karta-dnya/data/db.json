@@ -21,7 +21,295 @@
       "createdAt": "2026-08-14T00:00:00.000Z"
     }
   ],
-  "forms": [],
+  "forms": [
+    {
+      "id": "form-f6036e14",
+      "managerId": "mgr-2",
+      "managerName": "Оглоблина Софья",
+      "date": "2026-08-27",
+      "title": "Оглоблина Софья 2026-08-27",
+      "status": "morning",
+      "tasks": [
+        {
+          "id": "task-17e7d89e",
+          "text": "План дня 1: звонки",
+          "target": 10,
+          "doneCount": 0,
+          "unit": "звонков",
+          "mandatory": true,
+          "kpiId": "kpi-calls",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-9298d656",
+          "text": "Доп. задача 1",
+          "target": 1,
+          "doneCount": 0,
+          "unit": "шт",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "task",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        }
+      ],
+      "createdAt": "2026-08-27T10:08:17.466Z",
+      "updatedAt": "2026-08-27T10:08:17.466Z",
+      "completedAt": null
+    },
+    {
+      "id": "form-d161bddc",
+      "managerId": "mgr-2",
+      "managerName": "Оглоблина Софья",
+      "date": "2026-08-28",
+      "title": "Оглоблина Софья 2026-08-28",
+      "status": "morning",
+      "tasks": [
+        {
+          "id": "task-47edcb9e",
+          "text": "План дня 2: звонки",
+          "target": 11,
+          "doneCount": 0,
+          "unit": "звонков",
+          "mandatory": true,
+          "kpiId": "kpi-calls",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-60072bae",
+          "text": "Доп. задача 2",
+          "target": 1,
+          "doneCount": 0,
+          "unit": "шт",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "task",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        }
+      ],
+      "createdAt": "2026-08-27T10:08:17.466Z",
+      "updatedAt": "2026-08-27T10:08:17.466Z",
+      "completedAt": null
+    },
+    {
+      "id": "form-b9a54527",
+      "managerId": "mgr-2",
+      "managerName": "Оглоблина Софья",
+      "date": "2026-08-29",
+      "title": "Оглоблина Софья 2026-08-29",
+      "status": "morning",
+      "tasks": [
+        {
+          "id": "task-c6a9fc1c",
+          "text": "План дня 3: звонки",
+          "target": 12,
+          "doneCount": 0,
+          "unit": "звонков",
+          "mandatory": true,
+          "kpiId": "kpi-calls",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-c906a892",
+          "text": "Доп. задача 3",
+          "target": 1,
+          "doneCount": 0,
+          "unit": "шт",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "task",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        }
+      ],
+      "createdAt": "2026-08-27T10:08:17.466Z",
+      "updatedAt": "2026-08-27T10:08:17.466Z",
+      "completedAt": null
+    },
+    {
+      "id": "form-8bb8b687",
+      "managerId": "mgr-2",
+      "managerName": "Оглоблина Софья",
+      "date": "2026-08-30",
+      "title": "Оглоблина Софья 2026-08-30",
+      "status": "morning",
+      "tasks": [
+        {
+          "id": "task-0dba7046",
+          "text": "План дня 4: звонки",
+          "target": 13,
+          "doneCount": 0,
+          "unit": "звонков",
+          "mandatory": true,
+          "kpiId": "kpi-calls",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-9722296a",
+          "text": "Доп. задача 4",
+          "target": 1,
+          "doneCount": 0,
+          "unit": "шт",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "task",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        }
+      ],
+      "createdAt": "2026-08-27T10:08:17.467Z",
+      "updatedAt": "2026-08-27T10:08:17.467Z",
+      "completedAt": null
+    },
+    {
+      "id": "form-26046292",
+      "managerId": "mgr-2",
+      "managerName": "Оглоблина Софья",
+      "date": "2026-08-31",
+      "title": "Оглоблина Софья 2026-08-31",
+      "status": "morning",
+      "tasks": [
+        {
+          "id": "task-8dbd10b8",
+          "text": "План дня 5: звонки",
+          "target": 14,
+          "doneCount": 0,
+          "unit": "звонков",
+          "mandatory": true,
+          "kpiId": "kpi-calls",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-04ebb58d",
+          "text": "Доп. задача 5",
+          "target": 1,
+          "doneCount": 0,
+          "unit": "шт",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "task",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        }
+      ],
+      "createdAt": "2026-08-27T10:08:17.467Z",
+      "updatedAt": "2026-08-27T10:08:17.467Z",
+      "completedAt": null
+    },
+    {
+      "id": "form-3c736f80",
+      "managerId": "mgr-2",
+      "managerName": "Оглоблина Софья",
+      "date": "2026-09-01",
+      "title": "Оглоблина Софья 2026-09-01",
+      "status": "morning",
+      "tasks": [
+        {
+          "id": "task-afae6417",
+          "text": "План дня 6: звонки",
+          "target": 15,
+          "doneCount": 0,
+          "unit": "звонков",
+          "mandatory": true,
+          "kpiId": "kpi-calls",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-9d545840",
+          "text": "Доп. задача 6",
+          "target": 1,
+          "doneCount": 0,
+          "unit": "шт",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "task",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        }
+      ],
+      "createdAt": "2026-08-27T10:08:17.467Z",
+      "updatedAt": "2026-08-27T10:08:17.467Z",
+      "completedAt": null
+    },
+    {
+      "id": "form-f5d96e22",
+      "managerId": "mgr-2",
+      "managerName": "Оглоблина Софья",
+      "date": "2026-09-02",
+      "title": "Оглоблина Софья 2026-09-02",
+      "status": "morning",
+      "tasks": [
+        {
+          "id": "task-e14bd6a1",
+          "text": "План дня 7: звонки",
+          "target": 16,
+          "doneCount": 0,
+          "unit": "звонков",
+          "mandatory": true,
+          "kpiId": "kpi-calls",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-3275163c",
+          "text": "Доп. задача 7",
+          "target": 1,
+          "doneCount": 0,
+          "unit": "шт",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "task",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        }
+      ],
+      "createdAt": "2026-08-27T10:08:17.467Z",
+      "updatedAt": "2026-08-27T10:08:17.467Z",
+      "completedAt": null
+    }
+  ],
   "boards": {
     "mgr-1": [
       {

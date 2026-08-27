@@ -75,6 +75,101 @@ function addDaysISO(iso, days) {
   return `${yy}-${mm}-${dd}`;
 }
 
+function weekDates(fromISO, days = 7) {
+  const start = fromISO || todayISO();
+  return Array.from({ length: days }, (_, i) => addDaysISO(start, i));
+}
+
+function findForm(db, managerId, date) {
+  return db.forms.find((f) => f.managerId === managerId && f.date === date) || null;
+}
+
+function upsertMorningPlan(db, manager, date, tasks) {
+  let form = db.forms.find(
+    (f) => f.managerId === manager.id && f.date === date && f.status !== "completed"
+  );
+  if (!form) {
+    const existing = findForm(db, manager.id, date);
+    if (existing && existing.status === "completed") {
+      return { error: `День ${date} уже закрыт в архиве`, form: existing };
+    }
+    form = {
+      id: uid("form"),
+      managerId: manager.id,
+      managerName: manager.name,
+      date,
+      title: formTitle(manager.name, date),
+      status: "morning",
+      tasks,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      completedAt: null,
+    };
+    db.forms.push(form);
+    return { form };
+  }
+  const prevById = Object.fromEntries((form.tasks || []).map((t) => [t.id, t]));
+  form.tasks = tasks.map((t) => ({
+    ...t,
+    carriedFrom: t.carriedFrom || prevById[t.id]?.carriedFrom || null,
+    carriedTo: prevById[t.id]?.carriedTo || null,
+  }));
+  form.managerName = manager.name;
+  form.title = formTitle(manager.name, date);
+  form.status = "morning";
+  form.updatedAt = new Date().toISOString();
+  return { form };
+}
+
+function buildTomorrowPreview(db, managerId) {
+  const today = todayISO();
+  const tomorrow = addDaysISO(today, 1);
+  const managers = managerId
+    ? db.managers.filter((m) => m.id === managerId)
+    : db.managers;
+  return managers.map((m) => {
+    const form = findForm(db, m.id, tomorrow);
+    const tasks = (form?.tasks || []).map((t) => ({
+      id: t.id,
+      text: t.text,
+      target: t.target,
+      unit: t.unit,
+      mandatory: Boolean(t.mandatory),
+      carriedFrom: t.carriedFrom || null,
+      doneCount: t.doneCount || 0,
+    }));
+    return {
+      managerId: m.id,
+      managerName: m.name,
+      date: tomorrow,
+      status: form?.status || "idle",
+      taskCount: tasks.length,
+      tasks,
+    };
+  });
+}
+
+function buildWeekPreview(db, managerId, fromISO) {
+  const dates = weekDates(fromISO || todayISO(), 7);
+  return dates.map((date) => {
+    const form = findForm(db, managerId, date);
+    return {
+      date,
+      status: form?.status || "idle",
+      taskCount: (form?.tasks || []).length,
+      tasks: (form?.tasks || []).map((t) => ({
+        id: t.id,
+        text: t.text,
+        target: t.target,
+        unit: t.unit,
+        mandatory: Boolean(t.mandatory),
+        doneCount: t.doneCount || 0,
+        carriedFrom: t.carriedFrom || null,
+      })),
+    };
+  });
+}
+
 function emptyDb() {
   const managers = DEFAULT_MANAGERS.map((m) => ({
     ...m,
@@ -536,9 +631,28 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, {
       ...db,
       today: todayISO(),
+      tomorrow: addDaysISO(todayISO(), 1),
       stickerPack: STICKER_PACK,
       analytics: buildAnalytics(db),
       dashboard: buildDashboard(db, 14),
+      tomorrowPreview: buildTomorrowPreview(db),
+    });
+  }
+
+  if (method === "GET" && pathname === "/api/week") {
+    const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    const managerId = url.searchParams.get("managerId");
+    const from = url.searchParams.get("from") || todayISO();
+    if (!managerId) return sendJson(res, 400, { error: "Нужен managerId" });
+    const db = await readDb();
+    if (!db.managers.some((m) => m.id === managerId)) {
+      return sendJson(res, 404, { error: "Менеджер не найден" });
+    }
+    return sendJson(res, 200, {
+      managerId,
+      from,
+      days: buildWeekPreview(db, managerId, from),
+      tomorrow: buildTomorrowPreview(db, managerId)[0] || null,
     });
   }
 
@@ -713,40 +827,51 @@ async function handleApi(req, res, pathname) {
     }
     if (!tasks.length) return sendJson(res, 400, { error: "Добавьте хотя бы одну задачу" });
 
-    let form = db.forms.find(
-      (f) => f.managerId === managerId && f.date === date && f.status !== "completed"
-    );
-    if (!form) {
-      form = {
-        id: uid("form"),
-        managerId,
-        managerName: manager.name,
-        date,
-        title: formTitle(manager.name, date),
-        status: "morning",
-        tasks,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        completedAt: null,
-      };
-      db.forms.push(form);
-    } else {
-      // preserve carriedFrom on matching ids
-      const prevById = Object.fromEntries((form.tasks || []).map((t) => [t.id, t]));
-      form.tasks = tasks.map((t) => ({
-        ...t,
-        carriedFrom: t.carriedFrom || prevById[t.id]?.carriedFrom || null,
-        carriedTo: prevById[t.id]?.carriedTo || null,
-      }));
-      form.managerName = manager.name;
-      form.title = formTitle(manager.name, date);
-      form.status = "morning";
-      form.updatedAt = new Date().toISOString();
-    }
+    const result = upsertMorningPlan(db, manager, date, tasks);
+    if (result.error) return sendJson(res, 400, { error: result.error });
     await writeDb(db);
     return sendJson(res, 200, {
-      form,
-      message: "Чеклист на день сохранён. Вечером укажите прогресс и переносы.",
+      form: result.form,
+      tomorrowPreview: buildTomorrowPreview(db),
+      message:
+        date === todayISO()
+          ? "Чеклист на день сохранён. Вечером укажите прогресс и переносы."
+          : `План на ${date} сохранён. Задачи будут ждать в этот день.`,
+    });
+  }
+
+  // Week plan: save morning checklists for several days ahead
+  if (method === "POST" && pathname === "/api/forms/week") {
+    const body = await readBody(req);
+    const managerId = body.managerId;
+    const days = Array.isArray(body.days) ? body.days : [];
+    if (!managerId) return sendJson(res, 400, { error: "Не выбран менеджер" });
+    if (!days.length) return sendJson(res, 400, { error: "Нет дней для сохранения" });
+
+    const db = await readDb();
+    const manager = db.managers.find((m) => m.id === managerId);
+    if (!manager) return sendJson(res, 404, { error: "Менеджер не найден" });
+
+    const saved = [];
+    for (const day of days) {
+      const date = day.date;
+      if (!date) continue;
+      const tasks = Array.isArray(day.tasks)
+        ? day.tasks.map(normalizeTask).filter((t) => t.text)
+        : [];
+      if (!tasks.length) continue;
+      const result = upsertMorningPlan(db, manager, date, tasks);
+      if (result.error) return sendJson(res, 400, { error: result.error });
+      saved.push(result.form);
+    }
+    if (!saved.length) return sendJson(res, 400, { error: "Добавьте задачи хотя бы на один день" });
+
+    await writeDb(db);
+    return sendJson(res, 200, {
+      forms: saved,
+      days: buildWeekPreview(db, managerId, body.from || todayISO()),
+      tomorrowPreview: buildTomorrowPreview(db),
+      message: `Сохранён план на ${saved.length} дн.`,
     });
   }
 
