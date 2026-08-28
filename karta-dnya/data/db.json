@@ -308,6 +308,75 @@
       "createdAt": "2026-08-27T10:08:17.467Z",
       "updatedAt": "2026-08-27T10:08:17.467Z",
       "completedAt": null
+    },
+    {
+      "id": "form-6e9b70c1",
+      "managerId": "mgr-1",
+      "managerName": "Блохина Елизавета",
+      "date": "2026-08-28",
+      "title": "Блохина Елизавета 2026-08-28",
+      "status": "morning",
+      "tasks": [
+        {
+          "id": "local-1787882737377-kpi-calls",
+          "text": "Успешные звонки",
+          "target": 20,
+          "doneCount": 0,
+          "unit": "звонков",
+          "mandatory": true,
+          "kpiId": "kpi-calls",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "local-1787882737377-kpi-demos",
+          "text": "Демонстрации",
+          "target": 2,
+          "doneCount": 0,
+          "unit": "демо",
+          "mandatory": true,
+          "kpiId": "kpi-demos",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "local-1787882737377-kpi-leads",
+          "text": "Обработанные лиды",
+          "target": 15,
+          "doneCount": 0,
+          "unit": "лидов",
+          "mandatory": true,
+          "kpiId": "kpi-leads",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "local-1787882750766",
+          "text": "5 разговоров по поводу КС",
+          "target": 5,
+          "doneCount": 0,
+          "unit": "",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "task",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        }
+      ],
+      "createdAt": "2026-08-28T02:06:30.583Z",
+      "updatedAt": "2026-08-28T02:06:30.583Z",
+      "completedAt": null
     }
   ],
   "boards": {
