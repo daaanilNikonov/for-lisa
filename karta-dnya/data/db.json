@@ -319,23 +319,37 @@
         "y": 42,
         "color": "cyan",
         "rotation": -2,
-        "updatedAt": "2026-08-14T00:00:00.000Z",
         "kind": "note",
         "packId": null,
-        "emoji": null
+        "emoji": null,
+        "vibe": null,
+        "updatedAt": "2026-08-28T02:05:17.413Z"
+      },
+      {
+        "id": "stk-d2814a5f",
+        "text": "умничка",
+        "x": 46.364778152994894,
+        "y": 112.7962697848167,
+        "color": "pink",
+        "rotation": -4.6,
+        "kind": "pack",
+        "packId": "umnichka",
+        "emoji": "💅",
+        "vibe": "pink",
+        "updatedAt": "2026-08-28T02:05:17.413Z"
       },
       {
         "id": "stk-68673aaa",
         "text": "умничка",
-        "emoji": "💅",
-        "vibe": "pink",
-        "color": "pink",
-        "kind": "pack",
-        "packId": "umnichka",
         "x": 184.88871499579645,
         "y": 137.55662314525586,
+        "color": "pink",
         "rotation": 3.6,
-        "updatedAt": "2026-08-28T02:05:14.471Z"
+        "kind": "pack",
+        "packId": "umnichka",
+        "emoji": "💅",
+        "vibe": "pink",
+        "updatedAt": "2026-08-28T02:05:17.413Z"
       }
     ],
     "mgr-2": [
