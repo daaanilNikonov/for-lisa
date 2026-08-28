@@ -323,6 +323,19 @@
         "kind": "note",
         "packId": null,
         "emoji": null
+      },
+      {
+        "id": "stk-d2814a5f",
+        "text": "умничка",
+        "emoji": "💅",
+        "vibe": "pink",
+        "color": "pink",
+        "kind": "pack",
+        "packId": "umnichka",
+        "x": 46.364778152994894,
+        "y": 112.7962697848167,
+        "rotation": -4.6,
+        "updatedAt": "2026-08-28T02:05:13.669Z"
       }
     ],
     "mgr-2": [
