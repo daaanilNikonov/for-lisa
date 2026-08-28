@@ -315,21 +315,25 @@
       "managerName": "Блохина Елизавета",
       "date": "2026-08-28",
       "title": "Блохина Елизавета 2026-08-28",
-      "status": "morning",
+      "status": "completed",
       "tasks": [
         {
           "id": "local-1787882737377-kpi-calls",
           "text": "Успешные звонки",
           "target": 20,
-          "doneCount": 0,
+          "doneCount": 18,
           "unit": "звонков",
           "mandatory": true,
           "kpiId": "kpi-calls",
           "kind": "kpi",
           "done": false,
           "carriedFrom": null,
-          "carriedTo": null,
-          "transferDate": null
+          "carriedTo": {
+            "date": "2026-08-29",
+            "taskId": "task-b288c225",
+            "amount": 2
+          },
+          "transferDate": "2026-08-29"
         },
         {
           "id": "local-1787882737377-kpi-demos",
@@ -342,8 +346,12 @@
           "kind": "kpi",
           "done": false,
           "carriedFrom": null,
-          "carriedTo": null,
-          "transferDate": null
+          "carriedTo": {
+            "date": "2026-08-29",
+            "taskId": "task-92bdab9f",
+            "amount": 2
+          },
+          "transferDate": "2026-08-29"
         },
         {
           "id": "local-1787882737377-kpi-leads",
@@ -356,8 +364,12 @@
           "kind": "kpi",
           "done": false,
           "carriedFrom": null,
-          "carriedTo": null,
-          "transferDate": null
+          "carriedTo": {
+            "date": "2026-08-29",
+            "taskId": "task-675e8f05",
+            "amount": 15
+          },
+          "transferDate": "2026-08-29"
         },
         {
           "id": "local-1787882750766",
@@ -370,12 +382,109 @@
           "kind": "task",
           "done": false,
           "carriedFrom": null,
+          "carriedTo": {
+            "date": "2026-08-29",
+            "taskId": "task-b433f71e",
+            "amount": 5
+          },
+          "transferDate": "2026-08-29"
+        }
+      ],
+      "createdAt": "2026-08-28T02:06:30.583Z",
+      "updatedAt": "2026-08-28T02:07:20.818Z",
+      "completedAt": "2026-08-28T02:07:20.818Z"
+    },
+    {
+      "id": "form-ce509f3b",
+      "managerId": "mgr-1",
+      "managerName": "Блохина Елизавета",
+      "date": "2026-08-29",
+      "title": "Блохина Елизавета 2026-08-29",
+      "status": "morning",
+      "tasks": [
+        {
+          "id": "task-b288c225",
+          "text": "Успешные звонки",
+          "target": 2,
+          "doneCount": 0,
+          "unit": "звонков",
+          "mandatory": true,
+          "kpiId": "kpi-calls",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": {
+            "date": "2026-08-28",
+            "taskId": "local-1787882737377-kpi-calls",
+            "amount": 2,
+            "doneCount": 18,
+            "originalTarget": 20
+          },
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-92bdab9f",
+          "text": "Демонстрации",
+          "target": 2,
+          "doneCount": 0,
+          "unit": "демо",
+          "mandatory": true,
+          "kpiId": "kpi-demos",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": {
+            "date": "2026-08-28",
+            "taskId": "local-1787882737377-kpi-demos",
+            "amount": 2,
+            "doneCount": 0,
+            "originalTarget": 2
+          },
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-675e8f05",
+          "text": "Обработанные лиды",
+          "target": 15,
+          "doneCount": 0,
+          "unit": "лидов",
+          "mandatory": true,
+          "kpiId": "kpi-leads",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": {
+            "date": "2026-08-28",
+            "taskId": "local-1787882737377-kpi-leads",
+            "amount": 15,
+            "doneCount": 0,
+            "originalTarget": 15
+          },
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-b433f71e",
+          "text": "5 разговоров по поводу КС",
+          "target": 5,
+          "doneCount": 0,
+          "unit": "",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "task",
+          "done": false,
+          "carriedFrom": {
+            "date": "2026-08-28",
+            "taskId": "local-1787882750766",
+            "amount": 5,
+            "doneCount": 0,
+            "originalTarget": 5
+          },
           "carriedTo": null,
           "transferDate": null
         }
       ],
-      "createdAt": "2026-08-28T02:06:30.583Z",
-      "updatedAt": "2026-08-28T02:06:30.583Z",
+      "createdAt": "2026-08-28T02:07:20.818Z",
+      "updatedAt": "2026-08-28T02:07:20.818Z",
       "completedAt": null
     }
   ],
@@ -432,5 +541,66 @@
       "unit": "лидов"
     }
   ],
-  "transfers": []
+  "transfers": [
+    {
+      "id": "tr-4b848c2e",
+      "managerId": "mgr-1",
+      "managerName": "Блохина Елизавета",
+      "fromDate": "2026-08-28",
+      "toDate": "2026-08-29",
+      "fromTaskId": "local-1787882737377-kpi-calls",
+      "toTaskId": "task-b288c225",
+      "text": "Успешные звонки",
+      "amount": 2,
+      "doneCount": 18,
+      "originalTarget": 20,
+      "unit": "звонков",
+      "createdAt": "2026-08-28T02:07:20.818Z"
+    },
+    {
+      "id": "tr-59bffb6f",
+      "managerId": "mgr-1",
+      "managerName": "Блохина Елизавета",
+      "fromDate": "2026-08-28",
+      "toDate": "2026-08-29",
+      "fromTaskId": "local-1787882737377-kpi-demos",
+      "toTaskId": "task-92bdab9f",
+      "text": "Демонстрации",
+      "amount": 2,
+      "doneCount": 0,
+      "originalTarget": 2,
+      "unit": "демо",
+      "createdAt": "2026-08-28T02:07:20.818Z"
+    },
+    {
+      "id": "tr-bc7df81b",
+      "managerId": "mgr-1",
+      "managerName": "Блохина Елизавета",
+      "fromDate": "2026-08-28",
+      "toDate": "2026-08-29",
+      "fromTaskId": "local-1787882737377-kpi-leads",
+      "toTaskId": "task-675e8f05",
+      "text": "Обработанные лиды",
+      "amount": 15,
+      "doneCount": 0,
+      "originalTarget": 15,
+      "unit": "лидов",
+      "createdAt": "2026-08-28T02:07:20.818Z"
+    },
+    {
+      "id": "tr-0c37516a",
+      "managerId": "mgr-1",
+      "managerName": "Блохина Елизавета",
+      "fromDate": "2026-08-28",
+      "toDate": "2026-08-29",
+      "fromTaskId": "local-1787882750766",
+      "toTaskId": "task-b433f71e",
+      "text": "5 разговоров по поводу КС",
+      "amount": 5,
+      "doneCount": 0,
+      "originalTarget": 5,
+      "unit": "",
+      "createdAt": "2026-08-28T02:07:20.818Z"
+    }
+  ]
 }
