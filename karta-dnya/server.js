@@ -260,7 +260,7 @@ const GH_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || "";
 const GH_REPO = process.env.GITHUB_REPO || "daaanilNikonov/for-lisa";
 const GH_BRANCH = process.env.GITHUB_BRANCH || "cursor/karta-dnya-produktovogo-zapuska-ed4c";
 const GH_DB_PATH = process.env.GITHUB_DB_PATH || "karta-dnya/data/db.json";
-const USE_GITHUB = Boolean(GH_TOKEN && GH_REPO);
+let useGithub = Boolean(GH_TOKEN && GH_REPO);
 
 let githubSha = null;
 let writeQueue = Promise.resolve();
@@ -277,6 +277,12 @@ function writeDbLocal(db) {
   const tmp = `${DB_PATH}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(db, null, 2), "utf8");
   fs.renameSync(tmp, DB_PATH);
+}
+
+function readDbLocal() {
+  ensureDbLocal();
+  const raw = fs.readFileSync(DB_PATH, "utf8");
+  return migrateDb(JSON.parse(raw), { persist: true });
 }
 
 async function githubRequest(method, apiPath, body) {
@@ -359,25 +365,48 @@ async function writeDbToGithub(db) {
 }
 
 async function readDb() {
-  if (USE_GITHUB) {
-    const db = await readDbFromGithub();
-    writeDbLocal(db);
-    return db;
+  if (useGithub) {
+    try {
+      const db = await readDbFromGithub();
+      writeDbLocal(db);
+      return db;
+    } catch (err) {
+      console.error("GitHub read failed, falling back to local db:", err.message || err);
+      if (err.status === 401 || err.status === 403) {
+        useGithub = false;
+        console.error("GitHub auth failed — persistence switched to local file only");
+      }
+      return readDbLocal();
+    }
   }
-  ensureDbLocal();
-  const raw = fs.readFileSync(DB_PATH, "utf8");
-  return migrateDb(JSON.parse(raw), { persist: true });
+  return readDbLocal();
 }
 
 function writeDb(db) {
   writeQueue = writeQueue
     .then(async () => {
-      if (USE_GITHUB) await writeDbToGithub(db);
-      else writeDbLocal(db);
+      if (useGithub) {
+        try {
+          await writeDbToGithub(db);
+          return;
+        } catch (err) {
+          console.error("GitHub write failed, saving locally:", err.message || err);
+          if (err.status === 401 || err.status === 403) {
+            useGithub = false;
+            console.error("GitHub auth failed — persistence switched to local file only");
+          }
+        }
+      }
+      writeDbLocal(db);
     })
     .catch((err) => {
       console.error("writeDb failed:", err);
-      throw err;
+      try {
+        writeDbLocal(db);
+      } catch (localErr) {
+        console.error("local writeDb also failed:", localErr);
+        throw localErr;
+      }
     });
   return writeQueue;
 }
@@ -1118,7 +1147,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  const mode = USE_GITHUB ? `GitHub ${GH_REPO}@${GH_BRANCH}` : `file ${DB_PATH}`;
+  const mode = useGithub ? `GitHub ${GH_REPO}@${GH_BRANCH}` : `file ${DB_PATH}`;
   console.log(`Карта дня Форус → http://localhost:${PORT}/karta-dnya`);
   console.log(`Storage: ${mode}`);
 });
