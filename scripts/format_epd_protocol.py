@@ -1,55 +1,51 @@
 #!/usr/bin/env python3
-"""Format EPD meeting protocol: plan block, tasks, themed discussion."""
+"""Insert EPD plan block into original protocol, keeping native formatting."""
 
 from __future__ import annotations
 
 import re
 import zipfile
-from copy import copy
 from pathlib import Path
 
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
-from openpyxl.formatting.rule import FormulaRule
-from openpyxl.worksheet.datavalidation import DataValidation
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC_NAME = "Протокол встреч по проекту ЭПД  ЦП-ЦКС-ЦСВ.xlsx"
 OUT_PATH = ROOT / SRC_NAME
-FIXED_TMP = Path("/tmp/protocol_fixed.xlsx")
 
-# Colors
-BLUE = "1F4E79"
-BLUE_MID = "2F69C7"
-BLUE_LIGHT = "D6E3F0"
-BLUE_PALE = "EEF4FA"
-GREEN = "548235"
-GREEN_LIGHT = "E2EFD9"
-ORANGE = "C65911"
-ORANGE_LIGHT = "FCE4D6"
-YELLOW = "FFF2CC"
-YELLOW_HDR = "FFE699"
-GRAY = "7F7F7F"
-GRAY_LIGHT = "F2F2F2"
+# Original palette from the file
+GRAY_HDR = "ECECEC"
+GREEN_HDR = "8BC34A"
+GREEN_SOFT = "E2EFD9"
 WHITE = "FFFFFF"
-RED_SOFT = "FCE4EC"
-TASK_FILL = "FFF8E7"
-THESIS_FILL = "F5F9FC"
-BLOCK_FILL = "1F4E79"
+YELLOW = "FFF2CC"
+ORANGE_SOFT = "FCE4D6"
 
 thin = Border(
-    left=Side(style="thin", color="B0B0B0"),
-    right=Side(style="thin", color="B0B0B0"),
-    top=Side(style="thin", color="B0B0B0"),
-    bottom=Side(style="thin", color="B0B0B0"),
+    left=Side(style="thin"),
+    right=Side(style="thin"),
+    top=Side(style="thin"),
+    bottom=Side(style="thin"),
 )
-thick_blue = Border(
-    left=Side(style="medium", color=BLUE),
-    right=Side(style="medium", color=BLUE),
-    top=Side(style="medium", color=BLUE),
-    bottom=Side(style="medium", color=BLUE),
-)
+
+font_section = Font(name="Calibri", bold=True, size=13)
+font_hdr = Font(name="Calibri", bold=True, size=11)
+font_cell = Font(name="Calibri", size=12)
+font_small = Font(name="Calibri", size=10, italic=True, color="666666")
+font_metric = Font(name="Calibri", bold=True, size=14)
+
+fill_gray = PatternFill("solid", fgColor=GRAY_HDR)
+fill_green = PatternFill("solid", fgColor=GREEN_HDR)
+fill_green_soft = PatternFill("solid", fgColor=GREEN_SOFT)
+fill_white = PatternFill("solid", fgColor=WHITE)
+fill_yellow = PatternFill("solid", fgColor=YELLOW)
+fill_orange_soft = PatternFill("solid", fgColor=ORANGE_SOFT)
+
+align_c = Alignment(horizontal="center", vertical="center", wrap_text=True)
+align_l = Alignment(horizontal="left", vertical="center", wrap_text=True)
+align_lt = Alignment(horizontal="left", vertical="top", wrap_text=True)
 
 
 def fix_workbook(src: Path, dst: Path) -> None:
@@ -67,1009 +63,585 @@ def fix_workbook(src: Path, dst: Path) -> None:
             zout.writestr(item, data)
 
 
-def style_range(ws, cells, **kwargs):
-    for coord in cells:
-        cell = ws[coord] if isinstance(coord, str) else ws.cell(*coord)
-        for k, v in kwargs.items():
-            setattr(cell, k, v)
+def style_cell(cell, *, value=None, font=None, fill=None, alignment=None, border=thin, num=None):
+    if value is not None:
+        cell.value = value
+    if font is not None:
+        cell.font = font
+    if fill is not None:
+        cell.fill = fill
+    if alignment is not None:
+        cell.alignment = alignment
+    if border is not None:
+        cell.border = border
+    if num is not None:
+        cell.number_format = num
 
 
-def fill(hex_color: str) -> PatternFill:
-    return PatternFill("solid", fgColor=hex_color)
+def paint_range(ws, r1, r2, c1, c2, **kwargs):
+    for r in range(r1, r2 + 1):
+        for c in range(c1, c2 + 1):
+            style_cell(ws.cell(r, c), **kwargs)
 
 
-def font(bold=False, size=11, color="000000", name="Calibri"):
-    return Font(name=name, bold=bold, size=size, color=color)
+def unmerge_overlapping(ws, min_row, max_row, min_col=1, max_col=20):
+    for m in list(ws.merged_cells.ranges):
+        if m.max_row < min_row or m.min_row > max_row:
+            continue
+        if m.max_col < min_col or m.min_col > max_col:
+            continue
+        try:
+            ws.unmerge_cells(str(m))
+        except Exception:
+            pass
 
 
-def align(h="left", v="center", wrap=True):
-    return Alignment(horizontal=h, vertical=v, wrap_text=wrap)
+def clear_cells(ws, r1, r2, c1=1, c2=7):
+    from openpyxl.cell.cell import MergedCell
 
-
-def set_row_height(ws, row, height):
-    ws.row_dimensions[row].height = height
-
-
-def merge_write(ws, range_str, value, **style):
-    ws.merge_cells(range_str)
-    cell = ws[range_str.split(":")[0]]
-    cell.value = value
-    for k, v in style.items():
-        setattr(cell, k, v)
-    return cell
-
-
-def apply_box(ws, start_row, end_row, start_col, end_col, border=thin):
-    for r in range(start_row, end_row + 1):
-        for c in range(start_col, end_col + 1):
-            ws.cell(r, c).border = border
-
-
-def clear_sheet(ws):
-    # unmerge all
-    for merged in list(ws.merged_cells.ranges):
-        ws.unmerge_cells(str(merged))
-    # clear values and styles in used area
-    for row in ws.iter_rows(min_row=1, max_row=max(ws.max_row, 1), max_col=max(ws.max_column, 1)):
-        for cell in row:
+    unmerge_overlapping(ws, r1, r2, c1, c2)
+    for row in range(r1, r2 + 1):
+        for c in range(c1, c2 + 1):
+            cell = ws.cell(row, c)
+            if isinstance(cell, MergedCell):
+                continue
             cell.value = None
             cell.fill = PatternFill()
-            cell.font = Font()
             cell.border = Border()
+            cell.font = Font()
             cell.alignment = Alignment()
-            cell.number_format = "General"
 
 
-def build_latest_sheet(ws):
-    clear_sheet(ws)
+def merge_header(ws, range_str, text, fill, font=font_section):
+    ws.merge_cells(range_str)
+    top = range_str.split(":")[0]
+    style_cell(ws[top], value=text, font=font, fill=fill, alignment=align_c)
+    start, end = range_str.split(":")
+    from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
+    sc, sr = coordinate_from_string(start)
+    ec, er = coordinate_from_string(end)
+    for r in range(sr, er + 1):
+        for c in range(column_index_from_string(sc), column_index_from_string(ec) + 1):
+            cell = ws.cell(r, c)
+            cell.fill = fill
+            cell.border = thin
+            if cell.coordinate != top:
+                cell.font = font
 
-    # Column widths
-    widths = {
-        "A": 6,
-        "B": 42,
-        "C": 28,
-        "D": 18,
-        "E": 16,
-        "F": 36,
-        "G": 18,
-        "H": 14,
-        "I": 14,
-        "J": 22,
-        "K": 28,
-        "L": 3,
-        "M": 14,
-        "N": 12,
-        "O": 28,
-    }
-    for col, w in widths.items():
-        ws.column_dimensions[col].width = w
 
-    # ========== TITLE ==========
-    merge_write(
-        ws,
-        "A1:G1",
-        "ВСТРЕЧА ЦП — ЦКС — ЦСВ — СМАК  ·  Протокол 27.08.2026",
-        font=font(True, 16, WHITE),
-        fill=fill(BLUE),
-        alignment=align("center", "center"),
-    )
-    set_row_height(ws, 1, 32)
+def insert_plan_block(ws, start_row: int = 3) -> int:
+    """Insert plan + period tables at start_row. Returns number of rows inserted."""
+    n = 14
+    ws.insert_rows(start_row, amount=n)
+    r = start_row
 
-    merge_write(
-        ws,
-        "A2:G2",
-        "Проект ЭПД  ·  еженедельный статус",
-        font=font(False, 11, BLUE),
-        fill=fill(BLUE_PALE),
-        alignment=align("center", "center"),
-    )
-    set_row_height(ws, 2, 20)
+    # Ensure side columns wide enough
+    ws.column_dimensions["I"].width = max(ws.column_dimensions["I"].width or 12, 14)
+    ws.column_dimensions["J"].width = max(ws.column_dimensions["J"].width or 12, 12)
+    ws.column_dimensions["K"].width = max(ws.column_dimensions["K"].width or 12, 28)
 
-    # ========== PLAN BLOCK ==========
-    # Left: plan summary + departments
-    # Right: period comparison
+    # Section title
+    merge_header(ws, f"A{r}:G{r}", "План по ЭПД", fill_gray)
+    ws.row_dimensions[r].height = 22
 
-    merge_write(
-        ws,
-        "A4:G4",
-        "ПЛАН ПО ЭПД",
-        font=font(True, 13, WHITE),
-        fill=fill(BLUE_MID),
-        alignment=align("left", "center"),
-    )
-    set_row_height(ws, 4, 24)
+    # Side section title (same row)
+    merge_header(ws, f"I{r}:K{r}", "Соотношение к прошлому периоду", fill_gray, font=font_hdr)
 
-    # Summary headers
-    headers = [
-        ("A5", "План"),
-        ("C5", "Текущее значение"),
-        ("E5", "Итого до плана"),
-        ("G5", "% выполнения"),
+    # Summary labels
+    r = start_row + 1
+    labels = [
+        (f"A{r}:B{r}", "План"),
+        (f"C{r}:D{r}", "Текущее значение"),
+        (f"E{r}:F{r}", "Итого до плана"),
+        (f"G{r}", "% выполнения плана"),
     ]
-    for coord, text in headers:
-        cell = ws[coord]
-        cell.value = text
-        cell.font = font(True, 10, GRAY)
-        cell.fill = fill(BLUE_LIGHT)
-        cell.alignment = align("center", "center")
-        cell.border = thin
+    for rng, text in labels:
+        if ":" in rng:
+            ws.merge_cells(rng)
+            top = rng.split(":")[0]
+        else:
+            top = rng
+        style_cell(ws[top], value=text, font=font_hdr, fill=fill_green, alignment=align_c)
+        if ":" in rng:
+            from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
+            sc, sr = coordinate_from_string(rng.split(":")[0])
+            ec, er = coordinate_from_string(rng.split(":")[1])
+            for c in range(column_index_from_string(sc), column_index_from_string(ec) + 1):
+                style_cell(ws.cell(sr, c), font=font_hdr, fill=fill_green, alignment=align_c)
 
-    ws.merge_cells("A5:B5")
-    ws.merge_cells("C5:D5")
-    ws.merge_cells("E5:F5")
+    for col, text in [("I", "Дата"), ("J", "Клиенты"), ("K", "Изменение")]:
+        style_cell(ws[f"{col}{r}"], value=text, font=font_hdr, fill=fill_green, alignment=align_c)
 
-    # Values row
-    # Plan = 500 in B6 (named conceptually)
-    # Current = SUM of department facts N11:N13 (see department table)
-    # Remaining = plan - current
-    # % = current / plan
+    # Summary values — fact cells will be at start_row+5 .. +7 (E column) → absolute later
+    # We'll set formulas after we know absolute rows
+    r = start_row + 2
+    plan_row = r
+    # Placeholders; formulas patched below with absolute refs
+    ws.merge_cells(f"A{r}:B{r}")
+    style_cell(ws[f"A{r}"], value=500, font=font_metric, fill=fill_white, alignment=align_c, num="0")
+    style_cell(ws[f"B{r}"], fill=fill_white)
 
-    ws["A6"].value = 500
-    ws["A6"].font = font(True, 18, BLUE)
-    ws["A6"].fill = fill(BLUE_PALE)
-    ws["A6"].alignment = align("center", "center")
-    ws["A6"].border = thin
-    ws["A6"].number_format = '#,##0" клиент."'
-    ws.merge_cells("A6:B6")
-    ws["B6"].border = thin
-    ws["B6"].fill = fill(BLUE_PALE)
+    ws.merge_cells(f"C{r}:D{r}")
+    # current = sum of facts — set after dept rows known
+    style_cell(ws[f"C{r}"], value=None, font=font_metric, fill=fill_green_soft, alignment=align_c, num="0")
+    style_cell(ws[f"D{r}"], fill=fill_green_soft)
 
-    # Current value linked to department facts (N11+N12+N13)
-    # Also show note that it's sum of «Факт» by departments
-    ws["C6"].value = "=N11+N12+N13"
-    ws["C6"].font = font(True, 18, GREEN)
-    ws["C6"].fill = fill(GREEN_LIGHT)
-    ws["C6"].alignment = align("center", "center")
-    ws["C6"].border = thin
-    ws["C6"].number_format = '#,##0" клиент."'
-    ws.merge_cells("C6:D6")
-    ws["D6"].border = thin
-    ws["D6"].fill = fill(GREEN_LIGHT)
+    ws.merge_cells(f"E{r}:F{r}")
+    style_cell(ws[f"E{r}"], value=None, font=font_metric, fill=fill_white, alignment=align_c, num="0")
+    style_cell(ws[f"F{r}"], fill=fill_white)
 
-    ws["E6"].value = "=A6-C6"
-    ws["E6"].font = font(True, 18, ORANGE)
-    ws["E6"].fill = fill(ORANGE_LIGHT)
-    ws["E6"].alignment = align("center", "center")
-    ws["E6"].border = thin
-    ws["E6"].number_format = '#,##0" клиент."'
-    ws.merge_cells("E6:F6")
-    ws["F6"].border = thin
-    ws["F6"].fill = fill(ORANGE_LIGHT)
+    style_cell(ws[f"G{r}"], value=None, font=font_metric, fill=fill_yellow, alignment=align_c, num="0.0%")
 
-    ws["G6"].value = '=IF(A6=0,"—",C6/A6)'
-    ws["G6"].font = font(True, 18, BLUE)
-    ws["G6"].fill = fill(YELLOW)
-    ws["G6"].alignment = align("center", "center")
-    ws["G6"].border = thin
-    ws["G6"].number_format = "0.0%"
+    ws.row_dimensions[r].height = 28
 
-    set_row_height(ws, 5, 18)
-    set_row_height(ws, 6, 36)
+    # Period first rows (aligned with summary)
+    style_cell(ws[f"I{r}"], value="27.08.2026", font=font_cell, fill=fill_white, alignment=align_c)
+    style_cell(ws[f"J{r}"], value=None, font=font_cell, fill=fill_green_soft, alignment=align_c, num="0")  # =current
+    style_cell(ws[f"K{r}"], value="—", font=font_cell, fill=fill_white, alignment=align_c)
 
-    merge_write(
-        ws,
-        "A7:G7",
-        "«Текущее значение» = сумма ячеек «Факт» по отделам (ниже). Меняйте факты — обновятся итог, остаток и % выполнения.",
-        font=font(False, 9, GRAY),
-        fill=fill(GRAY_LIGHT),
-        alignment=align("left", "center"),
+    # Hint
+    r = start_row + 3
+    ws.merge_cells(f"A{r}:G{r}")
+    style_cell(
+        ws[f"A{r}"],
+        value="«Текущее значение» = сумма ячеек «Факт» по отделам (ниже). Жёлтые ячейки — для ввода.",
+        font=font_small,
+        fill=fill_gray,
+        alignment=align_l,
+        border=thin,
     )
-    set_row_height(ws, 7, 18)
+    for c in range(2, 8):
+        style_cell(ws.cell(r, c), fill=fill_gray)
 
-    # Department plans table (placed to the RIGHT of summary for visibility — user asked "по отделам" under plan)
-    merge_write(
-        ws,
-        "A9:G9",
-        "План на МПП в месяц — по отделам",
-        font=font(True, 11, WHITE),
-        fill=fill(GREEN),
-        alignment=align("left", "center"),
-    )
+    # Period example rows
+    style_cell(ws[f"I{r}"], value="03.09.2026", font=font_cell, fill=fill_white, alignment=align_c)
+    style_cell(ws[f"J{r}"], value=200, font=font_cell, fill=fill_yellow, alignment=align_c, num="0")
+    style_cell(ws[f"K{r}"], value=None, font=font_cell, fill=fill_white, alignment=align_l)
 
-    dept_headers = ["Отдел / группа", "План на МПП в мес", "Факт", "% выполнения плана"]
-    # Use columns A-B, C, D, E-F for department table on left? 
-    # User also wants facts linked - I'll put editable fact cells in a clear place.
-    # Better layout: department table in A-G rows 10-13, AND mirror fact values also in N11:N13
-    # Actually simpler: put department table with facts in columns that C6 references.
-    # Put department table starting at column I? User said "табличку сбоку" for period comparison.
-    # So: departments under plan (left), period comparison on the right (I-K).
+    r = start_row + 4
+    merge_header(ws, f"A{r}:G{r}", "План на МПП в месяц — по отделам", fill_gray, font=font_hdr)
 
-    # Department table headers row 10
-    ws["A10"].value = "Отдел / группа"
-    ws["C10"].value = "План на МПП в мес"
-    ws["E10"].value = "Факт"
-    ws["F10"].value = "% выполнения плана"
-    ws.merge_cells("A10:B10")
-    ws.merge_cells("C10:D10")
-    ws.merge_cells("F10:G10")
-    for col in ["A", "B", "C", "D", "E", "F", "G"]:
-        ws[f"{col}10"].font = font(True, 10, WHITE)
-        ws[f"{col}10"].fill = fill(GREEN)
-        ws[f"{col}10"].alignment = align("center", "center")
-        ws[f"{col}10"].border = thin
+    style_cell(ws[f"I{r}"], value="10.09.2026", font=font_cell, fill=fill_white, alignment=align_c)
+    style_cell(ws[f"J{r}"], value=250, font=font_cell, fill=fill_yellow, alignment=align_c, num="0")
+    style_cell(ws[f"K{r}"], value=None, font=font_cell, fill=fill_white, alignment=align_l)
+
+    # Department headers
+    r = start_row + 5
+    dept_hdr_row = r
+    ws.merge_cells(f"A{r}:B{r}")
+    style_cell(ws[f"A{r}"], value="Отдел / группа", font=font_hdr, fill=fill_green, alignment=align_c)
+    style_cell(ws[f"B{r}"], fill=fill_green)
+    ws.merge_cells(f"C{r}:D{r}")
+    style_cell(ws[f"C{r}"], value="План на МПП в мес", font=font_hdr, fill=fill_green, alignment=align_c)
+    style_cell(ws[f"D{r}"], fill=fill_green)
+    style_cell(ws[f"E{r}"], value="Факт", font=font_hdr, fill=fill_green, alignment=align_c)
+    ws.merge_cells(f"F{r}:G{r}")
+    style_cell(ws[f"F{r}"], value="% выполнения плана", font=font_hdr, fill=fill_green, alignment=align_c)
+    style_cell(ws[f"G{r}"], fill=fill_green)
+
+    # Extra empty period rows with formulas
+    for pr in range(start_row + 5, start_row + 10):
+        for col in "IJK":
+            style_cell(ws[f"{col}{pr}"], font=font_cell, fill=fill_yellow if col == "J" else fill_white, alignment=align_c)
+        ws[f"J{pr}"].number_format = "0"
 
     departments = [
-        (11, "Группа «Новые деньги»", 75, 90),   # facts sum to 150 with row12+13
-        (12, "Группа продуктового запуска", 25, 40),
-        (13, "ЦКС", None, 20),
+        ("Группа «Новые деньги»", 75, 90),
+        ("Группа продуктового запуска", 25, 40),
+        ("ЦКС", None, 20),
     ]
-    # 90+40+20 = 150 ✓
-
-    for row, name, plan, fact in departments:
+    fact_rows = []
+    for i, (name, plan, fact) in enumerate(departments):
+        row = start_row + 6 + i
+        fact_rows.append(row)
         ws.merge_cells(f"A{row}:B{row}")
-        ws[f"A{row}"].value = name
-        ws[f"A{row}"].font = font(True, 10)
-        ws[f"A{row}"].alignment = align("left", "center")
-        ws[f"A{row}"].fill = fill(GREEN_LIGHT)
-        ws[f"B{row}"].fill = fill(GREEN_LIGHT)
-        ws[f"B{row}"].border = thin
-        ws[f"A{row}"].border = thin
-
+        style_cell(ws[f"A{row}"], value=name, font=font_cell, fill=fill_white, alignment=align_l)
+        style_cell(ws[f"B{row}"], fill=fill_white)
         ws.merge_cells(f"C{row}:D{row}")
-        plan_fill = fill(GRAY_LIGHT) if plan is None else fill(WHITE)
-        if plan is None:
-            ws[f"C{row}"].value = None  # empty for CKS as requested
-        else:
-            ws[f"C{row}"].value = plan
-        ws[f"C{row}"].fill = plan_fill
-        ws[f"C{row}"].font = font(True, 12, BLUE)
-        ws[f"C{row}"].alignment = align("center", "center")
-        ws[f"C{row}"].border = thin
-        ws[f"C{row}"].number_format = "0"
-        ws[f"D{row}"].border = thin
-        ws[f"D{row}"].fill = plan_fill
-
-        # Fact — editable, yellow highlight
-        ws[f"E{row}"].value = fact
-        ws[f"E{row}"].font = font(True, 12, GREEN)
-        ws[f"E{row}"].fill = fill(YELLOW)
-        ws[f"E{row}"].alignment = align("center", "center")
-        ws[f"E{row}"].border = thin
-        ws[f"E{row}"].number_format = "0"
-
-        # % = fact/plan
-        ws.merge_cells(f"F{row}:G{row}")
-        ws[f"F{row}"].value = f'=IF(OR(C{row}="",C{row}=0),"—",E{row}/C{row})'
-        ws[f"F{row}"].font = font(True, 11)
-        ws[f"F{row}"].alignment = align("center", "center")
-        ws[f"F{row}"].border = thin
-        ws[f"F{row}"].number_format = "0.0%"
-        ws[f"G{row}"].border = thin
-        set_row_height(ws, row, 22)
-
-    # Hidden helper cells N11:N13 = references to E11:E13 (so C6 formula is stable/documented)
-    # Actually C6 already can use E11+E12+E13 directly — update C6
-    ws["C6"].value = "=E11+E12+E13"
-
-    # Also keep N11:N13 as named helpers for period table clarity (optional mirror)
-    for r in (11, 12, 13):
-        ws[f"N{r}"].value = f"=E{r}"
-
-    # ========== SIDE TABLE: period comparison ==========
-    merge_write(
-        ws,
-        "I4:K4",
-        "Соотношение к прошлому периоду",
-        font=font(True, 11, WHITE),
-        fill=fill(ORANGE),
-        alignment=align("center", "center"),
-    )
-    set_row_height(ws, 4, 24)
-
-    for col, text in [("I5", "Дата"), ("J5", "Клиенты"), ("K5", "Изменение")]:
-        ws[col].value = text
-        ws[col].font = font(True, 10, WHITE)
-        ws[col].fill = fill(ORANGE)
-        ws[col].alignment = align("center", "center")
-        ws[col].border = thin
-
-    # Period rows — first period baseline, then examples + empty rows for future
-    # Row 6: 27.08.2026 — current (=C6)
-    # Row 7: template 03.09 — example empty for user
-    # Row 8: template 10.09
-    # Plus 2 more empty rows
-
-    periods = [
-        (6, "27.08.2026", "=C6", None),  # linked to current
-        (7, "03.09.2026", None, None),   # user fills
-        (8, "10.09.2026", None, None),
-        (9, "", None, None),
-        (10, "", None, None),
-        (11, "", None, None),
-        (12, "", None, None),
-        (13, "", None, None),
-    ]
-
-    # For demo of the formula: put example values in a note area and also
-    # seed 03.09 / 10.09 with the user's example (200 → 250) as illustration,
-    # while 27.08 stays linked to current (150).
-    # User example: 03.09=200, 10.09=250 → +25%
-    # I'll put 27.08 linked, then leave 03.09 and 10.09 as editable examples with 200/250
-    # so the % formula is visible immediately.
-
-    ws["I6"].value = "27.08.2026"
-    ws["J6"].value = "=C6"  # 150 via facts
-    ws["K6"].value = "—"
-
-    ws["I7"].value = "03.09.2026"
-    ws["J7"].value = 200  # example / editable
-    ws["K7"].value = '=IF(OR(J6="",J6=0,J7=""),"—",IF(J7>=J6,"увеличилось на "&TEXT((J7-J6)/J6,"0.0%"),"уменьшилось на "&TEXT((J6-J7)/J6,"0.0%")))'
-
-    ws["I8"].value = "10.09.2026"
-    ws["J8"].value = 250  # example / editable
-    ws["K8"].value = '=IF(OR(J7="",J7=0,J8=""),"—",IF(J8>=J7,"увеличилось на "&TEXT((J8-J7)/J7,"0.0%"),"уменьшилось на "&TEXT((J7-J8)/J7,"0.0%")))'
-
-    for r in range(9, 14):
-        ws[f"K{r}"].value = (
-            f'=IF(OR(J{r-1}="",J{r-1}=0,J{r}=""),"—",'
-            f'IF(J{r}>=J{r-1},"увеличилось на "&TEXT((J{r}-J{r-1})/J{r-1},"0.0%"),'
-            f'"уменьшилось на "&TEXT((J{r-1}-J{r})/J{r-1},"0.0%")))'
+        style_cell(
+            ws[f"C{row}"],
+            value=plan,
+            font=font_cell,
+            fill=fill_white if plan is not None else fill_gray,
+            alignment=align_c,
+            num="0",
         )
+        style_cell(ws[f"D{row}"], fill=fill_white if plan is not None else fill_gray)
+        style_cell(ws[f"E{row}"], value=fact, font=font_cell, fill=fill_yellow, alignment=align_c, num="0")
+        ws.merge_cells(f"F{row}:G{row}")
+        style_cell(
+            ws[f"F{row}"],
+            value=f'=IF(OR(C{row}="",C{row}=0),"—",E{row}/C{row})',
+            font=font_cell,
+            fill=fill_green_soft,
+            alignment=align_c,
+            num="0.0%",
+        )
+        style_cell(ws[f"G{row}"], fill=fill_green_soft)
+        ws.row_dimensions[row].height = 20
 
-    for r in range(6, 14):
-        for col in ["I", "J", "K"]:
-            ws[f"{col}{r}"].border = thin
-            ws[f"{col}{r}"].alignment = align("center", "center")
-            ws[f"{col}{r}"].font = font(False, 10)
-        ws[f"J{r}"].fill = fill(YELLOW)
-        ws[f"J{r}"].number_format = "0"
-        ws[f"K{r}"].fill = fill(ORANGE_LIGHT)
-        ws[f"K{r}"].alignment = align("left", "center")
-        set_row_height(ws, r, 22)
+    # Spacer row
+    spacer = start_row + 9
+    ws.row_dimensions[spacer].height = 10
 
-    ws["J6"].fill = fill(GREEN_LIGHT)  # auto-linked
-    ws["I6"].font = font(True, 10)
-
-    merge_write(
-        ws,
-        "I14:K14",
-        "Жёлтые ячейки «Клиенты» — вводите вручную на новые даты. Строка 27.08 подтягивает текущее значение из плана.",
-        font=font(False, 8, GRAY),
-        fill=fill(GRAY_LIGHT),
-        alignment=align("left", "center"),
+    # Wire summary formulas
+    facts = "+".join(f"E{x}" for x in fact_rows)
+    style_cell(ws[f"C{plan_row}"], value=f"={facts}", font=font_metric, fill=fill_green_soft, alignment=align_c, num="0")
+    style_cell(ws[f"E{plan_row}"], value=f"=A{plan_row}-C{plan_row}", font=font_metric, fill=fill_white, alignment=align_c, num="0")
+    style_cell(
+        ws[f"G{plan_row}"],
+        value=f'=IF(A{plan_row}=0,"—",C{plan_row}/A{plan_row})',
+        font=font_metric,
+        fill=fill_yellow,
+        alignment=align_c,
+        num="0.0%",
     )
-    set_row_height(ws, 14, 28)
+    style_cell(ws[f"J{plan_row}"], value=f"=C{plan_row}", font=font_cell, fill=fill_green_soft, alignment=align_c, num="0")
 
-    # ========== AD CAMPAIGN (compact) ==========
-    r = 16
-    merge_write(
-        ws,
-        f"A{r}:G{r}",
-        "Показатели рекламной кампании",
-        font=font(True, 12, WHITE),
-        fill=fill(BLUE),
-        alignment=align("left", "center"),
+    # Period change formulas for rows plan_row+1 .. plan_row+7 (relative)
+    # Row start_row+3 (03.09), start_row+4 (10.09), then empty rows start_row+5..
+    period_value_rows = list(range(plan_row, start_row + 10))  # includes baseline
+    for i, prow in enumerate(period_value_rows):
+        if i == 0:
+            ws[f"K{prow}"].value = "—"
+            continue
+        prev = period_value_rows[i - 1]
+        ws[f"K{prow}"].value = (
+            f'=IF(OR(J{prev}="",J{prev}=0,J{prow}=""),"—",'
+            f'IF(J{prow}>=J{prev},"увеличилось на "&TEXT((J{prow}-J{prev})/J{prev},"0.0%"),'
+            f'"уменьшилось на "&TEXT((J{prev}-J{prow})/J{prev},"0.0%")))'
+        )
+        ws[f"K{prow}"].alignment = align_l
+        ws[f"K{prow}"].font = font_cell
+        ws[f"K{prow}"].border = thin
+
+    # Note under period
+    note_r = start_row + 10
+    ws.merge_cells(f"I{note_r}:K{note_r}")
+    style_cell(
+        ws[f"I{note_r}"],
+        value="Строка 27.08 подтягивает текущее значение. Новые даты — в жёлтые ячейки «Клиенты».",
+        font=font_small,
+        fill=fill_gray,
+        alignment=align_l,
     )
+    for c in range(10, 12):
+        style_cell(ws.cell(note_r, c), fill=fill_gray)
 
-    r = 17
-    for col, text in [
-        ("A", "№"),
-        ("B", "Название РК"),
-        ("C", "Лидер"),
-        ("D", "Кол-во ЛИДов"),
-        ("E", "Стоимость ЛИДа"),
-        ("F", "Сделок"),
-        ("G", "Оплат"),
-    ]:
-        ws[f"{col}{r}"].value = text
-        ws[f"{col}{r}"].font = font(True, 10, WHITE)
-        ws[f"{col}{r}"].fill = fill(BLUE_MID)
-        ws[f"{col}{r}"].alignment = align("center", "center")
-        ws[f"{col}{r}"].border = thin
+    # Empty spacer before original content
+    # rows start_row .. start_row+13 used (14 rows): 3..16 if start=3
+    # start_row+0 title
+    # +1 labels
+    # +2 values
+    # +3 hint
+    # +4 dept section title
+    # +5 dept headers
+    # +6..+8 depts
+    # +9 spacer
+    # +10 period note (only I-K) / left empty
+    # +11,+12,+13 spare → keep empty so original content has breathing room
+    return n
 
-    r = 18
-    ws["A18"] = 1
-    ws["B18"] = "ЭПД"
-    ws["C18"] = "Савинская"
-    ws["D18"] = (
-        "ЭПД Квиз — 9 шт; CRM-форма «Внедрение и поддержка 1С:ЭПД» — 17 шт; "
-        "Заявка с сайта — 6 шт"
-    )
-    ws["E18"] = 1400
-    ws["F18"] = (
-        "Квиз — 3 сделки (2 контроль оплаты); CRM-форма — 5 сделок "
-        "(1 контроль оплаты на 18 100); Заявка с сайта — 5 сделок (2 оплаты, 3 контроль)"
-    )
-    ws["G18"] = "2 шт / 10 000 ₽"
-    for col in "ABCDEFG":
-        ws[f"{col}18"].border = thin
-        ws[f"{col}18"].alignment = align("left", "center")
-        ws[f"{col}18"].fill = fill(BLUE_PALE)
-    ws["E18"].number_format = '#,##0" ₽"'
-    ws["E18"].alignment = align("center", "center")
-    set_row_height(ws, 18, 48)
 
-    # ========== 1. MONITORING ==========
-    r = 20
-    merge_write(
-        ws,
-        f"A{r}:G{r}",
-        "1. Мониторинг предыдущих решений",
-        font=font(True, 12, WHITE),
-        fill=fill(BLUE),
-        alignment=align("left", "center"),
-    )
+def find_row(ws, text_prefix: str, max_row: int = 200) -> int | None:
+    for r in range(1, max_row + 1):
+        v = ws.cell(r, 1).value
+        if v and str(v).strip().startswith(text_prefix):
+            return r
+    return None
 
-    r = 21
-    for col, text in [
-        ("A", "№"),
-        ("B", "Задача"),
-        ("C", "Лидер"),
-        ("D", "Срок"),
-        ("E", "Статус"),
-        ("F", "Комментарии / выводы"),
-        ("G", ""),
-    ]:
-        ws[f"{col}{r}"].value = text
-        ws[f"{col}{r}"].font = font(True, 10, WHITE)
-        ws[f"{col}{r}"].fill = fill(BLUE_MID)
-        ws[f"{col}{r}"].alignment = align("center", "center")
-        ws[f"{col}{r}"].border = thin
-    ws.merge_cells("F21:G21")
 
-    monitoring = [
-        (1, "Включить поле «время взятия в работу» заявки с РК", "Савинская", "до 27.08", "выполнено", ""),
-        (2, "Обсудить разделение стоимости РК между ЦП и ЦКС на очной встрече 27.08", "Антонов В., Дербенева К. (все)", "до 27.08", "в работе", ""),
-        (3, "Текущая РК действует до середины сентября. Продлеваем? Согласование бюджета", "Все участники", "до 27.08", "в работе", ""),
-        (4, "Собрать ОС от МПП по ЭПД — проблемы, возражения, потребности", "Савинская / Блохина / Степанова", "до 24.08", "выполнено", "Документ в беседе «ЭПД стратегия»"),
-        (5, "Собрать портрет клиента, который купил ЭПД", "Корнева / Степанова", "до 27.08", "в работе", "Параметры портрета — после встречи"),
-        (6, "Добавить Корневу и Степанову во встречу с Калугой", "Блохина", "до 24.08", "выполнено", ""),
-        (7, "Построить финмодель направления ЭПД (доходы, затраты, конверсии, сценарии)", "Все участники", "после стратег-сессии", "в работе", ""),
+def expand_decisions(ws):
+    """Add extracted tasks into «2. Решения текущей встречи», original style."""
+    header = find_row(ws, "2. Решения текущей встречи")
+    if header is None:
+        return
+
+    # Table header is next row
+    th = header + 1
+    # Existing first data row
+    first_data = header + 2
+
+    # Collect existing tasks in B column until empty stretch / next section
+    next_section = find_row(ws, "3. Обсуждаемые темы")
+    existing = []
+    r = first_data
+    while r < (next_section or 999):
+        b = ws.cell(r, 2).value
+        if b:
+            existing.append(str(b).strip())
+        r += 1
+        # stop if we've gone past used area of decisions (before section 3)
+        if next_section and r >= next_section:
+            break
+
+    new_tasks = [
+        ("Разобраться с показателями охвата сервисом наших клиентов 1С-ЭПД из таблицы А. Дворяк",
+         "Корнева, Степанова", "до след. встречи", "в работе",
+         "9000 ед. в охвате — уточнить: подключение или предоплаченные пакеты? Цифры расходятся с Калугой."),
+        ("Уточнить у Суворовой статус Элиттрейд; предложить акцию 3 мес. Доки для захода к контрагентам",
+         "Блохина", "до след. встречи", "в работе",
+         "Крупные производители задают правила → возможность выхода на контрагентов."),
+        ("Подключить Антона Гуркова к процессу изучения привязки клиента (Доки.Логистика / ЦКС)",
+         "Гурков А.", "до след. встречи", "взял на себя",
+         "Задача О. Ремез — прописать подробнее после пересмотра встречи."),
+        ("Выяснить у Калуги: можно ли отследить активность клиента в сервисе Доки",
+         "Дивакова М.", "до след. встречи", "в работе", ""),
+        ("Уточнить у Никитченко: считается ли Доки в охват сервисами ЭПД",
+         "Дворяк", "до след. встречи", "в работе", "Саша спросит."),
+        ("Подготовить со СМАК материалы для прогрева клиента на период демо-доступа",
+         "СМАК", "к 01.10", "в работе",
+         "С 01.10 демо = 14 дней; до 01.10 — 3 месяца бесплатно."),
+        ("Подготовить калькулятор пополнения титулов для менеджеров ЦКС",
+         "Вика / Маша", "до след. встречи", "в работе",
+         "Обсуждали накануне лектория с 1С."),
+        ("Подготовить текст рассылки «проверьте контрагента и впишите в тандем» — сроки и текст",
+         "Блохина", "до след. встречи", "в работе", ""),
+        ("Обзвонить крупных клиентов (от 2000 титулов / генераторы трафика) и предложить ЭПД ТАНДЕМ",
+         "ЦП / ЦКС", "сентябрь", "в работе",
+         "Начать с крупных. Корп. сегмент продавал ЭПД даже в малом объёме."),
+        ("Обзвон подключённых клиентов: оценка удовлетворённости + проекты ЦАС (Доки)",
+         "Дворяк / Лазарчук", "сентябрь", "в работе",
+         "Задача по клиентам ЦАС (Доки)."),
+        ("Взять неуспешные сделки ЭПД по корп. сегменту и предложить Доки в 1-ю неделю сентября",
+         "Юлиана", "1-я нед. сентября", "в работе",
+         "Клиенты сбытового офиса уходят на СБИС — разобрать причины."),
+        ("Проверить в базе подключение клиентов к каналу ЭПД (МАКС / ТГ / ВК) как альт. канал",
+         "ЦП / ЦКС", "до след. встречи", "в работе",
+         "Связать со стратегией и целями."),
+        ("Зафиксировать план 500 клиентов до конца 2026: 50 крупных / 300 средних / 150 мелких",
+         "Все участники", "принято", "принято",
+         "Приоритет — количество клиентов, не сумма выручки на старте."),
     ]
 
-    for i, (num, task, leader, deadline, status, comment) in enumerate(monitoring):
-        row = 22 + i
-        ws[f"A{row}"] = num
-        ws[f"B{row}"] = task
-        ws[f"C{row}"] = leader
-        ws[f"D{row}"] = deadline
-        ws[f"E{row}"] = status
-        ws[f"F{row}"] = comment
-        ws.merge_cells(f"F{row}:G{row}")
-        for col in "ABCDEFG":
-            ws[f"{col}{row}"].border = thin
-            ws[f"{col}{row}"].alignment = align("left", "center")
-            ws[f"{col}{row}"].font = font(False, 10)
-        ws[f"A{row}"].alignment = align("center", "center")
-        ws[f"E{row}"].alignment = align("center", "center")
-        ws[f"E{row}"].font = font(True, 10)
-        if "выполн" in status.lower():
-            ws[f"E{row}"].fill = fill(GREEN_LIGHT)
-            ws[f"E{row}"].font = font(True, 10, GREEN)
-        else:
-            ws[f"E{row}"].fill = fill(ORANGE_LIGHT)
-            ws[f"E{row}"].font = font(True, 10, ORANGE)
-        set_row_height(ws, row, 32)
+    # Replace decision rows with structured task list (includes original + extracted)
+    filtered = new_tasks
 
-    # ========== 2. CURRENT DECISIONS / TASKS ==========
-    r = 30
-    merge_write(
-        ws,
-        f"A{r}:G{r}",
-        "2. Решения текущей встречи  ·  поставленные задачи",
-        font=font(True, 12, WHITE),
-        fill=fill(ORANGE),
-        alignment=align("left", "center"),
-    )
+    # How many empty rows available before section 3?
+    available_start = first_data
+    end = (next_section or available_start + 20) - 1
 
-    r = 31
-    for col, text in [
-        ("A", "№"),
-        ("B", "Задача"),
-        ("C", "Лидер"),
-        ("D", "Срок"),
-        ("E", "Статус"),
-        ("F", "Комментарии / выводы"),
-        ("G", ""),
-    ]:
-        ws[f"{col}{r}"].value = text
-        ws[f"{col}{r}"].font = font(True, 10, WHITE)
-        ws[f"{col}{r}"].fill = fill(ORANGE)
-        ws[f"{col}{r}"].alignment = align("center", "center")
-        ws[f"{col}{r}"].border = thin
-    ws.merge_cells("F31:G31")
+    needed = len(filtered)
+    existing_slots = end - available_start + 1
+    if existing_slots < needed:
+        ws.insert_rows(next_section, amount=needed - existing_slots)
+        next_section = find_row(ws, "3. Обсуждаемые темы")
+        end = next_section - 1
 
-    # Extracted & structured tasks from discussion
-    decisions = [
-        (
-            1,
-            "Разобраться с показателями охвата сервисом 1С-ЭПД из таблицы А. Дворяк (9 000 ед.): что считается охватом — подключение или предоплаченные пакеты?",
-            "Корнева, Степанова",
-            "до след. встречи",
-            "в работе",
-            "Цифры расходятся с Калугой; проблемы с закреплением",
-        ),
-        (
-            2,
-            "Уточнить у Суворовой статус Элиттрейд; предложить акцию 3 мес. Доки для захода к контрагентам",
-            "Блохина (Лиза)",
-            "до след. встречи",
-            "в работе",
-            "Крупные производители «диктуют» правила → возможность почкования базы",
-        ),
-        (
-            3,
-            "Подключить Антона Гуркова к процессу изучения привязки клиента (Доки.Логистика / ЦКС)",
-            "Гурков А.",
-            "в работе",
-            "взял на себя",
-            "Задача Оксаны Ремез — прописать подробнее после пересмотра встречи",
-        ),
-        (
-            4,
-            "Выяснить у Калуги: можно ли отследить активность клиента в сервисе Доки",
-            "Дивакова М.",
-            "до след. встречи",
-            "в работе",
-            "",
-        ),
-        (
-            5,
-            "Уточнить у Никитченко: считается ли Доки в охват сервисами ЭПД",
-            "Дворяк (Саша)",
-            "до след. встречи",
-            "в работе",
-            "Саша спросит",
-        ),
-        (
-            6,
-            "Подготовить со СМАК материалы для прогрева клиента на период демо-доступа",
-            "СМАК + ответственный",
-            "к 01.10",
-            "в работе",
-            "С 01.10 демо = 14 дней; до 01.10 — 3 месяца бесплатно",
-        ),
-        (
-            7,
-            "Подготовить калькулятор пополнения титулов / помощи менеджеру ЦКС при продлении",
-            "Вика + Маша",
-            "до след. встречи",
-            "в работе",
-            "Обсуждали накануне лектория с 1С",
-        ),
-        (
-            8,
-            "Подготовить текст рассылки: «проверьте своего контрагента и впишите в тандем» — показать сроки и текст",
-            "Блохина (Лиза)",
-            "до след. встречи",
-            "в работе",
-            "",
-        ),
-        (
-            9,
-            "Обзвонить крупных клиентов (от 2 000 титулов / генераторы трафика) и предложить ЭПД ТАНДЕМ",
-            "ЦП / ЦКС",
-            "сентябрь",
-            "в работе",
-            "Начать с крупных; корп. сегмент продавал ЭПД даже в малом объёме",
-        ),
-        (
-            10,
-            "Обзвон подключённых клиентов: оценка удовлетворённости + проекты ЦАС (Доки)",
-            "Дворяк / Лазарчук",
-            "сентябрь",
-            "в работе",
-            "Задача по клиентам ЦАС (Доки)",
-        ),
-        (
-            11,
-            "Взять неуспешные сделки ЭПД по корп. сегменту и предложить Доки в первую неделю сентября",
-            "Юлиана",
-            "1-я неделя сентября",
-            "в работе",
-            "Клиенты сбытового офиса уходят на СБИС — разобрать причины",
-        ),
-        (
-            12,
-            "Проверить в базе: подключён ли клиент к каналу ЭПД (МАКС / ТГ / ВК); оценить как альт. канал привлечения",
-            "ЦП / ЦКС",
-            "до след. встречи",
-            "в работе",
-            "Связать со стратегией и целями",
-        ),
-        (
-            13,
-            "Зафиксировать целевую структуру плана 500 клиентов до конца 2026: 50 крупных / 300 средних / 150 мелких",
-            "Все участники",
-            "принято",
-            "принято",
-            "Приоритет — количество клиентов, не сумма выручки на старте",
-        ),
-    ]
+    clear_cells(ws, available_start, end, 1, 7)
 
-    for i, (num, task, leader, deadline, status, comment) in enumerate(decisions):
-        row = 32 + i
-        ws[f"A{row}"] = num
-        ws[f"B{row}"] = task
-        ws[f"C{row}"] = leader
-        ws[f"D{row}"] = deadline
-        ws[f"E{row}"] = status
-        ws[f"F{row}"] = comment
-        ws.merge_cells(f"F{row}:G{row}")
-        for col in "ABCDEFG":
-            ws[f"{col}{row}"].border = thin
-            ws[f"{col}{row}"].alignment = align("left", "center")
-            ws[f"{col}{row}"].font = font(False, 10)
-            ws[f"{col}{row}"].fill = fill(TASK_FILL)
-        ws[f"A{row}"].alignment = align("center", "center")
-        ws[f"A{row}"].font = font(True, 10, ORANGE)
-        ws[f"E{row}"].alignment = align("center", "center")
-        ws[f"E{row}"].font = font(True, 10)
-        st = status.lower()
-        if "принят" in st or "выполн" in st:
-            ws[f"E{row}"].fill = fill(GREEN_LIGHT)
-            ws[f"E{row}"].font = font(True, 10, GREEN)
-        elif "взял" in st:
-            ws[f"E{row}"].fill = fill(BLUE_LIGHT)
-            ws[f"E{row}"].font = font(True, 10, BLUE)
-        else:
-            ws[f"E{row}"].fill = fill(ORANGE_LIGHT)
-            ws[f"E{row}"].font = font(True, 10, ORANGE)
-        set_row_height(ws, row, 42)
+    # Rebuild table header (may have been damaged by row shifts/merges)
+    clear_cells(ws, th, th, 1, 7)
+    headers = ["№", "Задача", "Лидер", "Срок", "Статус*", "Комментарии. Выводы", ""]
+    for c, text in enumerate(headers, 1):
+        style_cell(ws.cell(th, c), value=text or None, font=font_hdr, fill=fill_green, alignment=align_c, num="General")
+    ws.merge_cells(start_row=th, start_column=6, end_row=th, end_column=7)
 
-    last_decision_row = 32 + len(decisions) - 1  # 44
+    for i, (task, leader, deadline, status, comment) in enumerate(filtered):
+        row = available_start + i
+        # Reset formats inherited from original date columns
+        for c in range(1, 8):
+            cell = ws.cell(row, c)
+            cell.number_format = "General"
+        style_cell(ws.cell(row, 1), value=i + 1, font=font_cell, fill=fill_white, alignment=align_c, num="0")
+        style_cell(ws.cell(row, 2), value=task, font=font_cell, fill=fill_white, alignment=align_l, num="General")
+        style_cell(ws.cell(row, 3), value=leader, font=font_cell, fill=fill_white, alignment=align_c, num="General")
+        style_cell(ws.cell(row, 4), value=deadline, font=font_cell, fill=fill_white, alignment=align_c, num="@")
+        st_fill = fill_green_soft if status in ("принято", "выполнено", "взял на себя") else fill_orange_soft
+        style_cell(ws.cell(row, 5), value=status, font=font_cell, fill=st_fill, alignment=align_c, num="General")
+        ws.merge_cells(start_row=row, start_column=6, end_row=row, end_column=7)
+        style_cell(ws.cell(row, 6), value=comment, font=font_cell, fill=fill_white, alignment=align_lt, num="General")
+        style_cell(ws.cell(row, 7), fill=fill_white)
+        ws.row_dimensions[row].height = 36
 
-    # ========== 3. DISCUSSION THEMES ==========
-    r = last_decision_row + 2  # 46
-    merge_write(
-        ws,
-        f"A{r}:G{r}",
-        "3. Обсуждаемые темы и выводы  ·  блоки и тезисы",
-        font=font(True, 12, WHITE),
-        fill=fill(BLUE),
-        alignment=align("left", "center"),
-    )
-    section3_start = r
 
-    r += 1
-    ws[f"A{r}"] = "Блок"
-    ws.merge_cells(f"B{r}:C{r}")
-    ws[f"B{r}"] = "Тема / тезис"
-    ws.merge_cells(f"D{r}:G{r}")
-    ws[f"D{r}"] = "Выводы и решения"
-    for col in "ABCDEFG":
-        ws[f"{col}{r}"].font = font(True, 10, WHITE)
-        ws[f"{col}{r}"].fill = fill(BLUE_MID)
-        ws[f"{col}{r}"].alignment = align("center", "center")
-        ws[f"{col}{r}"].border = thin
-    header_row = r
+def format_discussion_blocks(ws):
+    """Group discussion topics into blocks, keep original green/gray style."""
+    header = find_row(ws, "3. Обсуждаемые темы")
+    if header is None:
+        return
 
-    # Theme blocks with color coding
+    th = header + 1  # column headers
+    last = header + 1
+    for r in range(header + 2, ws.max_row + 5):
+        vals = []
+        for c in (1, 2, 4):
+            cell = ws.cell(r, c)
+            from openpyxl.cell.cell import MergedCell
+            if not isinstance(cell, MergedCell) and cell.value:
+                vals.append(cell.value)
+        if vals:
+            last = r
+
+    clear_cells(ws, th, max(last + 5, th + 40), 1, 9)
+
+    # Column headers — original style
+    ws.merge_cells(start_row=th, start_column=1, end_row=th, end_column=3)
+    style_cell(ws.cell(th, 1), value="Обсуждаемая тема (проблема)", font=font_section, fill=fill_green, alignment=align_c)
+    for c in (2, 3):
+        style_cell(ws.cell(th, c), fill=fill_green)
+    ws.merge_cells(start_row=th, start_column=4, end_row=th, end_column=7)
+    style_cell(ws.cell(th, 4), value="Выводы и решения", font=font_section, fill=fill_green, alignment=align_c)
+    for c in (5, 6, 7):
+        style_cell(ws.cell(th, c), fill=fill_green)
+
     blocks = [
-        {
-            "name": "Акция и ЦСВ",
-            "color": "5B9BD5",
-            "items": [
-                (
-                    "Трудозатраты ЦСВ на акцию по ЭПД",
-                    "Акцию продлили до 30.09. Уточнить адресата вопроса у Оксаны.",
-                ),
-            ],
-        },
-        {
-            "name": "Каналы\nМАКС / ТГ / ВК",
-            "color": "70AD47",
-            "items": [
-                (
-                    "Можем ли прорабатывать клиентов канала ЭПД силами ЦП и ЦКС? Альтернативный канал привлечения.",
-                    "Нужна проверка базы: подключён клиент к каналу или нет. Идея — просить менеджеров подключать клиентов; вопрос мотивации клиента открыт.",
-                ),
-            ],
-        },
-        {
-            "name": "Стратегия\nи сегментация",
-            "color": "ED7D31",
-            "items": [
-                (
-                    "Заход в Элиттрейд (таблица Дворяк) → контрагенты. Сегментировать охваченных на крупных / средних / мелких.",
-                    "Производители (крупные) задают правила для перевозчиков → те для получателей. Лиза уточнит у Суворовой статус Элиттрейд + акция 3 мес. Доки.",
-                ),
-                (
-                    "Признак «крупный» = генератор трафика (привлечение контрагентов).",
-                    "Согласовали целевое соотношение базы под план 500.",
-                ),
-                (
-                    "Приоритет — количество привлечённых клиентов, не сумма заработка. Выстроить цепочку «закрепления» и почкования с одного пакета.",
-                    "ПЛАН: 500 клиентов до конца 2026 → 50 крупных + 300 средних + 150 мелких.",
-                ),
-            ],
-        },
-        {
-            "name": "Доки.\nЛогистика\nи охват",
-            "color": "9E480E",
-            "items": [
-                (
-                    "Задача по Доки.Логистика (Оксана Ремез) — детализировать после пересмотра встречи.",
-                    "Подключить Антона Гуркова к изучению привязки клиента. Антон взял на себя.",
-                ),
-                (
-                    "Можем ли отследить активность клиента в Доки? (вопрос Калуге)",
-                    "Маша Дивакова выяснит.",
-                ),
-                (
-                    "Считается ли Доки в охват сервисами ЭПД?",
-                    "Вопрос Никитченко — Саша спросит. Цифры расходятся с Калугой; проблемы с закреплением.",
-                ),
-                (
-                    "Все проданные ЭПД: центр компетенции изучает — всё ли продано, подключились ли.",
-                    "Трафик не видим → не квалифицируем активность. 1С обещают данные в сентябре.",
-                ),
-            ],
-        },
-        {
-            "name": "Демо\nи прогрев",
-            "color": "7030A0",
-            "items": [
-                (
-                    "Со СМАК подготовить материалы прогрева на период демо-доступа.",
-                    "С 01.10 — 14 дней демо; до 01.10 — 3 месяца бесплатно.",
-                ),
-            ],
-        },
-        {
-            "name": "Сопровождение\nМПП / ЦКС",
-            "color": "C00000",
-            "items": [
-                (
-                    "План МПП: платные / бесплатные клиенты; «выхаживать» может отдельный человек (идея — Гурков).",
-                    "Если есть ИТС — ЦКС смотрит динамику расхода ЭПД/Доки. Трафика пока нет; можно писать в Калугу с перечнем ИНН. Риск: кто выхаживает — текущие МПП или новый человек?",
-                ),
-                (
-                    "Клиенту продают мин. пакет («пока не понятно»). Кто ведёт дальше? Когда собирать ОС перед продлением?",
-                    "По логике — ЦКС. Нужен калькулятор — Вика с Машей обсуждали накануне лектория.",
-                ),
-                (
-                    "ЦКС категоризирует клиента по титулам / УАТ и вовремя пополняет баланс.",
-                    "Ожидание зафиксировано как рабочий процесс.",
-                ),
-            ],
-        },
-        {
-            "name": "Тандем\nи обзвоны",
-            "color": "00B0F0",
-            "items": [
-                (
-                    "Рассылка: «проверьте контрагента и впишите в тандем».",
-                    "Лиза — когда и какой текст.",
-                ),
-                (
-                    "Начать с крупных: прозвонить и предложить подключить контрагента в ЭПД ТАНДЕМ.",
-                    "Крупные = от 2 000 титулов. Корп. клиенты покупали ЭПД даже в малом объёме.",
-                ),
-                (
-                    "Обзвон подключённых: оценка удовлетворённости + проекты ЦАС (Доки).",
-                    "Задача на Сашу Дворяк / Лазарчук — клиенты ЦАС.",
-                ),
-            ],
-        },
-        {
-            "name": "Корп.\nсегмент",
-            "color": "548235",
-            "items": [
-                (
-                    "Почему клиенты сбытового офиса не переходят в ЭПД / уходят на СБИС?",
-                    "Взять неуспешные сделки корп. сегмента и предложить Доки в 1-ю неделю сентября (Юлиана).",
-                ),
-                (
-                    "Юля: предлагать всем бесплатно Доки (дубль) на 3 мес.; KPI менеджерам на сентябрь.",
-                    "Зафиксировано как предложение.",
-                ),
-            ],
-        },
+        ("Блок: Акция и ЦСВ", [
+            ("Обсудить с ЦСВ трудозатраты на акцию по ЭПД.",
+             "Оксана: уточнить адресата вопроса. Акцию продлили до 30.09."),
+        ]),
+        ("Блок: Каналы МАКС / ТГ / ВК", [
+            ("Канал ЭПД в МАКС, ТГ, ВК. Можем ли прорабатывать этих клиентов силами ЦП и ЦКС? Связать со стратегией; альтернативный канал привлечения.",
+             "Проверить из базы: подключён клиент к каналу или нет. Идея — просить менеджеров подключать клиентов (вопрос мотивации клиента открыт)."),
+        ]),
+        ("Блок: Стратегия и сегментация", [
+            ("Заход в Элиттрейд (таблица А. Дворяк) — выход к контрагентам. Предложение Гуркова: сегментировать охваченных на крупных / средних / мелких.",
+             "Производители (крупные) задают правила для перевозчиков → те для получателей. Лиза уточнит у Суворовой статус Элиттрейд; можно предложить акцию 3 мес. Доки."),
+            ("К признаку «крупный» добавить: является ли клиент генератором трафика (привлечение контрагентов).",
+             "По соотношению базы (крупные / средние / мелкие) пришли к соглашению по процентам."),
+            ("Приоритет — количество привлечённых клиентов, а не сумма заработка. Выстроить цепочку «закрепления» и почкования с одного пакета на новых клиентов.",
+             "ПЛАН: 500 клиентов до конца 2026 → 50 крупных + 300 средних + 150 мелких."),
+        ]),
+        ("Блок: Доки.Логистика и охват", [
+            ("Задача по Доки.Логистика (Оксана Ремез) — прописать подробнее после пересмотра встречи.",
+             "Подключить Антона Гуркова к изучению привязки клиента. Антон взял на себя."),
+            ("Можем ли отследить активность клиента в сервисе Доки? (вопрос Калуге)",
+             "Маша Дивакова выяснит."),
+            ("Считается ли Доки в охват сервисами ЭПД?",
+             "Вопрос Никитченко — Саша спросит. Цифры расходятся с Калугой; проблемы с закреплением."),
+            ("Все проданные ЭПД: центр компетенции изучает — всё ли продано, подключились ли.",
+             "Трафик не видим → не квалифицируем активность пользования пакетом. 1С обещают данные в сентябре."),
+        ]),
+        ("Блок: Демо и прогрев (СМАК)", [
+            ("Со СМАК подготовить материалы для прогрева клиента во время демо-доступа.",
+             "С 01.10 — 14 дней демо; до 01.10 — 3 месяца бесплатно."),
+        ]),
+        ("Блок: Сопровождение МПП / ЦКС", [
+            ("План для МПП: платные / бесплатные клиенты; «выхаживать» может другой человек (идея — Антон Гурков).",
+             "Если есть ИТС — менеджер ЦКС смотрит динамику расхода ЭПД/Доки. Трафика пока нет; можно писать в Калугу с перечнем ИНН. Риск: кто выхаживает — текущие менеджеры или новый человек?"),
+            ("Клиенту продают минимальный пакет («пока не понятно»). Кто ведёт дальше при продлении? Получают ли ЦКС сигнал о дозакупке титулов?",
+             "По логике — ЦКС. Нужен калькулятор — Вика с Машей обсуждали накануне лектория с 1С."),
+            ("Ожидание: ЦКС категоризирует клиента по кол-ву титулов / УАТ и своевременно пополняет баланс.",
+             "Зафиксировано как рабочий процесс."),
+        ]),
+        ("Блок: Тандем и обзвоны", [
+            ("Рассылка по клиентам: «проверьте своего контрагента и впишите в тандем».",
+             "Лиза — когда и какой текст."),
+            ("Начать с крупных клиентов: прозвонить и предложить подключить контрагента в ЭПД ТАНДЕМ.",
+             "Крупные = от 2000 титулов. Корп. клиенты продавали ЭПД даже в малом объёме."),
+            ("Обзвон подключённых клиентов: оценка удовлетворённости + проекты ЦАС (Доки).",
+             "Задача на Сашу Дворяк / Лазарчук — клиенты ЦАС."),
+        ]),
+        ("Блок: Корп. сегмент / сбытовой офис", [
+            ("Почему клиенты сбытового офиса не переходят в ЭПД / уходят на СБИС?",
+             "Взять неуспешные сделки ЭПД по корп. сегменту и предложить Доки в 1-ю неделю сентября (Юлиана)."),
+            ("Юля: предлагать всем клиентам бесплатно Доки (дублирующий сервис) на 3 мес.; KPI менеджерам на сентябрь.",
+             "Зафиксировано как предложение."),
+        ]),
     ]
 
-    row = header_row + 1
-    block_fills = [
-        "DDEBF7",
-        "E2EFDA",
-        "FCE4D6",
-        "F8CBAD",
-        "E2D5F1",
-        "F8D7DA",
-        "D6F0FA",
-        "E2EFD9",
-    ]
+    row = th + 1
+    for block_name, items in blocks:
+        # Block banner — same gray as section headers
+        ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
+        style_cell(ws.cell(row, 1), value=block_name, font=font_hdr, fill=fill_gray, alignment=align_l)
+        for c in range(2, 8):
+            style_cell(ws.cell(row, c), fill=fill_gray)
+        ws.row_dimensions[row].height = 18
+        row += 1
 
-    for bi, block in enumerate(blocks):
-        bg = block_fills[bi % len(block_fills)]
-        start = row
-        for topic, conclusion in block["items"]:
-            ws[f"A{row}"] = block["name"] if row == start else ""
-            ws.merge_cells(f"B{row}:C{row}")
-            ws[f"B{row}"] = topic
-            ws.merge_cells(f"D{row}:G{row}")
-            ws[f"D{row}"] = conclusion
-            for col in "ABCDEFG":
-                ws[f"{col}{row}"].border = thin
-                ws[f"{col}{row}"].fill = fill(bg)
-                ws[f"{col}{row}"].alignment = align("left", "center")
-                ws[f"{col}{row}"].font = font(False, 10)
-            ws[f"A{row}"].font = font(True, 9, WHITE)
-            ws[f"A{row}"].fill = fill(block["color"])
-            ws[f"A{row}"].alignment = align("center", "center")
-            ws[f"B{row}"].font = font(True, 10)
-            ws[f"D{row}"].fill = fill(THESIS_FILL) if bi % 2 == 0 else fill(bg)
-            # highlight conclusions that contain tasks / plan
-            text_l = conclusion.lower()
-            if any(k in text_l for k in ("план:", "взял", "выяснит", "спросит", "лиза", "юлиана", "задача")):
-                ws[f"D{row}"].fill = fill(TASK_FILL)
-                ws[f"D{row}"].font = font(False, 10)
-            set_row_height(ws, row, 48)
+        for topic, conclusion in items:
+            ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+            style_cell(ws.cell(row, 1), value=topic, font=font_cell, fill=fill_white, alignment=align_lt)
+            for c in (2, 3):
+                style_cell(ws.cell(row, c), fill=fill_white)
+            ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=7)
+            # Highlight conclusions that contain tasks
+            concl_fill = fill_orange_soft if any(
+                k in conclusion.lower() for k in ("взял", "выяснит", "спросит", "лиза", "юлиана", "план:", "задача")
+            ) else fill_white
+            style_cell(ws.cell(row, 4), value=conclusion, font=font_cell, fill=concl_fill, alignment=align_lt)
+            for c in (5, 6, 7):
+                style_cell(ws.cell(row, c), fill=concl_fill)
+            ws.row_dimensions[row].height = 48
             row += 1
-        end = row - 1
-        if end > start:
-            ws.merge_cells(f"A{start}:A{end}")
-            ws[f"A{start}"].alignment = align("center", "center")
 
-    legend_row = row + 1
-    merge_write(
-        ws,
-        f"A{legend_row}:G{legend_row}",
-        "Легенда:  оранжевый блок «Решения» = поставленные задачи  ·  жёлтые ячейки = ввод факта  ·  зелёный статус = выполнено/принято  ·  блоки слева = темы обсуждения",
-        font=font(False, 9, GRAY),
-        fill=fill(GRAY_LIGHT),
-        alignment=align("left", "center"),
+    # Legend
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=7)
+    style_cell(
+        ws.cell(row, 1),
+        value="Подсветка выводов: строки с поручениями/задачами выделены мягким оранжевым. Поставленные задачи продублированы в блоке «2. Решения текущей встречи».",
+        font=font_small,
+        fill=fill_gray,
+        alignment=align_l,
     )
+    for c in range(2, 8):
+        style_cell(ws.cell(row, c), fill=fill_gray)
 
-    # Freeze panes below title
-    ws.freeze_panes = "A4"
-    ws.print_title_rows = "1:2"
-    ws.page_setup.orientation = "landscape"
 
-    # Data validation for status columns
-    dv = DataValidation(
-        type="list",
-        formula1='"в работе,выполнено,принято,взял на себя,отложено"',
-        allow_blank=True,
-    )
-    dv.error = "Выберите статус из списка"
-    dv.errorTitle = "Статус"
-    ws.add_data_validation(dv)
-    dv.add("E22:E28")
-    dv.add("E32:E44")
+def ensure_title(ws):
+    # Keep A1:G1 if present; set title if empty
+    if ws["A1"].value in (None, ""):
+        # may be merged
+        style_cell(
+            ws["A1"],
+            value="ВСТРЕЧА ЦП-ЦКС-ЦСВ-СМАК",
+            font=font_section,
+            fill=fill_gray,
+            alignment=align_c,
+        )
+        for c in range(2, 8):
+            style_cell(ws.cell(1, c), fill=fill_gray)
 
 
 def main():
-    src = ROOT / SRC_NAME
-    if not src.exists():
-        raise SystemExit(f"Source not found: {src}")
+    # Always start from origin/main version to preserve original formatting
+    import subprocess
+    src_bytes = subprocess.check_output(
+        ["git", "show", f"origin/main:{SRC_NAME}"],
+        cwd=ROOT,
+    )
+    raw = Path("/tmp/protocol_from_main.xlsx")
+    raw.write_bytes(src_bytes)
+    fixed = Path("/tmp/protocol_work.xlsx")
+    fix_workbook(raw, fixed)
 
-    fix_workbook(src, FIXED_TMP)
-    wb = load_workbook(FIXED_TMP)
-
-    # Rename / rebuild latest sheet
-    if "27.08.2026" in wb.sheetnames:
-        ws = wb["27.08.2026"]
-    else:
-        ws = wb.active
-
-    build_latest_sheet(ws)
-
-    # Add a clean template sheet for next meeting at the front-ish
+    wb = load_workbook(fixed)
+    # Drop template sheet if present from earlier attempts (won't be in main)
     if "Шаблон (новая встреча)" in wb.sheetnames:
         del wb["Шаблон (новая встреча)"]
-    tpl = wb.create_sheet("Шаблон (новая встреча)", 0)
-    build_template(tpl)
 
-    # Move formatted latest to position 1 (after template)
-    wb.move_sheet(ws, offset=1 - wb.sheetnames.index(ws.title))
+    ws = wb["27.08.2026"]
+    ensure_title(ws)
+
+    # Insert plan above advertising campaign (original row 3)
+    insert_plan_block(ws, start_row=3)
+
+    # Expand decisions + format discussion (rows already shifted)
+    expand_decisions(ws)
+    format_discussion_blocks(ws)
 
     wb.save(OUT_PATH)
-    print(f"Saved: {OUT_PATH}")
+    print(f"Saved {OUT_PATH}")
 
-    # Verify formulas
+    # Sanity
     wb2 = load_workbook(OUT_PATH)
     ws2 = wb2["27.08.2026"]
-    print("C6 (current):", ws2["C6"].value)
-    print("E6 (remaining):", ws2["E6"].value)
-    print("G6 (%):", ws2["G6"].value)
-    print("E11-13 facts:", ws2["E11"].value, ws2["E12"].value, ws2["E13"].value)
-    print("K7 change:", ws2["K7"].value)
-    print("K8 change:", ws2["K8"].value)
-    print("Sheets:", wb2.sheetnames)
-
-
-def build_template(ws):
-    """Lightweight template for copying to a new meeting date."""
-    clear_sheet(ws)
-    for col, w in {
-        "A": 6, "B": 42, "C": 28, "D": 18, "E": 16, "F": 36, "G": 18,
-        "H": 14, "I": 14, "J": 12, "K": 28,
-    }.items():
-        ws.column_dimensions[col].width = w
-
-    merge_write(
-        ws, "A1:G1",
-        "ВСТРЕЧА ЦП — ЦКС — ЦСВ — СМАК  ·  Протокол ДД.ММ.ГГГГ",
-        font=font(True, 16, WHITE), fill=fill(BLUE), alignment=align("center", "center"),
-    )
-    set_row_height(ws, 1, 32)
-    merge_write(
-        ws, "A2:G2",
-        "Скопируйте лист и переименуйте в дату встречи. Обновите факты и таблицу периодов.",
-        font=font(False, 10, BLUE), fill=fill(BLUE_PALE), alignment=align("center", "center"),
-    )
-
-    merge_write(ws, "A4:G4", "ПЛАН ПО ЭПД", font=font(True, 13, WHITE), fill=fill(BLUE_MID), alignment=align("left", "center"))
-    for coord, text in [("A5", "План"), ("C5", "Текущее значение"), ("E5", "Итого до плана"), ("G5", "% выполнения")]:
-        ws[coord] = text
-        ws[coord].font = font(True, 10, GRAY)
-        ws[coord].fill = fill(BLUE_LIGHT)
-        ws[coord].alignment = align("center", "center")
-        ws[coord].border = thin
-    ws.merge_cells("A5:B5"); ws.merge_cells("C5:D5"); ws.merge_cells("E5:F5")
-
-    ws["A6"] = 500
-    ws.merge_cells("A6:B6")
-    ws["C6"] = "=E11+E12+E13"
-    ws.merge_cells("C6:D6")
-    ws["E6"] = "=A6-C6"
-    ws.merge_cells("E6:F6")
-    ws["G6"] = '=IF(A6=0,"—",C6/A6)'
-    ws["G6"].number_format = "0.0%"
-    for coord in ["A6", "C6", "E6", "G6"]:
-        ws[coord].font = font(True, 16, BLUE)
-        ws[coord].alignment = align("center", "center")
-        ws[coord].border = thin
-        ws[coord].fill = fill(BLUE_PALE)
-    ws["C6"].fill = fill(GREEN_LIGHT)
-    ws["E6"].fill = fill(ORANGE_LIGHT)
-    ws["G6"].fill = fill(YELLOW)
-    ws["A6"].number_format = "0"
-    ws["C6"].number_format = "0"
-    ws["E6"].number_format = "0"
-
-    merge_write(ws, "A9:G9", "План на МПП в месяц — по отделам", font=font(True, 11, WHITE), fill=fill(GREEN), alignment=align("left", "center"))
-    ws["A10"] = "Отдел / группа"; ws.merge_cells("A10:B10")
-    ws["C10"] = "План на МПП в мес"; ws.merge_cells("C10:D10")
-    ws["E10"] = "Факт"
-    ws["F10"] = "% выполнения плана"; ws.merge_cells("F10:G10")
-    for col in "ABCDEFG":
-        ws[f"{col}10"].font = font(True, 10, WHITE)
-        ws[f"{col}10"].fill = fill(GREEN)
-        ws[f"{col}10"].border = thin
-        ws[f"{col}10"].alignment = align("center", "center")
-
-    for row, name, plan in [(11, "Группа «Новые деньги»", 75), (12, "Группа продуктового запуска", 25), (13, "ЦКС", None)]:
-        ws.merge_cells(f"A{row}:B{row}")
-        ws[f"A{row}"] = name
-        ws.merge_cells(f"C{row}:D{row}")
-        ws[f"C{row}"] = plan
-        ws[f"E{row}"] = None
-        ws[f"E{row}"].fill = fill(YELLOW)
-        ws.merge_cells(f"F{row}:G{row}")
-        ws[f"F{row}"] = f'=IF(OR(C{row}="",C{row}=0),"—",E{row}/C{row})'
-        ws[f"F{row}"].number_format = "0.0%"
-        for col in "ABCDEFG":
-            ws[f"{col}{row}"].border = thin
-            ws[f"{col}{row}"].alignment = align("center", "center")
-
-    merge_write(ws, "I4:K4", "Соотношение к прошлому периоду", font=font(True, 11, WHITE), fill=fill(ORANGE), alignment=align("center", "center"))
-    for col, t in [("I5", "Дата"), ("J5", "Клиенты"), ("K5", "Изменение")]:
-        ws[col] = t
-        ws[col].font = font(True, 10, WHITE)
-        ws[col].fill = fill(ORANGE)
-        ws[col].border = thin
-        ws[col].alignment = align("center", "center")
-    ws["I6"] = "← дата"
-    ws["J6"] = "=C6"
-    ws["K6"] = "—"
-    for r in range(7, 12):
-        ws[f"K{r}"] = (
-            f'=IF(OR(J{r-1}="",J{r-1}=0,J{r}=""),"—",'
-            f'IF(J{r}>=J{r-1},"увеличилось на "&TEXT((J{r}-J{r-1})/J{r-1},"0.0%"),'
-            f'"уменьшилось на "&TEXT((J{r-1}-J{r})/J{r-1},"0.0%")))'
-        )
-        ws[f"J{r}"].fill = fill(YELLOW)
-        for col in "IJK":
-            ws[f"{col}{r}"].border = thin
-    ws["J6"].fill = fill(GREEN_LIGHT)
-    for col in "IJK":
-        ws[f"{col}6"].border = thin
-
-    merge_write(ws, "A16:G16", "1. Мониторинг предыдущих решений", font=font(True, 12, WHITE), fill=fill(BLUE), alignment=align("left", "center"))
-    merge_write(ws, "A18:G18", "2. Решения текущей встречи · поставленные задачи", font=font(True, 12, WHITE), fill=fill(ORANGE), alignment=align("left", "center"))
-    merge_write(ws, "A20:G20", "3. Обсуждаемые темы и выводы · блоки и тезисы", font=font(True, 12, WHITE), fill=fill(BLUE), alignment=align("left", "center"))
+    print("A3", ws2["A3"].value)
+    print("A17", ws2["A17"].value)  # should be ad campaign after +14
+    # find sections
+    for prefix in ["План по ЭПД", "Показатели рекламной", "1. Мониторинг", "2. Решения", "3. Обсуждаемые"]:
+        row = None
+        for r in range(1, 120):
+            v = ws2.cell(r, 1).value
+            if v and str(v).startswith(prefix[:12] if len(prefix) > 12 else prefix):
+                # looser
+                pass
+            if v and prefix.split()[0] in str(v):
+                print(f"found '{prefix}' ~ at row {r}: {v}")
+                break
+    print("C5 formula", ws2["C5"].value)
+    print("E9/E10/E11 facts", ws2["E9"].value, ws2["E10"].value, ws2["E11"].value)
 
 
 if __name__ == "__main__":
