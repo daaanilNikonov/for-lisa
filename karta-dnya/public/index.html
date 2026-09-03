@@ -86,11 +86,24 @@
               <div class="week-planner-head">
                 <div>
                   <h3 class="week-title">Неделя вперёд</h3>
-                  <p class="panel-sub">Выберите день и составьте чеклист заранее</p>
+                  <p class="panel-sub">Выберите день и добавьте задачи на него</p>
                 </div>
                 <button type="button" class="btn btn-ghost btn-sm" id="saveWeekBtn">Сохранить всю неделю</button>
               </div>
               <div class="week-days" id="weekDays" role="tablist"></div>
+              <div class="week-day-actions">
+                <p class="week-selected-label" id="weekSelectedLabel">Выбранный день: —</p>
+                <div class="add-task-menu">
+                  <button type="button" class="btn btn-primary btn-sm" id="addDayTaskBtn">
+                    + Задача на этот день ▾
+                  </button>
+                  <div class="add-task-dropdown is-hidden" id="addDayTaskMenu" role="menu">
+                    <button type="button" data-kind="numeric">С числовым показателем</button>
+                    <button type="button" data-kind="kpi">Обязательные KPI дня</button>
+                    <button type="button" data-kind="check">Без числа (сделал / не сделал)</button>
+                  </div>
+                </div>
+              </div>
               <p class="kpi-setup-banner is-hidden" id="kpiSetupBanner"></p>
             </div>
 
@@ -102,7 +115,10 @@
                     Установка 3-го числа (в сентябре 2026 — 4-го). Действуют все будни месяца.
                   </p>
                 </div>
-                <button type="button" class="btn btn-ghost btn-sm" id="saveMonthlyKpiBtn">Сохранить KPI месяца</button>
+                <div class="monthly-kpi-actions">
+                  <button type="button" class="btn btn-primary btn-sm" id="addMonthlyKpiBtn">+ Добавить KPI</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="saveMonthlyKpiBtn">Сохранить KPI месяца</button>
+                </div>
               </div>
               <div id="monthlyKpiEditor" class="monthly-kpi-editor"></div>
             </div>

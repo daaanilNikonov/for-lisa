@@ -50,10 +50,14 @@
     tabEvening: document.getElementById("tabEvening"),
     addTaskBtn: document.getElementById("addTaskBtn"),
     addTaskMenu: document.getElementById("addTaskMenu"),
+    addDayTaskBtn: document.getElementById("addDayTaskBtn"),
+    addDayTaskMenu: document.getElementById("addDayTaskMenu"),
+    weekSelectedLabel: document.getElementById("weekSelectedLabel"),
     kpiSetupBanner: document.getElementById("kpiSetupBanner"),
     monthlyKpiBox: document.getElementById("monthlyKpiBox"),
     monthlyKpiSub: document.getElementById("monthlyKpiSub"),
     monthlyKpiEditor: document.getElementById("monthlyKpiEditor"),
+    addMonthlyKpiBtn: document.getElementById("addMonthlyKpiBtn"),
     saveMonthlyKpiBtn: document.getElementById("saveMonthlyKpiBtn"),
     reportWeekStart: document.getElementById("reportWeekStart"),
     buildReportBtn: document.getElementById("buildReportBtn"),
@@ -429,15 +433,24 @@
       });
       el.monthlyKpiEditor.appendChild(row);
     });
-    const add = document.createElement("button");
-    add.type = "button";
-    add.className = "btn btn-ghost btn-sm";
-    add.textContent = "+ KPI";
-    add.addEventListener("click", () => {
-      state.monthlyDraft.push({ id: `mkpi-${Date.now()}`, name: "", target: 1, unit: "" });
-      renderMonthlyKpiEditor(managerId);
-    });
-    el.monthlyKpiEditor.appendChild(add);
+    if (!state.monthlyDraft.length) {
+      const empty = document.createElement("p");
+      empty.className = "panel-sub";
+      empty.textContent = "Пока пусто — нажмите «+ Добавить KPI».";
+      el.monthlyKpiEditor.appendChild(empty);
+    }
+  }
+
+  function addMonthlyKpiRow() {
+    if (!state.selectedId || state.selectedId === "all") {
+      toast("Сначала откройте сотрудника");
+      return;
+    }
+    state.monthlyDraft.push({ id: `mkpi-${Date.now()}`, name: "", target: 1, unit: "" });
+    renderMonthlyKpiEditor(state.selectedId);
+    const inputs = el.monthlyKpiEditor.querySelectorAll(".mk-name");
+    const last = inputs[inputs.length - 1];
+    if (last) last.focus();
   }
 
   async function saveMonthlyKpi() {
@@ -511,6 +524,7 @@
           : "Сохранить план дня";
       el.saveFormBtn.disabled = completed;
       el.addTaskBtn.hidden = completed;
+      if (el.addDayTaskBtn) el.addDayTaskBtn.hidden = completed;
             el.formHint.textContent = completed
         ? "День уже закрыт. Можно смотреть прогресс и переносы."
         : isToday
@@ -520,6 +534,7 @@
       el.saveFormBtn.textContent = completed ? "Уже в архиве" : "Закрыть день · перенести остатки";
       el.saveFormBtn.disabled = completed || !hasMorning;
       el.addTaskBtn.hidden = true;
+      if (el.addDayTaskBtn) el.addDayTaskBtn.hidden = true;
             el.formHint.textContent = !hasMorning
         ? "Сначала сохраните утренний чеклист."
         : completed
@@ -553,6 +568,17 @@
       btn.addEventListener("click", () => selectPlanDate(date));
       el.weekDays.appendChild(btn);
     });
+    updateWeekSelectedLabel();
+  }
+
+  function updateWeekSelectedLabel() {
+    if (!el.weekSelectedLabel) return;
+    const date = state.planDate || state.today;
+    if (!date) {
+      el.weekSelectedLabel.textContent = "Выбранный день: —";
+      return;
+    }
+    el.weekSelectedLabel.textContent = `Выбранный день: ${weekdayShort(date)}, ${formatDateRu(date)}`;
   }
 
   function selectPlanDate(date) {
@@ -567,10 +593,13 @@
     setPhase(state.phase);
     renderWeekDays(state.selectedId);
     renderTasksEditor();
+    updateWeekSelectedLabel();
     const manager = state.managers.find((m) => m.id === state.selectedId);
     if (manager) {
       el.checklistSub.textContent = `${formatDateRu(date)} · «${manager.name} ${date}»`;
     }
+    // scroll tasks into view after picking a day
+    el.tasksEditor?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   function hideTomorrowWindow() {
@@ -1424,18 +1453,33 @@
     renderTasksEditor();
   }
 
-  el.addTaskBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    el.addTaskMenu?.classList.toggle("is-hidden");
-  });
-  el.addTaskMenu?.querySelectorAll("button[data-kind]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      addTaskOfKind(btn.dataset.kind);
-      el.addTaskMenu.classList.add("is-hidden");
+  function bindAddTaskMenu(button, menu) {
+    if (!button || !menu) return;
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
+      // close other menus
+      [el.addTaskMenu, el.addDayTaskMenu].forEach((m) => {
+        if (m && m !== menu) m.classList.add("is-hidden");
+      });
+      menu.classList.toggle("is-hidden");
     });
+    menu.querySelectorAll("button[data-kind]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        addTaskOfKind(btn.dataset.kind);
+        menu.classList.add("is-hidden");
+        el.tasksEditor?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    });
+  }
+  bindAddTaskMenu(el.addTaskBtn, el.addTaskMenu);
+  bindAddTaskMenu(el.addDayTaskBtn, el.addDayTaskMenu);
+  document.addEventListener("click", () => {
+    el.addTaskMenu?.classList.add("is-hidden");
+    el.addDayTaskMenu?.classList.add("is-hidden");
   });
-  document.addEventListener("click", () => el.addTaskMenu?.classList.add("is-hidden"));
 
+  el.addMonthlyKpiBtn?.addEventListener("click", addMonthlyKpiRow);
   el.saveMonthlyKpiBtn?.addEventListener("click", saveMonthlyKpi);
 
   el.buildReportBtn?.addEventListener("click", () => {
