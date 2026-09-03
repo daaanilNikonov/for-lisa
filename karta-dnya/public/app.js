@@ -166,6 +166,16 @@
     return out;
   }
 
+  function monthKey(iso = state.today) {
+    return String(iso || "").slice(0, 7);
+  }
+
+  /** Day when managers set KPIs for the month. Sep 2026 → 4th; otherwise 3rd. */
+  function kpiSetupDayForMonth(year, month) {
+    if (year === 2026 && month === 9) return "2026-09-04";
+    const mm = String(month).padStart(2, "0");
+    return `${year}-${mm}-03`;
+  }
 
   function draftKey(managerId, date) {
     return `${managerId}:${date}`;
@@ -331,7 +341,9 @@
       card.querySelector("h3").textContent = manager.name;
       const st = card.querySelector(".manager-status");
       st.textContent = status.label;
-      st.classList.add(status.key === "done" ? "is-done" : status.key === "morning" ? "is-morning" : "");
+      const statusClass =
+        status.key === "done" ? "is-done" : status.key === "morning" ? "is-morning" : "";
+      if (statusClass) st.classList.add(statusClass);
       card.querySelector(".tomorrow-teaser").textContent = tomorrowCount
         ? `Завтра ждёт: ${tomorrowCount} ${tomorrowCount === 1 ? "задача" : "задач"}`
         : "Завтра: план пока пуст";
@@ -600,10 +612,7 @@
       btn.title = planned
         ? "Заранее: задачи сохранятся и откроются в этот день"
         : "Сегодняшний рабочий день";
-      btn.addEventListener("click", () => {
-        selectPlanDate(date);
-        openWeekTaskPanel({ preselect: [date] });
-      });
+      btn.addEventListener("click", () => selectPlanDate(date));
       el.weekDays.appendChild(btn);
     });
     renderWeekChecklist(managerId);
@@ -1696,8 +1705,9 @@
     if (!button || !menu) return;
     button.addEventListener("click", (e) => {
       e.stopPropagation();
+      const willOpen = menu.classList.contains("is-hidden");
       el.addTaskMenu?.classList.add("is-hidden");
-      menu.classList.toggle("is-hidden");
+      menu.classList.toggle("is-hidden", !willOpen);
     });
     menu.querySelectorAll("button[data-kind]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
@@ -1730,17 +1740,13 @@
   el.openWeekTaskPanelBtn?.addEventListener("click", () => {
     openWeekTaskPanel({ preselect: [state.planDate || state.today] });
   });
-  el.weekTaskForm?.addEventListener("click", async (e) => {
-    const btn = e.target.closest("button[value]");
-    if (!btn) return;
-    if (btn.value === "ok") {
-      e.preventDefault();
-      e.stopPropagation();
-      const ok = await submitWeekTaskFromPanel();
-      if (ok) el.weekTaskModal.close("ok");
-      return;
-    }
-    el.weekTaskModal.returnValue = btn.value;
+  const closeWeekTaskModal = () => el.weekTaskModal?.close("cancel");
+  document.getElementById("weekTaskCloseBtn")?.addEventListener("click", closeWeekTaskModal);
+  document.getElementById("weekTaskCancelBtn")?.addEventListener("click", closeWeekTaskModal);
+  el.weekTaskForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const ok = await submitWeekTaskFromPanel();
+    if (ok) el.weekTaskModal.close("ok");
   });
   el.weekTaskForm?.querySelectorAll('input[name="weekTaskKind"]').forEach((r) => {
     r.addEventListener("change", syncWeekTaskMetricsVisibility);

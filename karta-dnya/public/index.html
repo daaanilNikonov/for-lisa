@@ -117,7 +117,7 @@
               <form method="dialog" class="modal-card week-task-modal" id="weekTaskForm">
                 <header class="modal-head">
                   <h3>Добавить задачи</h3>
-                  <button type="submit" class="icon-btn" value="cancel" aria-label="Закрыть">×</button>
+                  <button type="button" class="icon-btn" id="weekTaskCloseBtn" aria-label="Закрыть">×</button>
                 </header>
 
                 <label class="field">
@@ -159,8 +159,8 @@
                 </label>
 
                 <footer class="modal-foot">
-                  <button type="submit" class="btn btn-ghost" value="cancel">Отмена</button>
-                  <button type="button" class="btn btn-primary" value="ok" id="weekTaskSubmit">Добавить</button>
+                  <button type="button" class="btn btn-ghost" id="weekTaskCancelBtn">Отмена</button>
+                  <button type="submit" class="btn btn-primary" value="ok" id="weekTaskSubmit">Добавить</button>
                 </footer>
               </form>
             </dialog>
