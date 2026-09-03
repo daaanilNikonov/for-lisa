@@ -19,6 +19,11 @@
       "id": "mgr-4",
       "name": "Юнусова Юлиана",
       "createdAt": "2026-08-14T00:00:00.000Z"
+    },
+    {
+      "id": "mgr-5",
+      "name": "Новый сотрудник",
+      "createdAt": "2026-09-03T08:23:57.838Z"
     }
   ],
   "forms": [
@@ -486,6 +491,110 @@
       "createdAt": "2026-08-28T02:07:20.818Z",
       "updatedAt": "2026-08-28T02:07:20.818Z",
       "completedAt": null
+    },
+    {
+      "id": "form-8d234e64",
+      "managerId": "mgr-5",
+      "managerName": "Новый сотрудник",
+      "date": "2026-09-03",
+      "title": "Новый сотрудник 2026-09-03",
+      "status": "completed",
+      "tasks": [
+        {
+          "id": "task-5ca79fea",
+          "text": "Созвон с лидом",
+          "target": 1,
+          "doneCount": 0,
+          "unit": "",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "check",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": {
+            "date": "2026-09-04",
+            "taskId": "task-58465caa",
+            "amount": 1
+          },
+          "transferDate": "2026-09-04"
+        },
+        {
+          "id": "task-54ee960e",
+          "text": "Письма",
+          "target": 10,
+          "doneCount": 4,
+          "unit": "писем",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "numeric",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": {
+            "date": "2026-09-04",
+            "taskId": "task-b9d47ca2",
+            "amount": 6
+          },
+          "transferDate": "2026-09-04"
+        }
+      ],
+      "createdAt": "2026-09-03T08:24:32.958Z",
+      "updatedAt": "2026-09-03T08:25:39.745Z",
+      "completedAt": "2026-09-03T08:25:39.745Z"
+    },
+    {
+      "id": "form-4d7fe74d",
+      "managerId": "mgr-5",
+      "managerName": "Новый сотрудник",
+      "date": "2026-09-04",
+      "title": "Новый сотрудник 2026-09-04",
+      "status": "morning",
+      "tasks": [
+        {
+          "id": "task-109c57ac",
+          "text": "Демонстрации",
+          "target": 2,
+          "doneCount": 0,
+          "unit": "демо",
+          "mandatory": true,
+          "kpiId": "kpi-demos",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-fb1cda93",
+          "text": "Успешные звонки",
+          "target": 20,
+          "doneCount": 0,
+          "unit": "звонков",
+          "mandatory": true,
+          "kpiId": "kpi-calls",
+          "kind": "kpi",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        },
+        {
+          "id": "task-e124761d",
+          "text": "Кастом",
+          "target": 1,
+          "doneCount": 0,
+          "unit": "",
+          "mandatory": false,
+          "kpiId": null,
+          "kind": "check",
+          "done": false,
+          "carriedFrom": null,
+          "carriedTo": null,
+          "transferDate": null
+        }
+      ],
+      "createdAt": "2026-09-03T08:25:39.745Z",
+      "updatedAt": "2026-09-03T08:25:39.799Z",
+      "completedAt": null
     }
   ],
   "boards": {
@@ -519,7 +628,8 @@
       }
     ],
     "mgr-3": [],
-    "mgr-4": []
+    "mgr-4": [],
+    "mgr-5": []
   },
   "kpiDefs": [
     {
@@ -601,6 +711,63 @@
       "originalTarget": 5,
       "unit": "",
       "createdAt": "2026-08-28T02:07:20.818Z"
+    },
+    {
+      "id": "tr-d97fa7e1",
+      "managerId": "mgr-5",
+      "managerName": "Новый сотрудник",
+      "fromDate": "2026-09-03",
+      "toDate": "2026-09-04",
+      "fromTaskId": "task-5ca79fea",
+      "toTaskId": "task-58465caa",
+      "text": "Созвон с лидом",
+      "amount": 1,
+      "doneCount": 0,
+      "originalTarget": 1,
+      "unit": "",
+      "createdAt": "2026-09-03T08:25:39.745Z"
+    },
+    {
+      "id": "tr-c342de02",
+      "managerId": "mgr-5",
+      "managerName": "Новый сотрудник",
+      "fromDate": "2026-09-03",
+      "toDate": "2026-09-04",
+      "fromTaskId": "task-54ee960e",
+      "toTaskId": "task-b9d47ca2",
+      "text": "Письма",
+      "amount": 6,
+      "doneCount": 4,
+      "originalTarget": 10,
+      "unit": "писем",
+      "createdAt": "2026-09-03T08:25:39.745Z"
     }
-  ]
+  ],
+  "monthlyKpis": {
+    "mgr-1": {},
+    "mgr-2": {},
+    "mgr-3": {},
+    "mgr-4": {},
+    "mgr-5": {
+      "2026-09": {
+        "setOn": "2026-09-03",
+        "setupDay": "2026-09-04",
+        "items": [
+          {
+            "id": "kpi-calls",
+            "name": "Успешные звонки",
+            "target": 20,
+            "unit": "звонков"
+          },
+          {
+            "id": "kpi-demos",
+            "name": "Демонстрации",
+            "target": 2,
+            "unit": "демо"
+          }
+        ],
+        "updatedAt": "2026-09-03T08:24:32.849Z"
+      }
+    }
+  }
 }

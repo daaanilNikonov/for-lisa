@@ -13,12 +13,15 @@
     analytics: [],
     dashboard: null,
     tomorrowPreview: [],
+    monthlyKpis: {},
+    kpiCalendar: null,
     selectedId: "all",
     phase: "morning",
     planDate: null,
     weekDrafts: {},
     tomorrowCollapsed: false,
     draftTasks: [],
+    monthlyDraft: [],
     stickerSaveTimer: null,
   };
 
@@ -46,7 +49,14 @@
     tabMorning: document.getElementById("tabMorning"),
     tabEvening: document.getElementById("tabEvening"),
     addTaskBtn: document.getElementById("addTaskBtn"),
-    seedKpiBtn: document.getElementById("seedKpiBtn"),
+    addTaskMenu: document.getElementById("addTaskMenu"),
+    kpiSetupBanner: document.getElementById("kpiSetupBanner"),
+    monthlyKpiBox: document.getElementById("monthlyKpiBox"),
+    monthlyKpiSub: document.getElementById("monthlyKpiSub"),
+    monthlyKpiEditor: document.getElementById("monthlyKpiEditor"),
+    saveMonthlyKpiBtn: document.getElementById("saveMonthlyKpiBtn"),
+    reportWeekStart: document.getElementById("reportWeekStart"),
+    buildReportBtn: document.getElementById("buildReportBtn"),
     addManagerBtn: document.getElementById("addManagerBtn"),
     renameManagerBtn: document.getElementById("renameManagerBtn"),
     addSticker: document.getElementById("addSticker"),
@@ -238,6 +248,7 @@
         state.selectedId = manager.id;
         state.planDate = state.today;
         state.weekDrafts = {};
+        state.monthlyDraft = [];
         renderAll();
       });
       btn.addEventListener("dblclick", (e) => {
@@ -340,7 +351,125 @@
     renderStickerPack();
     renderStickers(managerId);
     renderTomorrowWindow(managerId);
+    renderMonthlyKpiEditor(managerId);
+    renderKpiSetupBanner();
+    if (el.reportWeekStart && !el.reportWeekStart.value && state.today) {
+      const [y, m, d] = state.today.split("-").map(Number);
+      const dt = new Date(y, m - 1, d);
+      const day = dt.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      dt.setDate(dt.getDate() + diff);
+      el.reportWeekStart.value = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`;
+    }
   }
+
+  function renderKpiSetupBanner() {
+    if (!el.kpiSetupBanner) return;
+    const cal = state.kpiCalendar;
+    if (!cal) {
+      el.kpiSetupBanner.classList.add("is-hidden");
+      return;
+    }
+    const setup = cal.setupDay;
+    const isToday = state.today === setup;
+    el.kpiSetupBanner.classList.toggle("is-hidden", false);
+    el.kpiSetupBanner.classList.toggle("is-hot", isToday);
+    el.kpiSetupBanner.textContent = isToday
+      ? `Сегодня день установки KPI на месяц (${setup}). Пропишите обязательные KPI ниже — они будут каждый будний день.`
+      : `День установки KPI в этом месяце: ${setup}. До этого действуют KPI прошлого месяца (если заданы).`;
+  }
+
+  function renderMonthlyKpiEditor(managerId) {
+    if (!el.monthlyKpiEditor) return;
+    const month = monthKey(state.today);
+    const [y, m] = month.split("-").map(Number);
+    const setup = kpiSetupDayForMonth(y, m);
+    const saved = state.monthlyKpis?.[managerId]?.[month];
+    if (!state.monthlyDraft.length) {
+      state.monthlyDraft = (saved?.items || state.kpiDefs || []).map((k) => ({
+        id: k.id || `mkpi-${k.name}`,
+        name: k.name || k.text || "",
+        target: k.target || k.defaultTarget || 1,
+        unit: k.unit || "",
+      }));
+      if (!state.monthlyDraft.length) {
+        state.monthlyDraft = [{ id: `mkpi-${Date.now()}`, name: "", target: 1, unit: "" }];
+      }
+    }
+    if (el.monthlyKpiSub) {
+      el.monthlyKpiSub.textContent = `Месяц ${month} · установка ${setup}${saved ? " · уже сохранено" : " · ещё не заданы"}`;
+    }
+    el.monthlyKpiEditor.innerHTML = "";
+    state.monthlyDraft.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "monthly-kpi-row";
+      row.innerHTML = `
+        <input type="text" class="mk-name" placeholder="Название KPI" />
+        <input type="number" class="mk-target" min="1" step="1" title="План" />
+        <input type="text" class="mk-unit" placeholder="ед." />
+        <button type="button" class="task-remove" title="Удалить">×</button>`;
+      const name = row.querySelector(".mk-name");
+      const target = row.querySelector(".mk-target");
+      const unit = row.querySelector(".mk-unit");
+      name.value = item.name || "";
+      target.value = item.target || 1;
+      unit.value = item.unit || "";
+      const sync = () => {
+        item.name = name.value;
+        item.target = Math.max(1, Number(target.value) || 1);
+        item.unit = unit.value.trim();
+      };
+      [name, target, unit].forEach((n) => n.addEventListener("input", sync));
+      row.querySelector(".task-remove").addEventListener("click", () => {
+        state.monthlyDraft.splice(index, 1);
+        if (!state.monthlyDraft.length) {
+          state.monthlyDraft = [{ id: `mkpi-${Date.now()}`, name: "", target: 1, unit: "" }];
+        }
+        renderMonthlyKpiEditor(managerId);
+      });
+      el.monthlyKpiEditor.appendChild(row);
+    });
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "btn btn-ghost btn-sm";
+    add.textContent = "+ KPI";
+    add.addEventListener("click", () => {
+      state.monthlyDraft.push({ id: `mkpi-${Date.now()}`, name: "", target: 1, unit: "" });
+      renderMonthlyKpiEditor(managerId);
+    });
+    el.monthlyKpiEditor.appendChild(add);
+  }
+
+  async function saveMonthlyKpi() {
+    const managerId = state.selectedId;
+    if (!managerId || managerId === "all") return;
+    const month = monthKey(state.today);
+    const items = state.monthlyDraft
+      .map((k) => ({
+        id: k.id,
+        name: String(k.name || "").trim(),
+        target: Math.max(1, Number(k.target) || 1),
+        unit: String(k.unit || "").trim(),
+      }))
+      .filter((k) => k.name);
+    if (!items.length) {
+      toast("Укажите хотя бы один KPI");
+      return;
+    }
+    try {
+      const data = await api(`/api/managers/${managerId}/monthly-kpi`, {
+        method: "PUT",
+        body: JSON.stringify({ month, items }),
+      });
+      if (!state.monthlyKpis[managerId]) state.monthlyKpis[managerId] = {};
+      state.monthlyKpis[managerId] = data.monthlyKpis;
+      toast(data.message || "KPI месяца сохранены");
+      renderMonthlyKpiEditor(managerId);
+    } catch (err) {
+      toast(err.message);
+    }
+  }
+
 
   function blankTaskRow(date = state.planDate || state.today) {
     return [
@@ -351,6 +480,7 @@
         doneCount: 0,
         unit: "",
         mandatory: false,
+        kind: "numeric",
         done: false,
         transferDate: addDaysISO(date, 1),
       },
@@ -381,8 +511,7 @@
           : "Сохранить план дня";
       el.saveFormBtn.disabled = completed;
       el.addTaskBtn.hidden = completed;
-      el.seedKpiBtn.hidden = completed;
-      el.formHint.textContent = completed
+            el.formHint.textContent = completed
         ? "День уже закрыт. Можно смотреть прогресс и переносы."
         : isToday
           ? "Утро: план и обязательные KPI. Можно задать цель числом (например, 2 демо)."
@@ -391,8 +520,7 @@
       el.saveFormBtn.textContent = completed ? "Уже в архиве" : "Закрыть день · перенести остатки";
       el.saveFormBtn.disabled = completed || !hasMorning;
       el.addTaskBtn.hidden = true;
-      el.seedKpiBtn.hidden = true;
-      el.formHint.textContent = !hasMorning
+            el.formHint.textContent = !hasMorning
         ? "Сначала сохраните утренний чеклист."
         : completed
           ? "День в архиве."
@@ -414,6 +542,8 @@
       if (date === state.planDate) btn.classList.add("is-active");
       if (date === state.today) btn.classList.add("is-today");
       if (date === state.tomorrow) btn.classList.add("is-tomorrow");
+      const [yy, mm] = date.split("-").map(Number);
+      if (date === kpiSetupDayForMonth(yy, mm)) btn.classList.add("is-kpi-setup");
       if (form?.status === "completed") btn.classList.add("is-done");
       else if (count > 0) btn.classList.add("has-tasks");
       btn.innerHTML = `
@@ -501,19 +631,26 @@
     const day = state.planDate || state.today;
 
     state.draftTasks.forEach((task, index) => {
+      if (!task.kind) {
+        task.kind = task.mandatory || task.kpiId ? "kpi" : task.target > 1 || task.unit ? "numeric" : "check";
+      }
+      const isCheck = task.kind === "check";
       const row = document.createElement("div");
-      row.className = "task-row task-row-rich";
+      row.className = `task-row task-row-rich kind-${task.kind}`;
       const pct = progressPct(task);
       row.innerHTML = `
         <div class="task-main">
           <input type="text" class="task-input" placeholder="Задача / KPI" />
-          <label class="chip-toggle"><input type="checkbox" class="task-mandatory" /> KPI</label>
+          <span class="kind-badge"></span>
         </div>
         <div class="task-metrics">
-          <label>План <input type="number" class="task-target" min="1" step="1" /></label>
-          <label>Факт <input type="number" class="task-done" min="0" step="1" /></label>
-          <label>Ед. <input type="text" class="task-unit" placeholder="звонков" /></label>
-          <span class="task-pct">${pct}%</span>
+          <label class="metric-plan">План <input type="number" class="task-target" min="1" step="1" /></label>
+          <label class="metric-done">Факт <input type="number" class="task-done" min="0" step="1" /></label>
+          <label class="metric-unit">Ед. <input type="text" class="task-unit" placeholder="звонков" /></label>
+          <label class="metric-check ${isCheck ? "" : "is-hidden"}">
+            <input type="checkbox" class="task-check-done" /> Сделано
+          </label>
+          <span class="task-pct">${isCheck ? (task.doneCount >= 1 ? "✓" : "—") : pct + "%"}</span>
         </div>
         <div class="task-transfer ${evening ? "" : "is-hidden"}">
           <label>Перенос остатка на
@@ -526,32 +663,40 @@
       `;
 
       const textInput = row.querySelector(".task-input");
-      const mandatory = row.querySelector(".task-mandatory");
+      const badge = row.querySelector(".kind-badge");
       const targetInput = row.querySelector(".task-target");
       const doneInput = row.querySelector(".task-done");
       const unitInput = row.querySelector(".task-unit");
+      const checkDone = row.querySelector(".task-check-done");
       const transferDate = row.querySelector(".task-transfer-date");
       const pctEl = row.querySelector(".task-pct");
       const hint = row.querySelector(".transfer-hint");
       const meta = row.querySelector(".task-meta-line");
 
+      badge.textContent = task.kind === "kpi" ? "KPI" : isCheck ? "да/нет" : "число";
       textInput.value = task.text || "";
-      mandatory.checked = Boolean(task.mandatory);
       targetInput.value = Math.max(1, Number(task.target) || 1);
       doneInput.value = Math.max(0, Number(task.doneCount) || 0);
       unitInput.value = task.unit || "";
+      checkDone.checked = Number(task.doneCount) >= 1;
       transferDate.value = task.transferDate || addDaysISO(day, 1);
 
+      if (isCheck) {
+        row.querySelector(".metric-plan").classList.add("is-hidden");
+        row.querySelector(".metric-done").classList.add("is-hidden");
+        row.querySelector(".metric-unit").classList.add("is-hidden");
+      }
+
       textInput.readOnly = locked || evening;
-      mandatory.disabled = locked || evening;
-      targetInput.readOnly = locked || evening;
+      targetInput.readOnly = locked || evening || task.kind === "kpi";
       doneInput.readOnly = locked || !evening;
-      unitInput.readOnly = locked || evening;
+      unitInput.readOnly = locked || evening || task.kind === "kpi";
+      checkDone.disabled = locked || !evening;
       transferDate.disabled = locked || !evening;
-      row.querySelector(".task-remove").hidden = locked || evening;
+      row.querySelector(".task-remove").hidden = locked || evening || task.kind === "kpi";
 
       if (task.carriedFrom) {
-        meta.innerHTML = `↩ из ${task.carriedFrom.date}: остаток ${task.carriedFrom.amount} (было ${task.carriedFrom.doneCount}/${task.carriedFrom.originalTarget})`;
+        meta.innerHTML = `↩ из ${task.carriedFrom.date}: остаток ${task.carriedFrom.amount}`;
       }
       if (task.carriedTo) {
         meta.innerHTML += `${meta.innerHTML ? " · " : ""}→ перенесено на ${task.carriedTo.date} (${task.carriedTo.amount})`;
@@ -559,20 +704,30 @@
 
       const sync = () => {
         task.text = textInput.value;
-        task.mandatory = mandatory.checked;
-        task.target = Math.max(1, Number(targetInput.value) || 1);
-        task.doneCount = Math.max(0, Math.min(task.target, Number(doneInput.value) || 0));
-        task.unit = unitInput.value.trim();
+        if (isCheck) {
+          task.target = 1;
+          task.unit = "";
+          if (evening) task.doneCount = checkDone.checked ? 1 : 0;
+          else task.doneCount = Math.max(0, Math.min(1, Number(task.doneCount) || 0));
+        } else {
+          task.target = Math.max(1, Number(targetInput.value) || 1);
+          task.doneCount = Math.max(0, Math.min(task.target, Number(doneInput.value) || 0));
+          task.unit = unitInput.value.trim();
+        }
+        task.mandatory = task.kind === "kpi";
         task.transferDate = transferDate.value || addDaysISO(day, 1);
         task.done = task.doneCount >= task.target;
-        const p = progressPct(task);
-        pctEl.textContent = `${p}%`;
-        pctEl.classList.toggle("is-good", p >= 100);
-        pctEl.classList.toggle("is-mid", p > 0 && p < 100);
+        if (isCheck) pctEl.textContent = task.done ? "✓" : "—";
+        else {
+          const p = progressPct(task);
+          pctEl.textContent = `${p}%`;
+          pctEl.classList.toggle("is-good", p >= 100);
+          pctEl.classList.toggle("is-mid", p > 0 && p < 100);
+        }
         const rem = task.target - task.doneCount;
         hint.textContent =
           rem > 0
-            ? `Остаток ${rem} ${task.unit || "шт."} → ${task.transferDate}`
+            ? `Остаток ${rem}${task.unit ? " " + task.unit : ""} → ${task.transferDate}`
             : "Всё закрыто, перенос не нужен";
         stashCurrentDraft();
         clearTimeout(renderTasksEditor._previewTimer);
@@ -585,7 +740,7 @@
       };
       sync();
 
-      [textInput, mandatory, targetInput, doneInput, unitInput, transferDate].forEach((node) => {
+      [textInput, targetInput, doneInput, unitInput, transferDate, checkDone].forEach((node) => {
         node.addEventListener("input", sync);
         node.addEventListener("change", sync);
       });
@@ -808,8 +963,9 @@
             target: Math.max(1, Number(t.target) || 1),
             doneCount: 0,
             unit: t.unit || "",
-            mandatory: Boolean(t.mandatory),
+            mandatory: Boolean(t.mandatory) || t.kind === "kpi",
             kpiId: t.kpiId || null,
+            kind: t.kind || "numeric",
             carriedFrom: t.carriedFrom || null,
           }))
           .filter((t) => t.text);
@@ -847,8 +1003,9 @@
           target: Math.max(1, Number(t.target) || 1),
           doneCount: Math.max(0, Number(t.doneCount) || 0),
           unit: t.unit || "",
-          mandatory: Boolean(t.mandatory),
+          mandatory: Boolean(t.mandatory) || t.kind === "kpi",
           kpiId: t.kpiId || null,
+          kind: t.kind || "numeric",
           transferDate: t.transferDate || addDaysISO(state.today, 1),
           carriedFrom: t.carriedFrom || null,
         }));
@@ -1198,32 +1355,6 @@
     }
   });
 
-  el.seedKpiBtn.addEventListener("click", () => {
-    const day = state.planDate || state.today;
-    const existingKpis = new Set(state.draftTasks.filter((t) => t.kpiId).map((t) => t.kpiId));
-    const toAdd = state.kpiDefs.filter((k) => !existingKpis.has(k.id));
-    if (!toAdd.length) {
-      toast("Обязательные KPI уже в списке");
-      return;
-    }
-    toAdd.forEach((k) => {
-      state.draftTasks.push({
-        id: `local-${Date.now()}-${k.id}`,
-        text: k.name,
-        target: k.defaultTarget,
-        doneCount: 0,
-        unit: k.unit,
-        mandatory: true,
-        kpiId: k.id,
-        transferDate: addDaysISO(day, 1),
-      });
-    });
-    state.draftTasks = state.draftTasks.filter((t) => t.text || t.kpiId);
-    stashCurrentDraft();
-    renderTasksEditor();
-    renderWeekDays(state.selectedId);
-    toast("Добавлены обязательные KPI");
-  });
 
   el.tabMorning.addEventListener("click", () => {
     const form = todaysForm(state.selectedId, state.planDate);
@@ -1248,19 +1379,74 @@
     renderTasksEditor();
   });
 
-  el.addTaskBtn.addEventListener("click", () => {
+  function addTaskOfKind(kind) {
     const day = state.planDate || state.today;
+    if (kind === "kpi") {
+      const existing = new Set(state.draftTasks.filter((t) => t.kpiId).map((t) => t.kpiId));
+      const month = monthKey(day);
+      const monthly = state.monthlyKpis?.[state.selectedId]?.[month]?.items || [];
+      const source = monthly.length ? monthly : state.kpiDefs;
+      let added = 0;
+      source.forEach((k) => {
+        const id = k.id || k.name;
+        if (existing.has(id)) return;
+        state.draftTasks.push({
+          id: `local-${Date.now()}-${id}`,
+          text: k.name,
+          target: k.target || k.defaultTarget || 1,
+          doneCount: 0,
+          unit: k.unit || "",
+          mandatory: true,
+          kpiId: id,
+          kind: "kpi",
+          transferDate: addDaysISO(day, 1),
+        });
+        added += 1;
+      });
+      state.draftTasks = state.draftTasks.filter((t) => t.text || t.kpiId);
+      stashCurrentDraft();
+      renderTasksEditor();
+      renderWeekDays(state.selectedId);
+      toast(added ? `Добавлено KPI: ${added}` : "KPI уже в списке");
+      return;
+    }
     state.draftTasks.push({
       id: `local-${Date.now()}`,
       text: "",
-      target: 1,
+      target: kind === "check" ? 1 : 1,
       doneCount: 0,
-      unit: "",
+      unit: kind === "check" ? "" : "",
       mandatory: false,
+      kind,
       transferDate: addDaysISO(day, 1),
     });
     stashCurrentDraft();
     renderTasksEditor();
+  }
+
+  el.addTaskBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    el.addTaskMenu?.classList.toggle("is-hidden");
+  });
+  el.addTaskMenu?.querySelectorAll("button[data-kind]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      addTaskOfKind(btn.dataset.kind);
+      el.addTaskMenu.classList.add("is-hidden");
+    });
+  });
+  document.addEventListener("click", () => el.addTaskMenu?.classList.add("is-hidden"));
+
+  el.saveMonthlyKpiBtn?.addEventListener("click", saveMonthlyKpi);
+
+  el.buildReportBtn?.addEventListener("click", () => {
+    const managerId = state.selectedId;
+    if (!managerId || managerId === "all") {
+      toast("Сначала откройте сотрудника");
+      return;
+    }
+    const weekStart = el.reportWeekStart?.value || state.today;
+    const url = `/report?managerId=${encodeURIComponent(managerId)}&weekStart=${encodeURIComponent(weekStart)}`;
+    window.open(url, "_blank", "noopener");
   });
 
   el.saveFormBtn.addEventListener("click", saveForm);

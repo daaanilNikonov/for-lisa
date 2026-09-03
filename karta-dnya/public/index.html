@@ -91,17 +91,56 @@
                 <button type="button" class="btn btn-ghost btn-sm" id="saveWeekBtn">Сохранить всю неделю</button>
               </div>
               <div class="week-days" id="weekDays" role="tablist"></div>
+              <p class="kpi-setup-banner is-hidden" id="kpiSetupBanner"></p>
             </div>
+
+            <div class="monthly-kpi-box" id="monthlyKpiBox">
+              <div class="week-planner-head">
+                <div>
+                  <h3 class="week-title">KPI на месяц</h3>
+                  <p class="panel-sub" id="monthlyKpiSub">
+                    Установка 3-го числа (в сентябре 2026 — 4-го). Действуют все будни месяца.
+                  </p>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" id="saveMonthlyKpiBtn">Сохранить KPI месяца</button>
+              </div>
+              <div id="monthlyKpiEditor" class="monthly-kpi-editor"></div>
+            </div>
+
             <div id="tasksEditor" class="tasks-editor"></div>
             <footer class="panel-foot">
               <div class="foot-left">
-                <button type="button" class="btn btn-ghost" id="addTaskBtn">+ Задача</button>
-                <button type="button" class="btn btn-ghost" id="seedKpiBtn">+ Обязательные KPI</button>
+                <div class="add-task-menu">
+                  <button type="button" class="btn btn-ghost" id="addTaskBtn">+ Добавить задачу ▾</button>
+                  <div class="add-task-dropdown is-hidden" id="addTaskMenu" role="menu">
+                    <button type="button" data-kind="numeric">С числовым показателем</button>
+                    <button type="button" data-kind="kpi">Обязательные KPI дня</button>
+                    <button type="button" data-kind="check">Без числа (сделал / не сделал)</button>
+                  </div>
+                </div>
               </div>
               <button type="button" class="btn btn-primary" id="saveFormBtn">Сохранить утро</button>
             </footer>
             <p class="form-hint" id="formHint"></p>
             <div id="managerStats" class="manager-stats"></div>
+
+            <div class="week-report-box" id="weekReportBox">
+              <div class="week-report-head">
+                <div>
+                  <h3 class="week-title">Недельный отчёт</h3>
+                  <p class="panel-sub">Любая прошедшая неделя · PDF со сводкой и переносами</p>
+                </div>
+              </div>
+              <div class="week-report-controls">
+                <label>
+                  Неделя с
+                  <input type="date" id="reportWeekStart" />
+                </label>
+                <button type="button" class="btn btn-primary btn-sm" id="buildReportBtn">
+                  Сформировать отчёт
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="panel board-panel">
@@ -123,7 +162,7 @@
       <aside class="tomorrow-window" id="tomorrowWindow" hidden>
         <header class="tomorrow-head">
           <div>
-            <p class="tomorrow-eyebrow">Окошко · завтра</p>
+            <p class="tomorrow-eyebrow">Задачи на завтрашний день</p>
             <h3 id="tomorrowTitle">Задачи на завтра</h3>
           </div>
           <button type="button" class="icon-btn" id="tomorrowClose" aria-label="Свернуть">−</button>

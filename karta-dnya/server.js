@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
 const crypto = require("crypto");
+const PDFDocument = require("pdfkit");
 
 const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, "public");
@@ -18,6 +19,7 @@ const DEFAULT_MANAGERS = [
   { id: "mgr-2", name: "Оглоблина Софья" },
   { id: "mgr-3", name: "Кургузов Данил" },
   { id: "mgr-4", name: "Юнусова Юлиана" },
+  { id: "mgr-5", name: "Новый сотрудник" },
 ];
 
 const DEFAULT_KPI_DEFS = [
@@ -187,6 +189,7 @@ function emptyDb() {
     forms: [],
     boards,
     kpiDefs: DEFAULT_KPI_DEFS.map((k) => ({ ...k })),
+    monthlyKpis: {},
     transfers: [],
   };
 }
@@ -229,9 +232,23 @@ function migrateDb(db, opts) {
     db.transfers = [];
     changed = true;
   }
+  if (!db.monthlyKpis || typeof db.monthlyKpis !== "object") {
+    db.monthlyKpis = {};
+    changed = true;
+  }
+  for (const def of DEFAULT_MANAGERS) {
+    if (!db.managers.some((m) => m.id === def.id)) {
+      db.managers.push({ ...def, createdAt: new Date().toISOString() });
+      changed = true;
+    }
+  }
   for (const m of db.managers) {
     if (!Array.isArray(db.boards[m.id])) {
       db.boards[m.id] = [];
+      changed = true;
+    }
+    if (!db.monthlyKpis[m.id] || typeof db.monthlyKpis[m.id] !== "object") {
+      db.monthlyKpis[m.id] = {};
       changed = true;
     }
   }
@@ -247,7 +264,10 @@ function migrateDb(db, opts) {
       }
       if (t.unit == null) t.unit = "";
       if (t.mandatory == null) t.mandatory = false;
-      if (!t.kind) t.kind = t.mandatory ? "kpi" : "task";
+      if (!t.kind) {
+        t.kind = t.mandatory || t.kpiId ? "kpi" : t.target > 1 || t.unit ? "numeric" : "check";
+        changed = true;
+      }
     }
   }
   if (changed && (!opts || opts.persist !== false)) {
@@ -446,6 +466,8 @@ const MIME = {
   ".json": "application/json; charset=utf-8",
   ".ico": "image/x-icon",
   ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".pdf": "application/pdf",
 };
 
 function serveStatic(req, res, pathname) {
@@ -469,21 +491,117 @@ function formTitle(managerName, date) {
   return `${managerName} ${date}`;
 }
 
+function monthKeyFromISO(iso) {
+  return String(iso || todayISO()).slice(0, 7);
+}
+
+function parseMonthKey(monthKey) {
+  const [y, m] = String(monthKey || "").split("-").map(Number);
+  return { year: y, month: m };
+}
+
+/** Day when managers set KPIs for the month. Sep 2026 → 4th; otherwise 3rd. */
+function kpiSetupDayForMonth(year, month) {
+  if (year === 2026 && month === 9) return "2026-09-04";
+  const mm = String(month).padStart(2, "0");
+  return `${year}-${mm}-03`;
+}
+
+function kpiSetupDayForISO(iso) {
+  const [y, m] = iso.split("-").map(Number);
+  return kpiSetupDayForMonth(y, m);
+}
+
+function isWorkday(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const day = new Date(y, m - 1, d).getDay();
+  return day >= 1 && day <= 5;
+}
+
+function getManagerMonthKpis(db, managerId, monthKey) {
+  const bucket = db.monthlyKpis?.[managerId]?.[monthKey];
+  if (!bucket || !Array.isArray(bucket.items) || !bucket.items.length) return null;
+  return bucket;
+}
+
+function monthlyKpiTasksForDate(db, managerId, date) {
+  if (!isWorkday(date)) return [];
+  const monthKey = monthKeyFromISO(date);
+  const setupDay = kpiSetupDayForISO(date);
+  // KPIs apply from setup day through end of month (and before setup day use previous month if set)
+  let key = monthKey;
+  if (date < setupDay) {
+    const [y, m] = monthKey.split("-").map(Number);
+    const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+    key = prev;
+  }
+  const bucket = getManagerMonthKpis(db, managerId, key);
+  if (!bucket) return [];
+  return bucket.items.map((k, i) =>
+    normalizeTask(
+      {
+        text: k.name,
+        target: k.target,
+        doneCount: 0,
+        unit: k.unit || "",
+        mandatory: true,
+        kpiId: k.id || `mkpi-${i}`,
+        kind: "kpi",
+      },
+      i
+    )
+  );
+}
+
+function mergeMonthlyKpisIntoTasks(db, managerId, date, tasks) {
+  const monthly = monthlyKpiTasksForDate(db, managerId, date);
+  if (!monthly.length) return tasks;
+  const have = new Set(tasks.filter((t) => t.kpiId).map((t) => t.kpiId));
+  const merged = [...tasks];
+  for (const t of monthly) {
+    if (have.has(t.kpiId)) continue;
+    merged.unshift(t);
+    have.add(t.kpiId);
+  }
+  return merged;
+}
+
+function buildKpiCalendarMeta(today = todayISO()) {
+  const [y, m] = today.split("-").map(Number);
+  const setup = kpiSetupDayForMonth(y, m);
+  const nextMonth = m === 12 ? 1 : m + 1;
+  const nextYear = m === 12 ? y + 1 : y;
+  return {
+    today,
+    currentMonth: `${y}-${String(m).padStart(2, "0")}`,
+    setupDay: setup,
+    isSetupDay: today === setup,
+    nextSetupDay: kpiSetupDayForMonth(nextYear, nextMonth),
+  };
+}
+
 function normalizeTask(t, idx = 0) {
-  const target = Math.max(1, Number(t.target) || 1);
+  let kind = String(t.kind || "").trim();
+  const mandatory = Boolean(t.mandatory) || kind === "kpi" || Boolean(t.kpiId);
+  if (mandatory) kind = "kpi";
+  else if (kind === "check" || kind === "bool" || kind === "checkbox") kind = "check";
+  else if (kind === "numeric" || kind === "number") kind = "numeric";
+  else if (!kind) kind = t.unit || (Number(t.target) || 1) > 1 ? "numeric" : "check";
+
+  const target =
+    kind === "check" ? 1 : Math.max(1, Number(t.target) || 1);
   let doneCount = Number(t.doneCount);
   if (Number.isNaN(doneCount)) doneCount = t.done ? target : 0;
   doneCount = Math.max(0, Math.min(target, doneCount));
-  const mandatory = Boolean(t.mandatory);
   return {
     id: t.id || uid("task"),
     text: String(t.text || "").trim() || `Задача ${idx + 1}`,
     target,
     doneCount,
-    unit: String(t.unit || "").trim(),
+    unit: kind === "check" ? "" : String(t.unit || "").trim(),
     mandatory,
     kpiId: t.kpiId || null,
-    kind: mandatory ? "kpi" : t.kind || "task",
+    kind,
     done: doneCount >= target,
     carriedFrom: t.carriedFrom || null,
     carriedTo: t.carriedTo || null,
@@ -513,6 +631,184 @@ function taskProgress(t) {
   const target = Math.max(1, Number(t.target) || 1);
   const doneCount = Math.max(0, Number(t.doneCount) || 0);
   return Math.round((doneCount / target) * 100);
+}
+
+function mondayOfWeek(iso) {
+  const [y, m, d] = (iso || todayISO()).split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  const day = dt.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  dt.setDate(dt.getDate() + diff);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+function formatTaskLine(t) {
+  const target = Math.max(1, Number(t.target) || 1);
+  const done = Math.max(0, Number(t.doneCount) || 0);
+  if (t.kind === "check") {
+    return `${t.text}: ${done >= target ? "сделано" : "не сделано"}`;
+  }
+  const unit = (t.unit || "шт.").trim();
+  return `${t.text}: ${unit} ${target} = сделано ${done}`;
+}
+
+function buildWeekReport(db, managerId, weekStartInput) {
+  const manager = db.managers.find((m) => m.id === managerId);
+  if (!manager) return null;
+  const weekStart = mondayOfWeek(weekStartInput || todayISO());
+  const weekEnd = addDaysISO(weekStart, 6);
+  const today = todayISO();
+  if (weekStart > today) {
+    return { error: "Можно сформировать отчёт только за прошедшую или текущую неделю" };
+  }
+
+  const days = [];
+  const taskLines = [];
+  let tasksTotal = 0;
+  let tasksDone = 0;
+  let tasksPartial = 0;
+  let unitsPlanned = 0;
+  let unitsDone = 0;
+  let transferredAmount = 0;
+  let transferredCount = 0;
+
+  for (let i = 0; i < 7; i += 1) {
+    const date = addDaysISO(weekStart, i);
+    const form = findForm(db, managerId, date);
+    const dayTasks = (form?.tasks || []).map((t) => normalizeTask(t));
+    days.push({
+      date,
+      status: form?.status || "idle",
+      tasks: dayTasks,
+    });
+    for (const t of dayTasks) {
+      tasksTotal += 1;
+      const target = Math.max(1, Number(t.target) || 1);
+      const done = Math.max(0, Number(t.doneCount) || 0);
+      unitsPlanned += target;
+      unitsDone += done;
+      if (done >= target) tasksDone += 1;
+      else if (done > 0) tasksPartial += 1;
+      taskLines.push({
+        date,
+        text: t.text,
+        line: formatTaskLine(t),
+        kind: t.kind,
+        target,
+        doneCount: done,
+        unit: t.unit || "",
+        done: done >= target,
+        transferred: Boolean(t.carriedTo),
+        transferAmount: t.carriedTo?.amount || 0,
+        transferTo: t.carriedTo?.date || null,
+      });
+      if (t.carriedTo) {
+        transferredCount += 1;
+        transferredAmount += Number(t.carriedTo.amount) || 0;
+      }
+    }
+  }
+
+  const transfers = (db.transfers || []).filter(
+    (tr) => tr.managerId === managerId && tr.fromDate >= weekStart && tr.fromDate <= weekEnd
+  );
+  if (transfers.length && transferredCount === 0) {
+    for (const tr of transfers) {
+      transferredCount += 1;
+      transferredAmount += Number(tr.amount) || 0;
+    }
+  }
+
+  return {
+    managerId: manager.id,
+    managerName: manager.name,
+    weekStart,
+    weekEnd,
+    today,
+    summary: {
+      tasksTotal,
+      tasksDone,
+      tasksPartial,
+      tasksOpen: Math.max(0, tasksTotal - tasksDone),
+      unitsPlanned,
+      unitsDone,
+      transferredCount,
+      transferredAmount,
+      conversion: unitsPlanned ? Math.round((unitsDone / unitsPlanned) * 1000) / 10 : 0,
+    },
+    taskLines,
+    transfers,
+    days,
+  };
+}
+
+function buildWeekPdfBuffer(report) {
+  return new Promise((resolve, reject) => {
+    const fontRegular = path.join(PUBLIC, "assets/fonts/DejaVuSans.ttf");
+    const fontBold = path.join(PUBLIC, "assets/fonts/DejaVuSans-Bold.ttf");
+    const doc = new PDFDocument({ margin: 48, size: "A4", info: { Title: `Отчёт ${report.managerName}` } });
+    const chunks = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    if (fs.existsSync(fontRegular)) doc.registerFont("R", fontRegular);
+    if (fs.existsSync(fontBold)) doc.registerFont("B", fontBold);
+    const R = fs.existsSync(fontRegular) ? "R" : "Helvetica";
+    const B = fs.existsSync(fontBold) ? "B" : "Helvetica-Bold";
+
+    doc.font(B).fontSize(16).fillColor("#0b1c2c").text("Недельный отчёт · Карта дня Форус");
+    doc.moveDown(0.4);
+    doc.font(R).fontSize(11).fillColor("#334").text(`Сотрудник: ${report.managerName}`);
+    doc.text(`Период: ${report.weekStart} — ${report.weekEnd}`);
+    doc.text(`Сформировано: ${report.today}`);
+    doc.moveDown(0.8);
+
+    const s = report.summary;
+    doc.font(B).fontSize(12).fillColor("#0b1c2c").text("Сводка");
+    doc.font(R).fontSize(11).fillColor("#223");
+    doc.text(`Выполнено задач полностью: ${s.tasksDone} из ${s.tasksTotal}`);
+    doc.text(`Частично выполнено: ${s.tasksPartial}`);
+    doc.text(`Единиц плана / факта: ${s.unitsDone} / ${s.unitsPlanned} (конверсия ${s.conversion}%)`);
+    doc.text(`Перенесено задач: ${s.transferredCount} (сумма остатка: ${s.transferredAmount})`);
+    doc.moveDown(0.8);
+
+    doc.font(B).fontSize(12).text("Перечень задач");
+    doc.moveDown(0.3);
+    doc.font(R).fontSize(10);
+    if (!report.taskLines.length) {
+      doc.fillColor("#666").text("За неделю задач не найдено.");
+    } else {
+      for (const row of report.taskLines) {
+        const mark = row.done ? "[ок]" : row.doneCount > 0 ? "[~]" : "[ ]";
+        const transfer = row.transferred
+          ? ` → перенос ${row.transferAmount} на ${row.transferTo}`
+          : "";
+        doc.fillColor("#111").text(`${mark} ${row.date} · ${row.line}${transfer}`, {
+          width: 500,
+        });
+        doc.moveDown(0.15);
+      }
+    }
+
+    if (report.transfers?.length) {
+      doc.moveDown(0.6);
+      doc.font(B).fontSize(12).fillColor("#0b1c2c").text("Журнал переносов");
+      doc.font(R).fontSize(10).fillColor("#223");
+      for (const tr of report.transfers) {
+        doc.text(
+          `${tr.fromDate} → ${tr.toDate}: ${tr.text} · остаток ${tr.amount} ${tr.unit || ""}`.trim()
+        );
+      }
+    }
+
+    doc.moveDown(1);
+    doc.font(R).fontSize(9).fillColor("#889").text("ГК Форус · группа продуктового запуска");
+    doc.end();
+  });
 }
 
 function buildAnalytics(db) {
@@ -665,6 +961,7 @@ async function handleApi(req, res, pathname) {
       analytics: buildAnalytics(db),
       dashboard: buildDashboard(db, 14),
       tomorrowPreview: buildTomorrowPreview(db),
+      kpiCalendar: buildKpiCalendarMeta(),
     });
   }
 
@@ -706,8 +1003,47 @@ async function handleApi(req, res, pathname) {
     const manager = { id: uid("mgr"), name, createdAt: new Date().toISOString() };
     db.managers.push(manager);
     db.boards[manager.id] = [];
+    if (!db.monthlyKpis) db.monthlyKpis = {};
+    db.monthlyKpis[manager.id] = {};
     await writeDb(db);
     return sendJson(res, 201, { manager });
+  }
+
+  if (method === "PUT" && pathname.startsWith("/api/managers/") && pathname.endsWith("/monthly-kpi")) {
+    const managerId = pathname.split("/")[3];
+    const body = await readBody(req);
+    const month = String(body.month || monthKeyFromISO(todayISO()));
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return sendJson(res, 400, { error: "Месяц в формате YYYY-MM" });
+    }
+    const items = Array.isArray(body.items) ? body.items : [];
+    const normalized = items
+      .map((k, i) => ({
+        id: k.id || uid("mkpi"),
+        name: String(k.name || "").trim() || `KPI ${i + 1}`,
+        target: Math.max(1, Number(k.target) || 1),
+        unit: String(k.unit || "").trim(),
+      }))
+      .filter((k) => k.name);
+    if (!normalized.length) return sendJson(res, 400, { error: "Добавьте хотя бы один KPI" });
+
+    const db = await readDb();
+    const manager = db.managers.find((m) => m.id === managerId);
+    if (!manager) return sendJson(res, 404, { error: "Менеджер не найден" });
+    if (!db.monthlyKpis) db.monthlyKpis = {};
+    if (!db.monthlyKpis[managerId]) db.monthlyKpis[managerId] = {};
+    const { year, month: monthNum } = parseMonthKey(month);
+    db.monthlyKpis[managerId][month] = {
+      setOn: todayISO(),
+      setupDay: kpiSetupDayForMonth(year, monthNum),
+      items: normalized,
+      updatedAt: new Date().toISOString(),
+    };
+    await writeDb(db);
+    return sendJson(res, 200, {
+      monthlyKpis: db.monthlyKpis[managerId],
+      message: `KPI на ${month} сохранены. Будут в чеклисте по будням.`,
+    });
   }
 
   if (method === "PATCH" && pathname.startsWith("/api/managers/")) {
@@ -840,19 +1176,27 @@ async function handleApi(req, res, pathname) {
     if (!manager) return sendJson(res, 404, { error: "Менеджер не найден" });
 
     if (!tasks.length && seedKpis) {
-      tasks = (db.kpiDefs || DEFAULT_KPI_DEFS).map((k, i) =>
-        normalizeTask(
-          {
-            text: k.name,
-            target: k.defaultTarget,
-            doneCount: 0,
-            unit: k.unit,
-            mandatory: true,
-            kpiId: k.id,
-          },
-          i
-        )
-      );
+      const monthly = monthlyKpiTasksForDate(db, managerId, date);
+      if (monthly.length) {
+        tasks = monthly;
+      } else {
+        tasks = (db.kpiDefs || DEFAULT_KPI_DEFS).map((k, i) =>
+          normalizeTask(
+            {
+              text: k.name,
+              target: k.defaultTarget,
+              doneCount: 0,
+              unit: k.unit,
+              mandatory: true,
+              kpiId: k.id,
+              kind: "kpi",
+            },
+            i
+          )
+        );
+      }
+    } else {
+      tasks = mergeMonthlyKpisIntoTasks(db, managerId, date, tasks);
     }
     if (!tasks.length) return sendJson(res, 400, { error: "Добавьте хотя бы одну задачу" });
 
@@ -958,6 +1302,7 @@ async function handleApi(req, res, pathname) {
           unit: t.unit,
           mandatory: t.mandatory,
           kpiId: t.kpiId,
+          kind: t.kind,
           carriedFrom: {
             date,
             taskId: saved.id,
@@ -1118,6 +1463,40 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, { archive, transfers: db.transfers || [] });
   }
 
+  if (method === "GET" && pathname === "/api/reports/week") {
+    const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    const managerId = url.searchParams.get("managerId");
+    const weekStart = url.searchParams.get("weekStart") || url.searchParams.get("from");
+    if (!managerId) return sendJson(res, 400, { error: "Нужен managerId" });
+    const db = await readDb();
+    const report = buildWeekReport(db, managerId, weekStart);
+    if (!report) return sendJson(res, 404, { error: "Менеджер не найден" });
+    if (report.error) return sendJson(res, 400, { error: report.error });
+    return sendJson(res, 200, { report });
+  }
+
+  if (method === "GET" && pathname === "/api/reports/week.pdf") {
+    const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    const managerId = url.searchParams.get("managerId");
+    const weekStart = url.searchParams.get("weekStart") || url.searchParams.get("from");
+    if (!managerId) return sendJson(res, 400, { error: "Нужен managerId" });
+    const db = await readDb();
+    const report = buildWeekReport(db, managerId, weekStart);
+    if (!report) return sendJson(res, 404, { error: "Менеджер не найден" });
+    if (report.error) return sendJson(res, 400, { error: report.error });
+    const pdf = await buildWeekPdfBuffer(report);
+    const filename = encodeURIComponent(
+      `otchet-${report.managerName}-${report.weekStart}_${report.weekEnd}.pdf`
+    );
+    res.writeHead(200, {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename*=UTF-8''${filename}`,
+      "Cache-Control": "no-store",
+      "Content-Length": pdf.length,
+    });
+    return res.end(pdf);
+  }
+
   return sendJson(res, 404, { error: "Не найдено" });
 }
 
@@ -1132,6 +1511,9 @@ const server = http.createServer(async (req, res) => {
       pathname === "/gruppa-zapuska/karta-dnya/"
     ) {
       pathname = "/";
+    }
+    if (pathname === "/report" || pathname === "/karta-dnya/report") {
+      pathname = "/report.html";
     }
     if (pathname === "/healthz" || pathname === "/api/health") {
       return sendJson(res, 200, { ok: true });
