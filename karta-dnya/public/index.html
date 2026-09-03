@@ -85,27 +85,85 @@
             <div class="week-planner" id="weekPlanner" aria-label="План на неделю">
               <div class="week-planner-head">
                 <div>
-                  <h3 class="week-title">Неделя вперёд</h3>
-                  <p class="panel-sub">Выберите день и добавьте задачи на него</p>
+                  <h3 class="week-title">План на неделю</h3>
+                  <p class="panel-sub">
+                    Будни с сегодня · задачи можно ставить на один день, несколько или всю неделю вперёд
+                  </p>
                 </div>
-                <button type="button" class="btn btn-ghost btn-sm" id="saveWeekBtn">Сохранить всю неделю</button>
-              </div>
-              <div class="week-days" id="weekDays" role="tablist"></div>
-              <div class="week-day-actions">
-                <p class="week-selected-label" id="weekSelectedLabel">Выбранный день: —</p>
-                <div class="add-task-menu">
-                  <button type="button" class="btn btn-primary btn-sm" id="addDayTaskBtn">
-                    + Задача на этот день ▾
+                <div class="week-head-actions">
+                  <button type="button" class="btn btn-primary btn-sm" id="openWeekTaskPanelBtn">
+                    + Добавить задачи
                   </button>
-                  <div class="add-task-dropdown is-hidden" id="addDayTaskMenu" role="menu">
-                    <button type="button" data-kind="numeric">С числовым показателем</button>
-                    <button type="button" data-kind="kpi">Обязательные KPI дня</button>
-                    <button type="button" data-kind="check">Без числа (сделал / не сделал)</button>
-                  </div>
+                  <button type="button" class="btn btn-ghost btn-sm" id="saveWeekBtn">Сохранить план</button>
                 </div>
               </div>
+
+              <div class="week-days" id="weekDays" role="tablist" aria-label="Рабочие дни"></div>
+
+              <div class="week-view-toggle" role="group" aria-label="Вид чеклиста">
+                <button type="button" class="week-view-btn is-active" data-view="all" id="weekViewAll">
+                  Вся неделя
+                </button>
+                <button type="button" class="week-view-btn" data-view="filled" id="weekViewFilled">
+                  Только с задачами
+                </button>
+              </div>
+
+              <div class="week-checklist" id="weekChecklist"></div>
               <p class="kpi-setup-banner is-hidden" id="kpiSetupBanner"></p>
             </div>
+
+            <dialog class="modal" id="weekTaskModal">
+              <form method="dialog" class="modal-card week-task-modal" id="weekTaskForm">
+                <header class="modal-head">
+                  <h3>Добавить задачи</h3>
+                  <button type="submit" class="icon-btn" value="cancel" aria-label="Закрыть">×</button>
+                </header>
+
+                <label class="field">
+                  <span>Текст задачи</span>
+                  <input type="text" id="weekTaskText" placeholder="Например: 20 успешных звонков" required />
+                </label>
+
+                <div class="week-task-kind" role="radiogroup" aria-label="Тип задачи">
+                  <label><input type="radio" name="weekTaskKind" value="numeric" checked /> С числом</label>
+                  <label><input type="radio" name="weekTaskKind" value="check" /> Сделал / не сделал</label>
+                  <label><input type="radio" name="weekTaskKind" value="kpi" /> KPI</label>
+                </div>
+
+                <div class="week-task-metrics" id="weekTaskMetrics">
+                  <label class="field">
+                    <span>План</span>
+                    <input type="number" id="weekTaskTarget" min="1" step="1" value="1" />
+                  </label>
+                  <label class="field">
+                    <span>Ед.</span>
+                    <input type="text" id="weekTaskUnit" placeholder="звонков" />
+                  </label>
+                </div>
+
+                <fieldset class="week-task-days">
+                  <legend>На какие дни поставить</legend>
+                  <div class="week-task-day-grid" id="weekTaskDayGrid"></div>
+                  <div class="week-task-day-quick">
+                    <button type="button" class="btn btn-ghost btn-sm" id="weekTaskSelectAll">Вся рабочая неделя</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="weekTaskSelectOne">Только выбранный день</button>
+                  </div>
+                </fieldset>
+
+                <label class="field">
+                  <span>Или перенести существующую задачу с дня</span>
+                  <select id="weekTaskMoveFrom">
+                    <option value="">— не переносить, создать новую —</option>
+                  </select>
+                </label>
+
+                <footer class="modal-foot">
+                  <button type="submit" class="btn btn-ghost" value="cancel">Отмена</button>
+                  <button type="button" class="btn btn-primary" value="ok" id="weekTaskSubmit">Добавить</button>
+                </footer>
+              </form>
+            </dialog>
 
             <div class="monthly-kpi-box" id="monthlyKpiBox">
               <div class="week-planner-head">
@@ -123,22 +181,30 @@
               <div id="monthlyKpiEditor" class="monthly-kpi-editor"></div>
             </div>
 
-            <div id="tasksEditor" class="tasks-editor"></div>
-            <footer class="panel-foot">
-              <div class="foot-left">
-                <div class="add-task-menu">
-                  <button type="button" class="btn btn-ghost" id="addTaskBtn">+ Добавить задачу ▾</button>
-                  <div class="add-task-dropdown is-hidden" id="addTaskMenu" role="menu">
-                    <button type="button" data-kind="numeric">С числовым показателем</button>
-                    <button type="button" data-kind="kpi">Обязательные KPI дня</button>
-                    <button type="button" data-kind="check">Без числа (сделал / не сделал)</button>
-                  </div>
+            <div class="day-plan-block">
+              <div class="panel-head">
+                <div>
+                  <h3 class="week-title" id="dayPlanTitle">План выбранного дня</h3>
+                  <p class="panel-sub" id="dayPlanSub">Редактирование и вечернее закрытие — в сам день</p>
                 </div>
               </div>
-              <button type="button" class="btn btn-primary" id="saveFormBtn">Сохранить утро</button>
-            </footer>
-            <p class="form-hint" id="formHint"></p>
-            <div id="managerStats" class="manager-stats"></div>
+              <div id="tasksEditor" class="tasks-editor"></div>
+              <footer class="panel-foot">
+                <div class="foot-left">
+                  <div class="add-task-menu">
+                    <button type="button" class="btn btn-ghost" id="addTaskBtn">+ В этот день ▾</button>
+                    <div class="add-task-dropdown is-hidden" id="addTaskMenu" role="menu">
+                      <button type="button" data-kind="numeric">С числовым показателем</button>
+                      <button type="button" data-kind="kpi">Обязательные KPI дня</button>
+                      <button type="button" data-kind="check">Без числа (сделал / не сделал)</button>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-primary" id="saveFormBtn">Сохранить утро</button>
+              </footer>
+              <p class="form-hint" id="formHint"></p>
+              <div id="managerStats" class="manager-stats"></div>
+            </div>
 
             <div class="week-report-box" id="weekReportBox">
               <div class="week-report-head">

@@ -1757,3 +1757,150 @@ textarea {
   bottom: auto;
   top: calc(100% + 6px);
 }
+
+.week-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.week-view-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin: 0.85rem 0 0.65rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(0,0,0,0.2);
+}
+.week-view-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.week-view-btn.is-active {
+  background: rgba(38,166,224,0.2);
+  color: var(--text);
+}
+
+.week-checklist {
+  display: grid;
+  gap: 0.55rem;
+}
+.week-check-day {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  background: rgba(8,14,20,0.35);
+}
+.week-check-day.is-active {
+  border-color: rgba(38,166,224,0.55);
+  box-shadow: 0 0 0 1px rgba(38,166,224,0.2);
+}
+.week-check-day header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+.week-check-open {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+}
+.week-check-status {
+  font-size: 0.72rem;
+  color: var(--amber);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.week-check-day ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+.week-check-day li {
+  font-size: 0.86rem;
+  color: var(--text);
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.week-check-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.week-task-modal { max-width: 520px; width: min(520px, calc(100vw - 1.5rem)); }
+.week-task-kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0.5rem 0 0.85rem;
+  font-size: 0.88rem;
+}
+.week-task-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+.week-task-days {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem;
+  margin: 0 0 0.85rem;
+}
+.week-task-days legend {
+  padding: 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.week-task-day-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.4rem;
+}
+.week-day-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+.week-day-check:has(input:checked) {
+  border-color: rgba(38,166,224,0.55);
+  background: rgba(38,166,224,0.12);
+}
+.week-task-day-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+.day-plan-block {
+  margin-top: 1rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--line);
+}

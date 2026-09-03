@@ -20,6 +20,7 @@
     planDate: null,
     weekDrafts: {},
     tomorrowCollapsed: false,
+    weekView: "all",
     draftTasks: [],
     monthlyDraft: [],
     stickerSaveTimer: null,
@@ -50,9 +51,20 @@
     tabEvening: document.getElementById("tabEvening"),
     addTaskBtn: document.getElementById("addTaskBtn"),
     addTaskMenu: document.getElementById("addTaskMenu"),
-    addDayTaskBtn: document.getElementById("addDayTaskBtn"),
-    addDayTaskMenu: document.getElementById("addDayTaskMenu"),
-    weekSelectedLabel: document.getElementById("weekSelectedLabel"),
+    weekChecklist: document.getElementById("weekChecklist"),
+    openWeekTaskPanelBtn: document.getElementById("openWeekTaskPanelBtn"),
+    weekTaskModal: document.getElementById("weekTaskModal"),
+    weekTaskForm: document.getElementById("weekTaskForm"),
+    weekTaskText: document.getElementById("weekTaskText"),
+    weekTaskTarget: document.getElementById("weekTaskTarget"),
+    weekTaskUnit: document.getElementById("weekTaskUnit"),
+    weekTaskMetrics: document.getElementById("weekTaskMetrics"),
+    weekTaskDayGrid: document.getElementById("weekTaskDayGrid"),
+    weekTaskSelectAll: document.getElementById("weekTaskSelectAll"),
+    weekTaskSelectOne: document.getElementById("weekTaskSelectOne"),
+    weekTaskMoveFrom: document.getElementById("weekTaskMoveFrom"),
+    dayPlanTitle: document.getElementById("dayPlanTitle"),
+    dayPlanSub: document.getElementById("dayPlanSub"),
     kpiSetupBanner: document.getElementById("kpiSetupBanner"),
     monthlyKpiBox: document.getElementById("monthlyKpiBox"),
     monthlyKpiSub: document.getElementById("monthlyKpiSub"),
@@ -131,8 +143,29 @@
   }
 
   function weekDateList() {
-    return Array.from({ length: 7 }, (_, i) => addDaysISO(state.today, i));
+    return workdaysFromToday(5);
   }
+
+  /** Next N workdays (Mon–Fri), starting from today (or next Monday if weekend). */
+  function workdaysFromToday(count = 5) {
+    const out = [];
+    let cur = state.today;
+    // if weekend, jump to next Monday
+    const [y0, m0, d0] = cur.split("-").map(Number);
+    let dow = new Date(y0, m0 - 1, d0).getDay();
+    if (dow === 0) cur = addDaysISO(cur, 1);
+    else if (dow === 6) cur = addDaysISO(cur, 2);
+    let guard = 0;
+    while (out.length < count && guard < 20) {
+      const [y, m, d] = cur.split("-").map(Number);
+      const day = new Date(y, m - 1, d).getDay();
+      if (day >= 1 && day <= 5) out.push(cur);
+      cur = addDaysISO(cur, 1);
+      guard += 1;
+    }
+    return out;
+  }
+
 
   function draftKey(managerId, date) {
     return `${managerId}:${date}`;
@@ -524,7 +557,6 @@
           : "Сохранить план дня";
       el.saveFormBtn.disabled = completed;
       el.addTaskBtn.hidden = completed;
-      if (el.addDayTaskBtn) el.addDayTaskBtn.hidden = completed;
             el.formHint.textContent = completed
         ? "День уже закрыт. Можно смотреть прогресс и переносы."
         : isToday
@@ -534,7 +566,6 @@
       el.saveFormBtn.textContent = completed ? "Уже в архиве" : "Закрыть день · перенести остатки";
       el.saveFormBtn.disabled = completed || !hasMorning;
       el.addTaskBtn.hidden = true;
-      if (el.addDayTaskBtn) el.addDayTaskBtn.hidden = true;
             el.formHint.textContent = !hasMorning
         ? "Сначала сохраните утренний чеклист."
         : completed
@@ -545,7 +576,7 @@
 
   function renderWeekDays(managerId) {
     el.weekDays.innerHTML = "";
-    weekDateList().forEach((date) => {
+    workdaysFromToday(5).forEach((date) => {
       const form = state.forms.find((f) => f.managerId === managerId && f.date === date);
       const draft = state.weekDrafts[draftKey(managerId, date)];
       const count = draft
@@ -561,24 +592,92 @@
       if (date === kpiSetupDayForMonth(yy, mm)) btn.classList.add("is-kpi-setup");
       if (form?.status === "completed") btn.classList.add("is-done");
       else if (count > 0) btn.classList.add("has-tasks");
+      const planned = date > state.today;
       btn.innerHTML = `
         <span class="wd-name">${weekdayShort(date)}</span>
         <span class="wd-num">${date.slice(8)}</span>
-        <span class="wd-count">${count ? `${count} зад.` : "пусто"}</span>`;
-      btn.addEventListener("click", () => selectPlanDate(date));
+        <span class="wd-count">${count ? `${count} зад.` : planned ? "план" : "пусто"}</span>`;
+      btn.title = planned
+        ? "Заранее: задачи сохранятся и откроются в этот день"
+        : "Сегодняшний рабочий день";
+      btn.addEventListener("click", () => {
+        selectPlanDate(date);
+        openWeekTaskPanel({ preselect: [date] });
+      });
       el.weekDays.appendChild(btn);
     });
-    updateWeekSelectedLabel();
+    renderWeekChecklist(managerId);
+    updateDayPlanLabels();
   }
 
-  function updateWeekSelectedLabel() {
-    if (!el.weekSelectedLabel) return;
+  function updateDayPlanLabels() {
     const date = state.planDate || state.today;
-    if (!date) {
-      el.weekSelectedLabel.textContent = "Выбранный день: —";
-      return;
+    if (el.dayPlanTitle) {
+      el.dayPlanTitle.textContent =
+        date === state.today
+          ? `План дня · сегодня (${weekdayShort(date)})`
+          : `Черновик на ${weekdayShort(date)}, ${formatDateRu(date)}`;
     }
-    el.weekSelectedLabel.textContent = `Выбранный день: ${weekdayShort(date)}, ${formatDateRu(date)}`;
+    if (el.dayPlanSub) {
+      el.dayPlanSub.textContent =
+        date === state.today
+          ? "Можно закрывать вечер и переносить остатки"
+          : "Задачи уже сохраняются заранее; утро/вечер этого дня откроются только в сам день";
+    }
+  }
+
+  function renderWeekChecklist(managerId) {
+    if (!el.weekChecklist) return;
+    el.weekChecklist.innerHTML = "";
+    const days = workdaysFromToday(5);
+    let shown = 0;
+    days.forEach((date) => {
+      const tasks = tasksForDate(managerId, date).filter((t) => String(t.text || "").trim());
+      if (state.weekView === "filled" && !tasks.length) return;
+      shown += 1;
+      const block = document.createElement("article");
+      block.className = `week-check-day${date === state.planDate ? " is-active" : ""}`;
+      const form = state.forms.find((f) => f.managerId === managerId && f.date === date);
+      const status =
+        form?.status === "completed" ? "закрыт" : date > state.today ? "заранее" : form ? "в работе" : "пусто";
+      block.innerHTML = `
+        <header>
+          <button type="button" class="week-check-open"></button>
+          <span class="week-check-status"></span>
+        </header>
+        <ul></ul>
+        <div class="week-check-actions">
+          <button type="button" class="btn btn-ghost btn-sm" data-act="add">+ Задача</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-act="open">Открыть день</button>
+        </div>`;
+      block.querySelector(".week-check-open").textContent =
+        `${weekdayShort(date).toUpperCase()} ${date.slice(8)}.${date.slice(5, 7)} · ${tasks.length} зад.`;
+      block.querySelector(".week-check-status").textContent = status;
+      const ul = block.querySelector("ul");
+      if (!tasks.length) {
+        ul.innerHTML = `<li class="muted">Нет задач — нажмите «+ Задача»</li>`;
+      } else {
+        tasks.forEach((t) => {
+          const li = document.createElement("li");
+          const kind = t.kind === "check" ? "да/нет" : t.kind === "kpi" ? "KPI" : (t.unit || "шт.");
+          li.textContent = t.kind === "check"
+            ? `${t.text} · ${kind}`
+            : `${t.text} · ${kind} ${t.target || 1}`;
+          ul.appendChild(li);
+        });
+      }
+      block.querySelector(".week-check-open").addEventListener("click", () => selectPlanDate(date));
+      block.querySelector('[data-act="open"]').addEventListener("click", () => selectPlanDate(date));
+      block.querySelector('[data-act="add"]').addEventListener("click", () => {
+        selectPlanDate(date);
+        openWeekTaskPanel({ preselect: [date] });
+      });
+      el.weekChecklist.appendChild(block);
+    });
+    if (!shown) {
+      el.weekChecklist.innerHTML =
+        `<div class="archive-empty">Пока нет задач на будни. Нажмите «+ Добавить задачи».</div>`;
+    }
   }
 
   function selectPlanDate(date) {
@@ -586,20 +685,179 @@
     stashCurrentDraft();
     state.planDate = date;
     state.draftTasks = tasksForDate(state.selectedId, date);
-    state.phase = date === state.today && todaysForm(state.selectedId, date)?.status === "morning"
-      ? state.phase
-      : "morning";
     if (date !== state.today) state.phase = "morning";
+    else if (todaysForm(state.selectedId, date)?.status === "completed") state.phase = "evening";
     setPhase(state.phase);
     renderWeekDays(state.selectedId);
     renderTasksEditor();
-    updateWeekSelectedLabel();
+    updateDayPlanLabels();
     const manager = state.managers.find((m) => m.id === state.selectedId);
     if (manager) {
       el.checklistSub.textContent = `${formatDateRu(date)} · «${manager.name} ${date}»`;
     }
-    // scroll tasks into view after picking a day
-    el.tasksEditor?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function fillWeekTaskDayGrid(preselect = []) {
+    if (!el.weekTaskDayGrid) return;
+    el.weekTaskDayGrid.innerHTML = "";
+    const selected = new Set(preselect.length ? preselect : [state.planDate || state.today]);
+    workdaysFromToday(5).forEach((date) => {
+      const label = document.createElement("label");
+      label.className = "week-day-check";
+      label.innerHTML = `<input type="checkbox" value="${date}" /><span>${weekdayShort(date)} ${date.slice(8)}.${date.slice(5, 7)}</span>`;
+      const input = label.querySelector("input");
+      input.checked = selected.has(date);
+      el.weekTaskDayGrid.appendChild(label);
+    });
+  }
+
+  function fillWeekTaskMoveFrom() {
+    if (!el.weekTaskMoveFrom) return;
+    const managerId = state.selectedId;
+    el.weekTaskMoveFrom.innerHTML = `<option value="">— не переносить, создать новую —</option>`;
+    workdaysFromToday(5).forEach((date) => {
+      tasksForDate(managerId, date)
+        .filter((t) => String(t.text || "").trim())
+        .forEach((t) => {
+          const opt = document.createElement("option");
+          opt.value = `${date}::${t.id}`;
+          opt.textContent = `${weekdayShort(date)} ${date.slice(8)} · ${t.text}`;
+          el.weekTaskMoveFrom.appendChild(opt);
+        });
+    });
+  }
+
+  function openWeekTaskPanel({ preselect = [] } = {}) {
+    if (!el.weekTaskModal) return;
+    if (!state.selectedId || state.selectedId === "all") {
+      toast("Сначала откройте сотрудника");
+      return;
+    }
+    el.weekTaskText.value = "";
+    el.weekTaskTarget.value = "1";
+    el.weekTaskUnit.value = "";
+    const kindRadio = el.weekTaskForm.querySelector('input[name="weekTaskKind"][value="numeric"]');
+    if (kindRadio) kindRadio.checked = true;
+    syncWeekTaskMetricsVisibility();
+    fillWeekTaskDayGrid(preselect);
+    fillWeekTaskMoveFrom();
+    el.weekTaskModal.showModal();
+    requestAnimationFrame(() => el.weekTaskText.focus());
+  }
+
+  function syncWeekTaskMetricsVisibility() {
+    const kind = el.weekTaskForm?.querySelector('input[name="weekTaskKind"]:checked')?.value || "numeric";
+    if (el.weekTaskMetrics) {
+      el.weekTaskMetrics.classList.toggle("is-hidden", kind === "check");
+    }
+  }
+
+  function selectedWeekTaskDates() {
+    return [...(el.weekTaskDayGrid?.querySelectorAll("input:checked") || [])].map((n) => n.value);
+  }
+
+  async function submitWeekTaskFromPanel() {
+    const managerId = state.selectedId;
+    const text = String(el.weekTaskText.value || "").trim();
+    if (!text) {
+      toast("Введите текст задачи");
+      return false;
+    }
+    const dates = selectedWeekTaskDates();
+    if (!dates.length) {
+      toast("Выберите хотя бы один день");
+      return false;
+    }
+    const kind = el.weekTaskForm.querySelector('input[name="weekTaskKind"]:checked')?.value || "numeric";
+    const target = kind === "check" ? 1 : Math.max(1, Number(el.weekTaskTarget.value) || 1);
+    const unit = kind === "check" ? "" : String(el.weekTaskUnit.value || "").trim();
+    const moveFrom = String(el.weekTaskMoveFrom.value || "");
+
+    stashCurrentDraft();
+
+    // optional move: remove from source day
+    if (moveFrom) {
+      const [fromDate, taskId] = moveFrom.split("::");
+      const source = tasksForDate(managerId, fromDate).filter((t) => t.id !== taskId);
+      state.weekDrafts[draftKey(managerId, fromDate)] = source.length ? source : blankTaskRow(fromDate);
+    }
+
+    const baseTask = {
+      text,
+      target,
+      doneCount: 0,
+      unit,
+      mandatory: kind === "kpi",
+      kind,
+      kpiId: kind === "kpi" ? `kpi-custom-${Date.now()}` : null,
+    };
+
+    dates.forEach((date) => {
+      const list = tasksForDate(managerId, date).filter((t) => String(t.text || "").trim());
+      list.push({
+        ...baseTask,
+        id: `local-${Date.now()}-${date}-${Math.random().toString(16).slice(2, 6)}`,
+        transferDate: addDaysISO(date, 1),
+      });
+      state.weekDrafts[draftKey(managerId, date)] = list;
+    });
+
+    // persist immediately so Friday→Monday tasks survive
+    try {
+      await persistWeekDrafts(managerId, dates);
+      toast(
+        dates.length === 1
+          ? `Задача добавлена на ${weekdayShort(dates[0])}`
+          : `Задача добавлена на ${dates.length} дн.`
+      );
+    } catch (err) {
+      toast(err.message);
+      return false;
+    }
+
+    state.planDate = dates.includes(state.planDate) ? state.planDate : dates[0];
+    state.draftTasks = tasksForDate(managerId, state.planDate);
+    renderWeekDays(managerId);
+    renderTasksEditor();
+    updateDayPlanLabels();
+    return true;
+  }
+
+  async function persistWeekDrafts(managerId, dates) {
+    const days = [];
+    const allDates = new Set([...(dates || []), ...workdaysFromToday(5)]);
+    for (const date of allDates) {
+      const form = state.forms.find((f) => f.managerId === managerId && f.date === date);
+      if (form?.status === "completed") continue;
+      const tasksSource = state.weekDrafts[draftKey(managerId, date)] || form?.tasks || [];
+      const tasks = tasksSource
+        .map((t) => ({
+          id: t.id,
+          text: String(t.text || "").trim(),
+          target: Math.max(1, Number(t.target) || 1),
+          doneCount: Math.max(0, Number(t.doneCount) || 0),
+          unit: t.unit || "",
+          mandatory: Boolean(t.mandatory) || t.kind === "kpi",
+          kpiId: t.kpiId || null,
+          kind: t.kind || "numeric",
+          carriedFrom: t.carriedFrom || null,
+        }))
+        .filter((t) => t.text);
+      if (tasks.length) days.push({ date, tasks });
+    }
+    if (!days.length) {
+      throw new Error("Нет задач для сохранения — добавьте через «+ Добавить задачи»");
+    }
+    const data = await api("/api/forms/week", {
+      method: "POST",
+      body: JSON.stringify({ managerId, from: state.today, days }),
+    });
+    (data.forms || []).forEach(upsertForm);
+    if (data.tomorrowPreview) state.tomorrowPreview = data.tomorrowPreview;
+    // clear drafts for saved dates — reload from forms
+    days.forEach((d) => {
+      delete state.weekDrafts[draftKey(managerId, d.date)];
+    });
   }
 
   function hideTomorrowWindow() {
@@ -1062,41 +1320,18 @@
     const managerId = state.selectedId;
     if (!managerId || managerId === "all") return;
     stashCurrentDraft();
-    const days = [];
-    for (const date of weekDateList()) {
-      const form = state.forms.find((f) => f.managerId === managerId && f.date === date);
-      if (form?.status === "completed") continue;
-      const tasksSource = state.weekDrafts[draftKey(managerId, date)] || form?.tasks || [];
-      const tasks = tasksSource
-        .map((t) => ({
-          id: t.id,
-          text: String(t.text || "").trim(),
-          target: Math.max(1, Number(t.target) || 1),
-          doneCount: 0,
-          unit: t.unit || "",
-          mandatory: Boolean(t.mandatory),
-          kpiId: t.kpiId || null,
-          carriedFrom: t.carriedFrom || null,
-        }))
-        .filter((t) => t.text);
-      if (tasks.length) days.push({ date, tasks });
-    }
-    if (!days.length) {
-      toast("Нет задач для сохранения на неделю");
-      return;
-    }
     try {
-      const data = await api("/api/forms/week", {
-        method: "POST",
-        body: JSON.stringify({ managerId, from: state.today, days }),
-      });
-      (data.forms || []).forEach(upsertForm);
-      if (data.tomorrowPreview) state.tomorrowPreview = data.tomorrowPreview;
-      state.weekDrafts = {};
-      toast(data.message || "Неделя сохранена");
+      await persistWeekDrafts(managerId, workdaysFromToday(5));
+      toast("План на будни сохранён");
       await loadState();
+      if (state.selectedId === managerId) {
+        state.planDate = state.planDate || state.today;
+        state.draftTasks = tasksForDate(managerId, state.planDate);
+        renderWeekDays(managerId);
+        renderTasksEditor();
+      }
     } catch (err) {
-      toast(err.message);
+      toast(err.message || "Нечего сохранять — добавьте задачи");
     }
   }
 
@@ -1451,16 +1686,17 @@
     });
     stashCurrentDraft();
     renderTasksEditor();
+    renderWeekDays(state.selectedId);
+    if (state.planDate && state.planDate !== state.today) {
+      persistWeekDrafts(state.selectedId, [state.planDate]).catch((err) => toast(err.message));
+    }
   }
 
   function bindAddTaskMenu(button, menu) {
     if (!button || !menu) return;
     button.addEventListener("click", (e) => {
       e.stopPropagation();
-      // close other menus
-      [el.addTaskMenu, el.addDayTaskMenu].forEach((m) => {
-        if (m && m !== menu) m.classList.add("is-hidden");
-      });
+      el.addTaskMenu?.classList.add("is-hidden");
       menu.classList.toggle("is-hidden");
     });
     menu.querySelectorAll("button[data-kind]").forEach((btn) => {
@@ -1468,15 +1704,12 @@
         e.stopPropagation();
         addTaskOfKind(btn.dataset.kind);
         menu.classList.add("is-hidden");
-        el.tasksEditor?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
     });
   }
   bindAddTaskMenu(el.addTaskBtn, el.addTaskMenu);
-  bindAddTaskMenu(el.addDayTaskBtn, el.addDayTaskMenu);
   document.addEventListener("click", () => {
     el.addTaskMenu?.classList.add("is-hidden");
-    el.addDayTaskMenu?.classList.add("is-hidden");
   });
 
   el.addMonthlyKpiBtn?.addEventListener("click", addMonthlyKpiRow);
@@ -1494,6 +1727,47 @@
   });
 
   el.saveFormBtn.addEventListener("click", saveForm);
+  el.openWeekTaskPanelBtn?.addEventListener("click", () => {
+    openWeekTaskPanel({ preselect: [state.planDate || state.today] });
+  });
+  el.weekTaskForm?.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[value]");
+    if (!btn) return;
+    if (btn.value === "ok") {
+      e.preventDefault();
+      e.stopPropagation();
+      const ok = await submitWeekTaskFromPanel();
+      if (ok) el.weekTaskModal.close("ok");
+      return;
+    }
+    el.weekTaskModal.returnValue = btn.value;
+  });
+  el.weekTaskForm?.querySelectorAll('input[name="weekTaskKind"]').forEach((r) => {
+    r.addEventListener("change", syncWeekTaskMetricsVisibility);
+  });
+  el.weekTaskSelectAll?.addEventListener("click", () => {
+    el.weekTaskDayGrid?.querySelectorAll("input").forEach((n) => {
+      n.checked = true;
+    });
+  });
+  el.weekTaskSelectOne?.addEventListener("click", () => {
+    const one = state.planDate || state.today;
+    el.weekTaskDayGrid?.querySelectorAll("input").forEach((n) => {
+      n.checked = n.value === one;
+    });
+  });
+  document.querySelectorAll(".week-view-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.weekView = btn.dataset.view || "all";
+      document.querySelectorAll(".week-view-btn").forEach((b) => {
+        b.classList.toggle("is-active", b === btn);
+      });
+      if (state.selectedId && state.selectedId !== "all") {
+        renderWeekChecklist(state.selectedId);
+      }
+    });
+  });
+
   el.saveWeekBtn.addEventListener("click", saveWeekPlan);
   el.tomorrowClose.addEventListener("click", () => {
     state.tomorrowCollapsed = true;
