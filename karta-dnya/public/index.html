@@ -151,12 +151,27 @@
                   </div>
                 </fieldset>
 
-                <label class="field">
-                  <span>Или перенести существующую задачу с дня</span>
-                  <select id="weekTaskMoveFrom">
-                    <option value="">— не переносить, создать новую —</option>
-                  </select>
-                </label>
+                <fieldset class="week-task-source">
+                  <legend>Как добавить</legend>
+                  <div class="week-source-toggle" role="radiogroup" aria-label="Источник задачи">
+                    <label class="week-source-option">
+                      <input type="radio" name="weekTaskSource" value="new" checked />
+                      <span>Новая задача</span>
+                    </label>
+                    <label class="week-source-option">
+                      <input type="radio" name="weekTaskSource" value="move" />
+                      <span>Перенести с другого дня</span>
+                    </label>
+                  </div>
+                  <div id="weekTaskMoveWrap" class="week-task-move-wrap is-hidden">
+                    <label class="field">
+                      <span>Какую задачу перенести</span>
+                      <select id="weekTaskMoveFrom">
+                        <option value="">Выберите задачу…</option>
+                      </select>
+                    </label>
+                  </div>
+                </fieldset>
 
                 <footer class="modal-foot">
                   <button type="button" class="btn btn-ghost" id="weekTaskCancelBtn">Отмена</button>

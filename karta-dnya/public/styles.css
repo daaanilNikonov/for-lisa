@@ -1904,3 +1904,108 @@ textarea {
   padding-top: 0.25rem;
   border-top: 1px solid var(--line);
 }
+
+
+.task-row .task-input.is-editable {
+  border: 1px solid rgba(38, 166, 224, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.45rem 0.6rem;
+}
+.task-row .task-input.is-editable:focus {
+  border-color: rgba(38, 166, 224, 0.75);
+  background: rgba(38, 166, 224, 0.08);
+  box-shadow: 0 0 0 3px rgba(38, 166, 224, 0.15);
+}
+
+.week-check-task {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+}
+.week-check-text {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--blue);
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.86rem;
+}
+.week-check-text:not([readonly]):hover,
+.week-check-text:not([readonly]):focus {
+  border-color: rgba(38, 166, 224, 0.45);
+  background: rgba(38, 166, 224, 0.08);
+  outline: none;
+}
+.week-check-text[readonly] {
+  opacity: 0.85;
+  cursor: default;
+}
+.week-check-meta {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.week-task-source {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem;
+  margin: 0 0 0.85rem;
+}
+.week-task-source legend {
+  padding: 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.week-source-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+.week-source-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 650;
+  text-align: center;
+}
+.week-source-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.week-source-option:has(input:checked) {
+  border-color: rgba(38, 166, 224, 0.65);
+  background: rgba(38, 166, 224, 0.14);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(38, 166, 224, 0.25);
+}
+.week-source-option:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.week-task-move-wrap {
+  margin-top: 0.7rem;
+}
+.week-task-move-wrap select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(8, 14, 20, 0.55);
+  color: var(--text);
+  padding: 0.6rem 0.7rem;
+}

@@ -663,15 +663,47 @@
         `${weekdayShort(date).toUpperCase()} ${date.slice(8)}.${date.slice(5, 7)} · ${tasks.length} зад.`;
       block.querySelector(".week-check-status").textContent = status;
       const ul = block.querySelector("ul");
+      const dayLocked = form?.status === "completed";
       if (!tasks.length) {
         ul.innerHTML = `<li class="muted">Нет задач — нажмите «+ Задача»</li>`;
       } else {
         tasks.forEach((t) => {
           const li = document.createElement("li");
+          li.className = "week-check-task";
           const kind = t.kind === "check" ? "да/нет" : t.kind === "kpi" ? "KPI" : (t.unit || "шт.");
-          li.textContent = t.kind === "check"
-            ? `${t.text} · ${kind}`
-            : `${t.text} · ${kind} ${t.target || 1}`;
+          const meta = t.kind === "check" ? kind : `${kind} ${t.target || 1}`;
+          li.innerHTML = `
+            <input type="text" class="week-check-text" />
+            <span class="week-check-meta"></span>`;
+          const textEl = li.querySelector(".week-check-text");
+          const metaEl = li.querySelector(".week-check-meta");
+          textEl.value = t.text || "";
+          textEl.readOnly = dayLocked;
+          textEl.placeholder = "Текст задачи";
+          textEl.title = dayLocked ? "День закрыт" : "Изменить текст задачи";
+          metaEl.textContent = meta;
+          const commitText = () => {
+            const next = String(textEl.value || "").trim();
+            if (next === String(t.text || "").trim()) return;
+            t.text = next;
+            const list = tasksForDate(managerId, date).map((row) =>
+              row.id === t.id ? { ...row, text: next } : row
+            );
+            state.weekDrafts[draftKey(managerId, date)] = list;
+            if (state.planDate === date && state.selectedId === managerId) {
+              state.draftTasks = list.map((row) => ({ ...row }));
+              renderTasksEditor();
+            }
+            persistWeekDrafts(managerId, [date]).catch((err) => toast(err.message));
+            renderWeekDays(managerId);
+          };
+          textEl.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              textEl.blur();
+            }
+          });
+          textEl.addEventListener("blur", commitText);
           ul.appendChild(li);
         });
       }
@@ -720,10 +752,22 @@
     });
   }
 
+  function setWeekTaskSourceMode(mode) {
+    const isMove = mode === "move";
+    const wrap = document.getElementById("weekTaskMoveWrap");
+    if (wrap) wrap.classList.toggle("is-hidden", !isMove);
+    const newRadio = el.weekTaskForm?.querySelector('input[name="weekTaskSource"][value="new"]');
+    const moveRadio = el.weekTaskForm?.querySelector('input[name="weekTaskSource"][value="move"]');
+    if (newRadio) newRadio.checked = !isMove;
+    if (moveRadio) moveRadio.checked = isMove;
+    if (!isMove && el.weekTaskMoveFrom) el.weekTaskMoveFrom.value = "";
+  }
+
   function fillWeekTaskMoveFrom() {
     if (!el.weekTaskMoveFrom) return;
     const managerId = state.selectedId;
-    el.weekTaskMoveFrom.innerHTML = `<option value="">— не переносить, создать новую —</option>`;
+    el.weekTaskMoveFrom.innerHTML = `<option value="">Выберите задачу…</option>`;
+    let count = 0;
     workdaysFromToday(5).forEach((date) => {
       tasksForDate(managerId, date)
         .filter((t) => String(t.text || "").trim())
@@ -732,8 +776,12 @@
           opt.value = `${date}::${t.id}`;
           opt.textContent = `${weekdayShort(date)} ${date.slice(8)} · ${t.text}`;
           el.weekTaskMoveFrom.appendChild(opt);
+          count += 1;
         });
     });
+    const moveRadio = el.weekTaskForm?.querySelector('input[name="weekTaskSource"][value="move"]');
+    if (moveRadio) moveRadio.disabled = count === 0;
+    if (count === 0) setWeekTaskSourceMode("new");
   }
 
   function openWeekTaskPanel({ preselect = [] } = {}) {
@@ -750,6 +798,7 @@
     syncWeekTaskMetricsVisibility();
     fillWeekTaskDayGrid(preselect);
     fillWeekTaskMoveFrom();
+    setWeekTaskSourceMode("new");
     el.weekTaskModal.showModal();
     requestAnimationFrame(() => el.weekTaskText.focus());
   }
@@ -780,7 +829,14 @@
     const kind = el.weekTaskForm.querySelector('input[name="weekTaskKind"]:checked')?.value || "numeric";
     const target = kind === "check" ? 1 : Math.max(1, Number(el.weekTaskTarget.value) || 1);
     const unit = kind === "check" ? "" : String(el.weekTaskUnit.value || "").trim();
-    const moveFrom = String(el.weekTaskMoveFrom.value || "");
+    const sourceMode =
+      el.weekTaskForm?.querySelector('input[name="weekTaskSource"]:checked')?.value || "new";
+    const moveFrom =
+      sourceMode === "move" ? String(el.weekTaskMoveFrom?.value || "") : "";
+    if (sourceMode === "move" && !moveFrom) {
+      toast("Выберите задачу для переноса");
+      return false;
+    }
 
     stashCurrentDraft();
 
@@ -983,13 +1039,19 @@
         row.querySelector(".metric-unit").classList.add("is-hidden");
       }
 
-      textInput.readOnly = locked || evening;
+      // Текст задачи можно менять, пока день не закрыт (и утром, и вечером)
+      textInput.readOnly = locked;
       targetInput.readOnly = locked || evening || task.kind === "kpi";
       doneInput.readOnly = locked || !evening;
       unitInput.readOnly = locked || evening || task.kind === "kpi";
       checkDone.disabled = locked || !evening;
       transferDate.disabled = locked || !evening;
       row.querySelector(".task-remove").hidden = locked || evening || task.kind === "kpi";
+      textInput.classList.toggle("is-editable", !locked);
+      if (!locked) {
+        textInput.placeholder = "Введите текст задачи";
+        textInput.title = "Нажмите и введите текст задачи";
+      }
 
       if (task.carriedFrom) {
         meta.innerHTML = `↩ из ${task.carriedFrom.date}: остаток ${task.carriedFrom.amount}`;
@@ -1032,11 +1094,20 @@
             renderWeekDays(state.selectedId);
             renderTomorrowWindow(state.selectedId);
           }
-        }, 180);
+        }, 280);
       };
       sync();
 
-      [textInput, targetInput, doneInput, unitInput, transferDate, checkDone].forEach((node) => {
+      // Текст: обновляем черновик сразу, перерисовку недели — на blur,
+      // чтобы курсор не сбрасывался при вводе.
+      textInput.addEventListener("input", () => {
+        task.text = textInput.value;
+        stashCurrentDraft();
+      });
+      textInput.addEventListener("blur", () => {
+        sync();
+      });
+      [targetInput, doneInput, unitInput, transferDate, checkDone].forEach((node) => {
         node.addEventListener("input", sync);
         node.addEventListener("change", sync);
       });
@@ -1750,6 +1821,9 @@
   });
   el.weekTaskForm?.querySelectorAll('input[name="weekTaskKind"]').forEach((r) => {
     r.addEventListener("change", syncWeekTaskMetricsVisibility);
+  });
+  el.weekTaskForm?.querySelectorAll('input[name="weekTaskSource"]').forEach((r) => {
+    r.addEventListener("change", () => setWeekTaskSourceMode(r.value));
   });
   el.weekTaskSelectAll?.addEventListener("click", () => {
     el.weekTaskDayGrid?.querySelectorAll("input").forEach((n) => {
