@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""PDF-блок-схема холодного звонка «Блиц-запись» — шпаргалка для МПП."""
+"""PDF-блок-схема холодного звонка «Блиц-запись» — только скрипт по этапам."""
 
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
-from reportlab.lib.colors import Color, white, HexColor
+from reportlab.lib.colors import HexColor, white
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import simpleSplit
 import os
+import shutil
 
 OUT = "Блиц-запись_блок-схема_шпаргалка_МПП.pdf"
 ASCII_OUT = "Blitz-zapis-flowchart-mpp.pdf"
@@ -16,23 +17,18 @@ ASCII_OUT = "Blitz-zapis-flowchart-mpp.pdf"
 NAVY = HexColor("#1B3A4B")
 TEAL = HexColor("#2A9D8F")
 ORANGE = HexColor("#E76F51")
-SOFT = HexColor("#E8F5F3")
-LIGHT = HexColor("#F4F7F8")
-YELLOW = HexColor("#FFF3CD")
-BORDER = HexColor("#D0D7DE")
+BORDER = HexColor("#C5CDD4")
 DARK = HexColor("#243038")
-GRAY = HexColor("#5A6570")
+ARROW = HexColor("#2A9D8F")
+GRAY = HexColor("#7A8792")
 
-# Register a font that supports Cyrillic
 FONT_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
 ]
 FONT_BOLD_CANDIDATES = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-    "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
 ]
 
 
@@ -40,16 +36,12 @@ def find_font(paths):
     for p in paths:
         if os.path.exists(p):
             return p
-    return None
+    raise SystemExit("No Cyrillic TTF font found")
 
 
 def setup_fonts():
-    reg = find_font(FONT_CANDIDATES)
-    bold = find_font(FONT_BOLD_CANDIDATES)
-    if not reg:
-        raise SystemExit("No Cyrillic TTF font found")
-    pdfmetrics.registerFont(TTFont("Body", reg))
-    pdfmetrics.registerFont(TTFont("BodyBold", bold or reg))
+    pdfmetrics.registerFont(TTFont("Body", find_font(FONT_CANDIDATES)))
+    pdfmetrics.registerFont(TTFont("BodyBold", find_font(FONT_BOLD_CANDIDATES)))
     return "Body", "BodyBold"
 
 
@@ -57,367 +49,346 @@ def wrap(text, font, size, max_w):
     return simpleSplit(text, font, size, max_w)
 
 
-def draw_round_rect(c, x, y, w, h, fill, stroke=BORDER, radius=6):
+def draw_round_rect(c, x, y, w, h, fill, stroke=BORDER, radius=8):
     c.setFillColor(fill)
     c.setStrokeColor(stroke)
-    c.setLineWidth(1)
+    c.setLineWidth(1.2)
     c.roundRect(x, y, w, h, radius, fill=1, stroke=1)
 
 
-def draw_arrow_down(c, x, y, length=14):
-    c.setStrokeColor(TEAL)
-    c.setFillColor(TEAL)
-    c.setLineWidth(1.5)
-    c.line(x, y, x, y - length + 4)
+def draw_arrow_right(c, x_from, x_to, y, label=None, fonts=None):
+    c.setStrokeColor(ARROW)
+    c.setFillColor(ARROW)
+    c.setLineWidth(2.2)
+    tip = x_to - 2
+    c.line(x_from, y, tip - 9, y)
     path = c.beginPath()
-    path.moveTo(x, y - length)
-    path.lineTo(x - 4, y - length + 7)
-    path.lineTo(x + 4, y - length + 7)
+    path.moveTo(tip, y)
+    path.lineTo(tip - 10, y - 5)
+    path.lineTo(tip - 10, y + 5)
     path.close()
     c.drawPath(path, fill=1, stroke=0)
+    if label and fonts:
+        _, bold = fonts
+        c.setFillColor(TEAL)
+        c.setFont(bold, 8)
+        c.drawCentredString((x_from + tip) / 2, y + 7, label)
 
 
-def text_block(c, x, y_top, w, lines, font, size, color=DARK, leading=None):
-    leading = leading or size + 3
-    y = y_top
-    c.setFillColor(color)
-    c.setFont(font, size)
-    for line in lines:
-        c.drawString(x, y - size, line)
-        y -= leading
-    return y
+def draw_arrow_down(c, x, y_from, y_to, label=None, fonts=None):
+    c.setStrokeColor(ARROW)
+    c.setFillColor(ARROW)
+    c.setLineWidth(2.2)
+    tip = y_to + 2
+    c.line(x, y_from, x, tip + 9)
+    path = c.beginPath()
+    path.moveTo(x, tip)
+    path.lineTo(x - 5, tip + 10)
+    path.lineTo(x + 5, tip + 10)
+    path.close()
+    c.drawPath(path, fill=1, stroke=0)
+    if label and fonts:
+        _, bold = fonts
+        c.setFillColor(TEAL)
+        c.setFont(bold, 8)
+        c.drawCentredString(x + 28, (y_from + tip) / 2 - 2, label)
 
 
-def box_with_sections(c, x, y_top, w, title, sections, fonts, accent=TEAL):
-    """
-    sections: list of (label, text) — label is short header, text is body
-    Returns bottom y of the box.
-    """
+def stage_card(c, x, y_top, w, stage_num, title, script_lines, fonts, accent=TEAL):
     body, bold = fonts
-    pad = 8
+    pad = 10
     title_size = 11
-    label_size = 8.5
     body_size = 8.5
     max_w = w - 2 * pad
 
-    # Measure
-    title_lines = wrap(title, bold, title_size, max_w)
-    content_h = 10 + len(title_lines) * (title_size + 3) + 6
-    prepared = []
-    for label, text in sections:
-        lab = wrap(label, bold, label_size, max_w)
-        body_lines = []
-        for para in text.split("\n"):
-            body_lines.extend(wrap(para, body, body_size, max_w) or [""])
-        prepared.append((lab, body_lines))
-        content_h += len(lab) * (label_size + 2) + 2
-        content_h += len(body_lines) * (body_size + 2.5) + 8
+    if isinstance(stage_num, int):
+        title_full = f"Этап {stage_num}. {title}"
+        badge_text = str(stage_num)
+    else:
+        title_full = title
+        badge_text = "↔"
 
-    h = content_h + pad
+    title_wrapped = wrap(title_full, bold, title_size, max_w - 30)
+
+    content_blocks = []
+    content_h = 0
+    for block in script_lines:
+        lines = []
+        for para in block.split("\n"):
+            lines.extend(wrap(para, body, body_size, max_w) or [""])
+        content_blocks.append(lines)
+        content_h += len(lines) * (body_size + 2.8) + 5
+
+    header_h = 12 + len(title_wrapped) * (title_size + 2.5)
+    h = header_h + content_h + pad
     y_bottom = y_top - h
 
-    # Card
-    draw_round_rect(c, x, y_bottom, w, h, white, BORDER, 7)
-    # accent bar
+    draw_round_rect(c, x, y_bottom, w, h, white, BORDER, 8)
+
     c.setFillColor(accent)
-    c.rect(x, y_bottom, 4, h, fill=1, stroke=0)
+    c.roundRect(x, y_top - header_h, w, header_h, 8, fill=1, stroke=0)
+    c.rect(x, y_top - header_h, w, 10, fill=1, stroke=0)
 
-    y = y_top - pad
-    # title
-    c.setFillColor(NAVY)
-    c.setFont(bold, title_size)
-    for line in title_lines:
-        c.drawString(x + pad + 2, y - title_size, line)
-        y -= title_size + 3
-    y -= 4
-
-    for lab, body_lines in prepared:
-        # label chip background
-        chip_h = len(lab) * (label_size + 2) + 4
-        c.setFillColor(SOFT)
-        c.roundRect(x + pad, y - chip_h + 2, w - 2 * pad, chip_h, 3, fill=1, stroke=0)
-        c.setFillColor(TEAL)
-        c.setFont(bold, label_size)
-        yy = y - 2
-        for line in lab:
-            c.drawString(x + pad + 4, yy - label_size, line)
-            yy -= label_size + 2
-        y = yy - 4
-
-        c.setFillColor(DARK)
-        c.setFont(body, body_size)
-        for line in body_lines:
-            c.drawString(x + pad + 2, y - body_size, line)
-            y -= body_size + 2.5
-        y -= 6
-
-    return y_bottom
-
-
-def gate_box(c, x, y_top, w, text, fonts):
-    body, bold = fonts
-    pad = 6
-    size = 8.5
-    lines = wrap(text, bold, size, w - 2 * pad)
-    h = 10 + len(lines) * (size + 2.5) + pad
-    y_bottom = y_top - h
-    draw_round_rect(c, x, y_bottom, w, h, YELLOW, ORANGE, 5)
-    c.setFillColor(ORANGE)
-    c.setFont(bold, 7.5)
-    c.drawString(x + pad, y_top - 10, "ПЕРЕХОД НА СЛЕДУЮЩИЙ ЭТАП")
-    y = y_top - 14
-    c.setFillColor(DARK)
-    c.setFont(body, size)
-    for line in lines:
-        c.drawString(x + pad, y - size, line)
-        y -= size + 2.5
-    return y_bottom
-
-
-def header(c, page_w, page_h, fonts, subtitle):
-    body, bold = fonts
-    c.setFillColor(NAVY)
-    c.rect(0, page_h - 22 * mm, page_w, 22 * mm, fill=1, stroke=0)
+    badge_r = 9
+    bx = x + pad + badge_r
+    by = y_top - header_h / 2
     c.setFillColor(white)
-    c.setFont(bold, 14)
-    c.drawString(14 * mm, page_h - 10 * mm, "Блиц-запись — блок-схема холодного звонка")
-    c.setFont(body, 9)
-    c.drawString(14 * mm, page_h - 16 * mm, subtitle)
-    c.setFont(body, 8)
-    c.drawRightString(page_w - 14 * mm, page_h - 10 * mm, "Шпаргалка для менеджера")
-    c.drawRightString(page_w - 14 * mm, page_h - 16 * mm, "Цель звонка: запись на демонстрацию 15–20 минут")
+    c.circle(bx, by, badge_r, fill=1, stroke=0)
+    c.setFillColor(accent)
+    c.setFont(bold, 10)
+    c.drawCentredString(bx, by - 3.5, badge_text)
+
+    c.setFillColor(white)
+    c.setFont(bold, title_size)
+    ty = y_top - 10
+    for i, line in enumerate(title_wrapped):
+        indent = 28 if i == 0 else 12
+        c.drawString(x + pad + indent, ty - title_size, line)
+        ty -= title_size + 2.5
+
+    y = y_top - header_h - 7
+    c.setFillColor(DARK)
+    c.setFont(body, body_size)
+    for lines in content_blocks:
+        for line in lines:
+            c.drawString(x + pad, y - body_size, line)
+            y -= body_size + 2.8
+        y -= 3
+
+    return y_bottom, x + w / 2
 
 
-def footer(c, page_w, page_num, total, fonts):
-    body, bold = fonts
+def page_header(c, page_w, page_h, fonts):
+    _, bold = fonts
+    c.setFillColor(NAVY)
+    c.rect(0, page_h - 14 * mm, page_w, 14 * mm, fill=1, stroke=0)
+    c.setFillColor(white)
+    c.setFont(bold, 12)
+    c.drawString(12 * mm, page_h - 9 * mm, "Блиц-запись — блок-схема холодного звонка")
+
+
+def page_footer(c, page_w, n, total, fonts):
+    body, _ = fonts
     c.setFillColor(GRAY)
     c.setFont(body, 8)
-    c.drawCentredString(page_w / 2, 8 * mm, f"Страница {page_num} из {total}  ·  Группа компаний «Форус»  ·  «Блиц-запись»")
+    c.drawCentredString(page_w / 2, 6 * mm, f"{n} / {total}")
+
+
+def flow_strip(c, page_w, fonts, active=None):
+    """Bottom strip: 1→2→3→4→5 with arrows."""
+    _, bold = fonts
+    labels = [
+        (1, "Контакт"),
+        (2, "Потребность"),
+        (3, "Рассказ"),
+        (4, "Демонстрация"),
+        (5, "Если не записали"),
+    ]
+    margin = 18 * mm
+    usable = page_w - 2 * margin
+    y = 13 * mm
+    step = usable / (len(labels) - 1)
+    for i, (num, lab) in enumerate(labels):
+        x = margin + i * step
+        on = active is None or num in active
+        c.setFillColor(TEAL if on else GRAY)
+        c.circle(x, y + 9, 6, fill=1, stroke=0)
+        c.setFillColor(white)
+        c.setFont(bold, 8)
+        c.drawCentredString(x, y + 6, str(num))
+        c.setFillColor(NAVY if on else GRAY)
+        c.setFont(bold, 7)
+        c.drawCentredString(x, y - 2, lab)
+        if i < len(labels) - 1:
+            c.setStrokeColor(ARROW if on else GRAY)
+            c.setFillColor(ARROW if on else GRAY)
+            c.setLineWidth(1.6)
+            c.line(x + 8, y + 9, x + step - 8, y + 9)
+            path = c.beginPath()
+            path.moveTo(x + step - 8, y + 9)
+            path.lineTo(x + step - 13, y + 9 - 3)
+            path.lineTo(x + step - 13, y + 9 + 3)
+            path.close()
+            c.drawPath(path, fill=1, stroke=0)
 
 
 def build():
     fonts = setup_fonts()
-    body, bold = fonts
     page_w, page_h = landscape(A4)
-
-    # Content definition — human, no abbreviations (ЛПР kept as used)
-    stages_page1 = [
-        {
-            "title": "Этап 1. Первичный контакт / приветствие и презентация компании",
-            "sections": [
-                (
-                    "Что говорим",
-                    "Добрый день, [Имя Отчество]! Меня зовут [имя], компания «Форус». Я попал(а) к владельцу или руководителю?\n"
-                    "Если это ЛПР: есть две-три минуты? Хочу коротко рассказать, кто мы, и уточнить, как у вас устроена запись клиентов.\n"
-                    "Презентация: наша компания занимается автоматизацией записи клиентов и предлагает для этого удобный сервис — «Блиц-запись». Мы из группы компаний «Форус», работаем с бизнесом в сфере услуг.\n"
-                    "Переход к вопросам: расскажите, пожалуйста, как у вас сейчас записываются клиенты?",
-                ),
-                (
-                    "Что выясняем",
-                    "Это ЛПР или нужно перезвонить другому человеку?\nЕсть ли у собеседника две-три минуты сейчас?\nГотов ли человек коротко рассказать про текущую запись клиентов?",
-                ),
-            ],
-            "gate": "Есть контакт с ЛПР (или назначен перезвон с конкретным временем), и собеседник согласился ответить на вопросы про запись.",
-        },
-        {
-            "title": "Этап 2. Сбор потребности",
-            "sections": [
-                (
-                    "Что спрашиваем",
-                    "Как клиенты записываются сейчас: звонок, мессенджеры, соцсети или запись через интернет?\nКто ведёт расписание: владелец, администратор или мастер?\nЧем пользуются: тетрадь, таблица, «Юклиентс», «Дикиди» или другой сервис? Что нравится и что мешает?\nГде теряются клиенты: недозвоны, сообщения без ответа, двойные записи?\nЕсть ли напоминания о визите и насколько болезненны неявки?\nПишут ли вечером и в выходные, когда администратора нет?\nГде хранится база клиентов и история визитов?\nЧто больше всего отнимает время или нервы в записи и расписании?\nТему сейчас смотрят или «руки не доходят»?",
-                ),
-                (
-                    "Какую информацию фиксируем",
-                    "Канал записи · кто отвечает за расписание · текущий инструмент и боли по нему · потери заявок · неявки · запись вне рабочих часов · состояние базы · главная боль · готовность смотреть альтернативу.",
-                ),
-                (
-                    "Обязательно перед следующим этапом",
-                    "Повторяем услышанное своими словами: «Правильно понимаю: сейчас у вас [как записывают], больше всего мешает [боль], и важно [что хочет получить]. Верно?»",
-                ),
-            ],
-            "gate": "Клиент подтвердил резюме потребности («да, верно»). Есть хотя бы одна понятная боль или задача, к которой можно привязать рассказ о сервисе.",
-        },
-    ]
-
-    stages_page2 = [
-        {
-            "title": "Этап 3. Рассказ о «Блиц-записи» (только под боль клиента)",
-            "sections": [
-                (
-                    "Правило",
-                    "Называем два-три пункта из ответов клиента. Прайс не читаем. С текущим сервисом не спорим — предлагаем сравнить на демонстрации.",
-                ),
-                (
-                    "Какой тезис берём",
-                    "Теряют заявки / много звонков → клиент сам записывается через интернет, заявка сразу в календарь.\nПутаница в расписании → всё в одном месте, система не даёт задвоить запись.\nНеявки → автоматические напоминания, меньше простоев.\nБаза размазана → контакты и история визитов в одном сервисе.\nДорого / много лишнего → цена не от числа мастеров, перенос базы берём на себя, до шести месяцев в подарок при переходе.",
-                ),
-                (
-                    "Пример внедрения (по необходимости)",
-                    "Салон «Луна»: переход с «Юклиентс», экономия около трети в год, перенос базы под ключ.\nАвтомойка «Элис»: восемь постов, календарь под час пик, касса, шесть месяцев в подарок.",
-                ),
-            ],
-            "gate": "Клиент услышал ценность «под свою боль» и не закрылся. Можно переходить к приглашению на демонстрацию (даже если остались сомнения — их закрываем вопросом про время).",
-        },
-        {
-            "title": "Этап 4. Приглашение на демонстрацию",
-            "sections": [
-                (
-                    "Что говорим",
-                    "Давайте я вам просто покажу, как это выглядит. За 15–20 минут пройдёмся по календарю, записи и напоминаниям — уже на вашем формате. Когда удобнее: завтра до обеда или после? Или во вторник / в среду?",
-                ),
-                (
-                    "Если «надо подумать»",
-                    "Понимаю. Как раз поэтому и предлагаю короткую демонстрацию — посмотрите глазами, и уже после будет понятнее. Давайте поставим 15 минут на [день]?",
-                ),
-                (
-                    "Что фиксируем при согласии",
-                    "Дата и время · почта или мессенджер для ссылки · напоминание за день и за час.",
-                ),
-            ],
-            "gate": "УСПЕХ ЗВОНКА: назначены дата и время демонстрации, есть канал для ссылки.\nЕсли демонстрацию сейчас не ставят — обязателен следующий шаг: коммерческое предложение на почту и конкретное время перезвона.",
-        },
-    ]
-
-    stages_page3 = [
-        {
-            "title": "Если демонстрацию не ставят сразу",
-            "sections": [
-                (
-                    "Что говорим",
-                    "Хорошо, настаивать не буду. Зафиксирую, что для вас важно: [боль]. Могу скинуть короткое коммерческое предложение на почту и созвониться [день / время]. Какая почта удобнее?",
-                ),
-                (
-                    "Что обязательно сделать",
-                    "Письмо или материал · дата перезвона · комментарий в системе учёта. Звонок без следующего шага — потерянный контакт.",
-                ),
-            ],
-            "gate": "Есть понятный следующий шаг с датой. Иначе этап не закрыт.",
-        },
-        {
-            "title": "Частые возражения → куда возвращаем диалог",
-            "sections": [
-                (
-                    "Некогда / всё устраивает / пришлите на почту",
-                    "Короткая демонстрация в удобный слот · сравнение «как есть» и сервис · письмо + сразу время на просмотр.",
-                ),
-                (
-                    "Уже есть другой сервис / дорого / маленький бизнес",
-                    "Не спорим — зовём сравнить · цифры и цена не от числа мастеров · простой сценарий для небольшого бизнеса.",
-                ),
-                (
-                    "Страх переноса / сложно внедрять / нет сайта",
-                    "Перенос берём на себя · настраиваем сами · сайт не обязателен, достаточно ссылки в мессенджере и соцсетях.",
-                ),
-            ],
-            "gate": "После отработки возражения снова предлагаем конкретное время демонстрации (выбор из двух вариантов).",
-        },
-        {
-            "title": "Памятка на весь звонок",
-            "sections": [
-                (
-                    "Как ведём разговор",
-                    "Больше говорит клиент · после блока вопросов — пауза и слушаем · дольше 40–50 секунд подряд не говорим · тариф не продаём в холодном звонке · цену называем только если спросили.",
-                ),
-                (
-                    "Цель",
-                    "Не «продать подписку в звонке», а записать на демонстрацию сервиса на 15–20 минут.",
-                ),
-            ],
-            "gate": None,
-        },
-    ]
-
     c = canvas.Canvas(OUT, pagesize=landscape(A4))
-    pages = [
-        ("Лист 1: контакт и сбор потребности", stages_page1),
-        ("Лист 2: рассказ о сервисе и демонстрация", stages_page2),
-        ("Лист 3: если не записали сразу · возражения · правила", stages_page3),
-    ]
-    total = len(pages)
 
-    for page_idx, (subtitle, stages) in enumerate(pages, 1):
-        header(c, page_w, page_h, fonts, subtitle)
-        footer(c, page_w, page_idx, total, fonts)
+    margin = 12 * mm
+    top = page_h - 20 * mm
+    usable = page_w - 2 * margin
+    gap = 18 * mm
+    col_w = (usable - gap) / 2
+    left_x = margin
+    right_x = margin + col_w + gap
 
-        margin_x = 12 * mm
-        top = page_h - 28 * mm
-        gap = 6 * mm
-        usable_w = page_w - 2 * margin_x
+    # ----- PAGE 1: 1 → 2 -----
+    page_header(c, page_w, page_h, fonts)
+    page_footer(c, page_w, 1, 3, fonts)
+    flow_strip(c, page_w, fonts, active={1, 2})
 
-        # Two columns if 2 stages, or stack if 3
-        if len(stages) == 2:
-            col_w = (usable_w - gap) / 2
-            positions = [
-                (margin_x, top),
-                (margin_x + col_w + gap, top),
-            ]
-            for stage, (x, y) in zip(stages, positions):
-                yb = box_with_sections(
-                    c, x, y, col_w, stage["title"], stage["sections"], fonts
-                )
-                if stage.get("gate"):
-                    draw_arrow_down(c, x + col_w / 2, yb - 2, 12)
-                    gate_box(c, x, yb - 16, col_w, stage["gate"], fonts)
-        else:
-            # 3 stages stacked / two on top one bottom spanning
-            col_w = (usable_w - gap) / 2
-            yb1 = box_with_sections(
-                c, margin_x, top, col_w, stages[0]["title"], stages[0]["sections"], fonts
-            )
-            if stages[0].get("gate"):
-                draw_arrow_down(c, margin_x + col_w / 2, yb1 - 2, 10)
-                gate_box(c, margin_x, yb1 - 14, col_w, stages[0]["gate"], fonts)
+    stage_card(
+        c,
+        left_x,
+        top,
+        col_w,
+        1,
+        "Первичный контакт / приветствие и презентация компании",
+        [
+            "Добрый день, [Имя Отчество]! Меня зовут [имя], компания «Форус». Я попал(а) к владельцу или руководителю [салона / автомойки / школы / студии]?",
+            "Если не ЛПР: с кем лучше поговорить про запись клиентов и расписание? Как обратиться и когда перезвонить?",
+            "Если ЛПР: скажите, у вас есть две-три минуты? Хочу коротко рассказать, кто мы, и уточнить, как у вас сейчас устроена запись клиентов.",
+            "Наша компания занимается автоматизацией записи клиентов и предлагает для этого удобный сервис — «Блиц-запись». Мы из группы компаний «Форус», работаем с бизнесом в сфере услуг.",
+            "Расскажите, пожалуйста, как у вас сейчас записываются клиенты?",
+        ],
+        fonts,
+        TEAL,
+    )
 
-            yb2 = box_with_sections(
-                c,
-                margin_x + col_w + gap,
-                top,
-                col_w,
-                stages[1]["title"],
-                stages[1]["sections"],
-                fonts,
-                accent=ORANGE,
-            )
-            if stages[1].get("gate"):
-                draw_arrow_down(c, margin_x + col_w + gap + col_w / 2, yb2 - 2, 10)
-                gate_box(
-                    c,
-                    margin_x + col_w + gap,
-                    yb2 - 14,
-                    col_w,
-                    stages[1]["gate"],
-                    fonts,
-                )
+    stage_card(
+        c,
+        right_x,
+        top,
+        col_w,
+        2,
+        "Сбор потребности",
+        [
+            "Клиенты к вам чаще звонят, пишут в мессенджеры, приходят из соцсетей — или уже есть запись через интернет?",
+            "Кто у вас этим занимается — вы сами, администратор или мастер?",
+            "Чем пользуетесь для записи — тетрадью, таблицей, «Юклиентс», «Дикиди» или чем-то ещё? Что нравится, а что раздражает?",
+            "Бывает, что в час пик клиент не дозванивается, пишет в мессенджер — и запись пропадает? Как часто так бывает?",
+            "Вы напоминаете клиентам о визите? Насколько болезненны неявки?",
+            "Пишут или звонят вечером и в выходные, когда администратора нет?",
+            "Где хранится база клиентов и история визитов?",
+            "Что в записи и расписании сейчас больше всего отнимает время или нервы?",
+            "Эту тему сейчас смотрите, или руки не доходят?",
+            "Правильно понимаю: сейчас у вас [как записывают], больше всего мешает [боль], и важно [что хочет получить]. Верно?",
+        ],
+        fonts,
+        TEAL,
+    )
 
-            bottom_top = min(yb1, yb2) - 28 * mm
-            if bottom_top > 40 * mm:
-                yb3 = box_with_sections(
-                    c,
-                    margin_x,
-                    bottom_top,
-                    usable_w,
-                    stages[2]["title"],
-                    stages[2]["sections"],
-                    fonts,
-                    accent=NAVY,
-                )
+    draw_arrow_right(
+        c,
+        left_x + col_w + 2,
+        right_x - 2,
+        top - 45 * mm,
+        "этап 1 → этап 2",
+        fonts,
+    )
+    c.showPage()
 
-        # flow legend on page 1
-        if page_idx == 1:
-            c.setFillColor(GRAY)
-            c.setFont(body, 7.5)
-            c.drawString(
-                margin_x,
-                14 * mm,
-                "Читать сверху вниз внутри карточки. Жёлтый блок — условие, без которого на следующий этап не переходим.",
-            )
+    # ----- PAGE 2: 3 → 4 -----
+    page_header(c, page_w, page_h, fonts)
+    page_footer(c, page_w, 2, 3, fonts)
+    flow_strip(c, page_w, fonts, active={3, 4})
 
-        c.showPage()
+    stage_card(
+        c,
+        left_x,
+        top,
+        col_w,
+        3,
+        "Рассказ о «Блиц-записи»",
+        [
+            "Берём два-три пункта из ответов клиента. Прайс не читаем. С текущим сервисом не спорим.",
+            "Теряют заявки / много звонков: клиент сам записывается через интернет — с сайта, из соцсетей, с карт. Заявка сразу в календарь администратора.",
+            "Путаница в расписании: всё в одном месте по сотрудникам, кабинетам, постам. Система не даёт задвоить запись.",
+            "Неявки: сервис сам напоминает о визите — смс или мессенджер. Простоев становится меньше.",
+            "База размазана: контакты, история визитов, комментарии в одном месте.",
+            "Дорого / много лишнего: цена не растёт от числа мастеров. При переходе — до шести месяцев в подарок, базу переносим сами.",
+            "Если нужен общий рассказ: «Блиц-запись» — запись через интернет, расписание, база и напоминания в одном окне. Работает с компьютера, планшета и телефона. Мы помогаем подключить и настроить.",
+            "Примеры при необходимости: салон «Луна» — ушли с «Юклиентс», экономия около трети в год. Автомойка «Элис» — восемь постов, календарь под час пик, касса, шесть месяцев в подарок.",
+        ],
+        fonts,
+        TEAL,
+    )
 
+    stage_card(
+        c,
+        right_x,
+        top,
+        col_w,
+        4,
+        "Приглашение на демонстрацию",
+        [
+            "Давайте я вам просто покажу, как это выглядит. За 15–20 минут пройдёмся по календарю, записи и напоминаниям — уже на вашем формате. Когда удобнее: завтра до обеда или после? Или во вторник / в среду?",
+            "Если «надо подумать»: понимаю. Как раз поэтому и предлагаю короткую демонстрацию — посмотрите глазами, и уже после будет понятнее. Давайте поставим 15 минут на [день]?",
+            "Хорошо. Куда удобнее отправить ссылку — на почту или в мессенджер? Подтверждаем: [дата], [время], демонстрация «Блиц-запись», минут 15–20. Я за день и за час напомню. Хорошего дня, [Имя Отчество]!",
+        ],
+        fonts,
+        ORANGE,
+    )
+
+    draw_arrow_right(
+        c,
+        left_x + col_w + 2,
+        right_x - 2,
+        top - 45 * mm,
+        "этап 3 → этап 4",
+        fonts,
+    )
+    c.showPage()
+
+    # ----- PAGE 3: 5 + objections → back to 4 -----
+    page_header(c, page_w, page_h, fonts)
+    page_footer(c, page_w, 3, 3, fonts)
+    flow_strip(c, page_w, fonts, active={4, 5})
+
+    yb5, _ = stage_card(
+        c,
+        margin,
+        top,
+        usable,
+        5,
+        "Если демонстрацию сейчас не ставят",
+        [
+            "Хорошо, настаивать не буду. Зафиксирую, что для вас важно: [боль]. Могу скинуть короткое коммерческое предложение на почту и созвониться [день / время] — сравним с тем, как у вас сейчас. Какая почта удобнее?",
+        ],
+        fonts,
+        NAVY,
+    )
+
+    draw_arrow_down(
+        c,
+        page_w / 2,
+        yb5 - 2,
+        yb5 - 11 * mm,
+        "этап 5 → возражения / снова этап 4",
+        fonts,
+    )
+
+    stage_card(
+        c,
+        margin,
+        yb5 - 13 * mm,
+        usable,
+        "↔",
+        "Отработка возражений → снова этап 4 (демонстрация)",
+        [
+            "Некогда: предлагаю 15 минут демонстрации в удобное время. Когда спокойнее — утром или вечером?",
+            "Всё устраивает: часто смотрят, чтобы администратор меньше сидел на телефоне и записи вечером не терялись. Давайте за 15 минут сравните с тем, как у вас сейчас.",
+            "Уже есть другой сервис: не спорим. К нам приходят из‑за цены «за мастера» и тяжёлого интерфейса. Могу коротко показать разницу на демонстрации.",
+            "Дорого: ориентир от 1 500 рублей в месяц при оплате на два года, на год — около 1 900; от числа мастеров цена не растёт. На демонстрации прикинем под вас.",
+            "Маленький бизнес: как раз для небольшого — запись, календарь, база, напоминания без лишнего. На демонстрации покажем простой сценарий.",
+            "Клиенты всё равно звонят: часть будет звонить — это нормально. Сервис забирает тех, кто готов записаться сам. Администратор тоже может записывать, как раньше.",
+            "Боимся переносить базу: перенос берём на себя. Сначала смотрите в тестовом доступе.",
+            "Сложно внедрять: мы сами подключаем и настраиваем услуги, расписание, сотрудников, ссылки на запись.",
+            "Пришлите на почту: направлю. И давайте сразу поставим 15 минут — так материал не потеряется. Когда удобно?",
+            "Надо посоветоваться: пригласим партнёра или администратора сразу на демонстрацию. Когда вам двоим удобно?",
+            "Тетрадь / таблица: обычно ломается в час пик. «Блиц» — тот же журнал в телефоне и на компьютере. Посмотрите 15 минут.",
+            "Нет сайта: сайт не обязателен. Ссылку ставят в мессенджер, соцсети, на карты.",
+            "После любого возражения: когда удобнее на демонстрацию — завтра до обеда или после?",
+        ],
+        fonts,
+        ORANGE,
+    )
+
+    c.showPage()
     c.save()
-    # ascii copy
-    import shutil
-
     shutil.copy(OUT, ASCII_OUT)
     print("Saved", OUT)
     print("Saved", ASCII_OUT)
