@@ -462,7 +462,6 @@ def build_script_sheet(wb):
         widths,
     )
 
-    ws.freeze_panes = "A3"
     return ws
 
 
@@ -566,7 +565,6 @@ def build_objections_sheet(wb):
     for i, (obj, answer, goal) in enumerate(rows, 3):
         add_row(ws, i, [obj, answer, goal], ["stage", "body", "note"], widths)
 
-    ws.freeze_panes = "A3"
     return ws
 
 
@@ -650,7 +648,6 @@ def build_product_sheet(wb):
     for i, (k, v) in enumerate(facts, 3):
         add_row(ws, i, [k, v], ["stage", "body"], widths)
 
-    ws.freeze_panes = "A3"
     return ws
 
 
