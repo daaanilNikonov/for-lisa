@@ -5,14 +5,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "epd-competence-center"
+ASSETS = OUT_DIR / "assets"
 PHOTO = OUT_DIR / "yuliana_cutout.png"
 PHOTO_FALLBACK = OUT_DIR / "yuliana_photo.jpg"
+BOLT = ASSETS / "forus_bolt.png"
 PDF_OUT = OUT_DIR / "Yuliana_Yunusova_1C_EPD_competence_card.pdf"
 PNG_OUT = OUT_DIR / "Yuliana_Yunusova_1C_EPD_competence_card.png"
 
@@ -41,9 +43,21 @@ def circle_mask(size: int) -> Image.Image:
     return m
 
 
+def darken_photo(img: Image.Image, exposure: float = 0.78) -> Image.Image:
+    """Lower exposure so the portrait fits the dark Forus theme."""
+    rgb = img.convert("RGB")
+    rgb = ImageEnhance.Brightness(rgb).enhance(exposure)
+    rgb = ImageEnhance.Contrast(rgb).enhance(0.95)
+    if img.mode == "RGBA":
+        out = rgb.convert("RGBA")
+        out.putalpha(img.getchannel("A"))
+        return out
+    return rgb.convert("RGBA")
+
+
 def prepare_avatar(src: Path, size: int = 520) -> Image.Image:
     img = Image.open(src).convert("RGBA")
-    # Prefer upper body / face for circular crop
+    img = darken_photo(img, exposure=0.62)
     w, h = img.size
     side = min(w, h)
     left = (w - side) // 2
@@ -53,15 +67,64 @@ def prepare_avatar(src: Path, size: int = 520) -> Image.Image:
     img = img.crop((left, top, left + side, top + side)).resize(
         (size, size), Image.Resampling.LANCZOS
     )
+
+    # Soft Forus bolt overlaid on the portrait (clipped to circle)
+    bolt = Image.open(BOLT).convert("RGBA")
+    bw = int(size * 0.95)
+    bh = int(bw * bolt.height / bolt.width)
+    bolt = bolt.resize((bw, bh), Image.Resampling.LANCZOS)
+    r, g, b, a = bolt.split()
+    a = a.point(lambda v: int(v * 0.42))
+    bolt = Image.merge("RGBA", (r, g, b, a)).filter(ImageFilter.GaussianBlur(0.8))
+    glow = bolt.split()[-1].point(lambda v: int(v * 0.7))
+    glow_img = Image.new("RGBA", bolt.size, BLUE + (0,))
+    glow_img.putalpha(glow)
+    glow_img = glow_img.filter(ImageFilter.GaussianBlur(18))
+
+    photo_layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    photo_layer.paste(img, (0, 0))
+    ox = int(size * 0.15)
+    oy = int(size * 0.05) - int((bh - size) / 2)
+    photo_layer.alpha_composite(glow_img, (ox - 10, oy))
+    photo_layer.alpha_composite(bolt, (ox, oy))
+
     mask = circle_mask(size)
     out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    out.paste(img, (0, 0), mask)
-    # Soft blue ring
+    out.paste(photo_layer, (0, 0), mask)
+
     ring = Image.new("RGBA", (size + 16, size + 16), (0, 0, 0, 0))
     rd = ImageDraw.Draw(ring)
-    rd.ellipse((0, 0, size + 15, size + 15), outline=BLUE + (230,), width=6)
+    rd.ellipse((0, 0, size + 15, size + 15), outline=BLUE + (200,), width=5)
     ring.paste(out, (8, 8), out)
     return ring
+
+
+def soft_bolt_layer(target_h: int = H) -> Image.Image:
+    """Forus lightning bolt with soft glow, as on dark presentation slides."""
+    bolt = Image.open(BOLT).convert("RGBA")
+    # Scale to card height, keep aspect
+    ratio = target_h / bolt.height
+    new_w = int(bolt.width * ratio * 0.92)
+    bolt = bolt.resize((new_w, int(target_h * 0.92)), Image.Resampling.LANCZOS)
+
+    # Soften edges / make «мягкая молния»
+    soft = bolt.filter(ImageFilter.GaussianBlur(1.2))
+    # Glow underneath
+    glow = bolt.split()[-1].point(lambda a: int(a * 0.55))
+    glow_rgb = Image.new("RGBA", bolt.size, BLUE + (0,))
+    glow_rgb.putalpha(glow)
+    glow_rgb = glow_rgb.filter(ImageFilter.GaussianBlur(28))
+
+    # Slightly transparent solid bolt
+    solid = soft.copy()
+    r, g, b, a = solid.split()
+    a = a.point(lambda v: int(v * 0.55))
+    solid = Image.merge("RGBA", (r, g, b, a))
+
+    layer = Image.new("RGBA", (new_w + 80, target_h), (0, 0, 0, 0))
+    layer.alpha_composite(glow_rgb, (40, int((target_h - bolt.height) / 2)))
+    layer.alpha_composite(solid, (40, int((target_h - bolt.height) / 2)))
+    return layer
 
 
 def draw_card() -> Image.Image:
@@ -83,7 +146,14 @@ def draw_card() -> Image.Image:
     draw.rectangle([0, H - 56, W, H], fill=(20, 20, 20))
     draw.rectangle([0, H - 56, 280, H - 52], fill=BLUE)
 
+    canvas_rgba = canvas_img.convert("RGBA")
+
+    # Soft Forus bolt on the right (presentation style)
+    bolt = soft_bolt_layer(H)
+    canvas_rgba.alpha_composite(bolt, (W - bolt.width + 40, 0))
+
     # Brand
+    draw = ImageDraw.Draw(canvas_rgba)
     brand = font(FONT_BOLD, 28)
     draw.text((64, 40), "ГК ФОРУС", font=brand, fill=WHITE)
     sub = font(FONT_REG, 18)
@@ -92,16 +162,14 @@ def draw_card() -> Image.Image:
     # Avatar
     photo_path = PHOTO if PHOTO.exists() else PHOTO_FALLBACK
     avatar = prepare_avatar(photo_path, 500)
-    # subtle glow behind avatar
     glow = Image.new("RGBA", (560, 560), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
-    gd.ellipse((20, 20, 540, 540), fill=BLUE + (40,))
+    gd.ellipse((20, 20, 540, 540), fill=BLUE + (36,))
     glow = glow.filter(ImageFilter.GaussianBlur(28))
-    canvas_rgba = canvas_img.convert("RGBA")
     canvas_rgba.alpha_composite(glow, (70, 170))
     canvas_rgba.alpha_composite(avatar, (98, 188))
-    canvas_img = canvas_rgba.convert("RGB")
-    draw = ImageDraw.Draw(canvas_img)
+
+    draw = ImageDraw.Draw(canvas_rgba)
 
     # Text block
     tx = 680
@@ -120,7 +188,7 @@ def draw_card() -> Image.Image:
 
     body = font(FONT_REG, 22)
     lines = [
-        "Кратко: эксперт по продажам и сложным",
+        "Эксперт по продажам и сложным",
         "клиентским кейсам сервиса 1С-ЭПД.",
         "",
         "Можно обращаться по вопросам:",
@@ -132,7 +200,7 @@ def draw_card() -> Image.Image:
     ]
     y = ty + 200
     for line in lines:
-        color = WHITE if line.startswith("Можно") or line.startswith("Кратко") else SOFT
+        color = WHITE if line.startswith("Можно") or line.startswith("Эксперт") else SOFT
         if line.startswith("•"):
             color = WHITE
         draw.text((tx, y), line, font=body, fill=color)
@@ -148,11 +216,10 @@ def draw_card() -> Image.Image:
     )
     draw.text((W - 64, H - 38), "forus.ru", font=foot, fill=BLUE, anchor="rm")
 
-    return canvas_img
+    return canvas_rgba.convert("RGB")
 
 
 def export_pdf(img: Image.Image) -> None:
-    # Physical size ~ 180×101 mm (landscape announcement card)
     width_pt = 510  # ~180 mm
     height_pt = 287  # ~101 mm
     c = canvas.Canvas(str(PDF_OUT), pagesize=(width_pt, height_pt))
