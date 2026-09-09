@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""PDF-блок-схема: скрипт клиентов без ИТС."""
+"""
+Вертикальная блок-схема «Скрипт клиентов без ИТС»
+Формат: Н → уровень → стрелка → уровень → … → К
+Под каждым уровнем — вопросы / тезисы скрипта.
+"""
 
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from reportlab.lib.colors import HexColor, white
+from reportlab.lib.colors import HexColor, white, black
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -18,31 +22,20 @@ NAVY = HexColor("#1B3A4B")
 TEAL = HexColor("#2A9D8F")
 ORANGE = HexColor("#E76F51")
 BLUE = HexColor("#3D7EA6")
-BORDER = HexColor("#C5CDD4")
+LIGHT = HexColor("#F0F4F5")
+SOFT = HexColor("#E8F5F3")
+YELLOW = HexColor("#FFF6E8")
+BORDER = HexColor("#B8C2CA")
 DARK = HexColor("#243038")
-ARROW = HexColor("#2A9D8F")
-GRAY = HexColor("#7A8792")
+GRAY = HexColor("#6B7680")
 
-FONT_CANDIDATES = [
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-]
-FONT_BOLD_CANDIDATES = [
-    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-]
-
-
-def find_font(paths):
-    for p in paths:
-        if os.path.exists(p):
-            return p
-    raise SystemExit("No Cyrillic TTF font found")
+FONT_REG = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 
 def setup_fonts():
-    pdfmetrics.registerFont(TTFont("Body", find_font(FONT_CANDIDATES)))
-    pdfmetrics.registerFont(TTFont("BodyBold", find_font(FONT_BOLD_CANDIDATES)))
+    pdfmetrics.registerFont(TTFont("Body", FONT_REG))
+    pdfmetrics.registerFont(TTFont("BodyBold", FONT_BOLD))
     return "Body", "BodyBold"
 
 
@@ -50,344 +43,492 @@ def wrap(text, font, size, max_w):
     return simpleSplit(text, font, size, max_w)
 
 
-def draw_round_rect(c, x, y, w, h, fill, stroke=BORDER, radius=8):
+def draw_circle_node(c, cx, cy, r, letter, fonts, fill=TEAL):
+    body, bold = fonts
     c.setFillColor(fill)
-    c.setStrokeColor(stroke)
-    c.setLineWidth(1.2)
-    c.roundRect(x, y, w, h, radius, fill=1, stroke=1)
+    c.setStrokeColor(fill)
+    c.circle(cx, cy, r, fill=1, stroke=0)
+    c.setFillColor(white)
+    c.setFont(bold, 14)
+    c.drawCentredString(cx, cy - 5, letter)
 
 
-def draw_arrow_right(c, x_from, x_to, y, label=None, fonts=None):
-    c.setStrokeColor(ARROW)
-    c.setFillColor(ARROW)
-    c.setLineWidth(2.2)
-    tip = x_to - 2
-    c.line(x_from, y, tip - 9, y)
-    path = c.beginPath()
-    path.moveTo(tip, y)
-    path.lineTo(tip - 10, y - 5)
-    path.lineTo(tip - 10, y + 5)
-    path.close()
-    c.drawPath(path, fill=1, stroke=0)
-    if label and fonts:
-        _, bold = fonts
-        c.setFillColor(TEAL)
-        c.setFont(bold, 7.5)
-        c.drawCentredString((x_from + tip) / 2, y + 7, label)
-
-
-def draw_arrow_down(c, x, y_from, y_to, label=None, fonts=None):
-    c.setStrokeColor(ARROW)
-    c.setFillColor(ARROW)
-    c.setLineWidth(2.2)
-    tip = y_to + 2
-    c.line(x, y_from, x, tip + 9)
+def draw_arrow_v(c, x, y_from, y_to):
+    """Стрелка вниз от y_from к y_to."""
+    c.setStrokeColor(TEAL)
+    c.setFillColor(TEAL)
+    c.setLineWidth(1.8)
+    tip = y_to + 1
+    c.line(x, y_from, x, tip + 8)
     path = c.beginPath()
     path.moveTo(x, tip)
-    path.lineTo(x - 5, tip + 10)
-    path.lineTo(x + 5, tip + 10)
+    path.lineTo(x - 4.5, tip + 8)
+    path.lineTo(x + 4.5, tip + 8)
     path.close()
     c.drawPath(path, fill=1, stroke=0)
-    if label and fonts:
-        _, bold = fonts
-        c.setFillColor(TEAL)
-        c.setFont(bold, 7.5)
-        c.drawCentredString(x + 36, (y_from + tip) / 2 - 2, label)
 
 
-def stage_card(c, x, y_top, w, stage_num, title, script_lines, fonts, accent=TEAL):
+def draw_level_box(c, x, y_top, w, title, fonts, accent=TEAL):
+    """Прямоугольник уровня (как в рукописной схеме). Возвращает y_bottom, cx."""
     body, bold = fonts
-    pad = 9
-    title_size = 10.5
-    body_size = 8.2
-    max_w = w - 2 * pad
-
-    if isinstance(stage_num, int):
-        title_full = f"Этап {stage_num}. {title}"
-        badge_text = str(stage_num)
-    else:
-        title_full = title
-        badge_text = str(stage_num)[:2]
-
-    title_wrapped = wrap(title_full, bold, title_size, max_w - 28)
-
-    content_blocks = []
-    content_h = 0
-    for block in script_lines:
-        lines = []
-        for para in block.split("\n"):
-            lines.extend(wrap(para, body, body_size, max_w) or [""])
-        content_blocks.append(lines)
-        content_h += len(lines) * (body_size + 2.6) + 4.5
-
-    header_h = 11 + len(title_wrapped) * (title_size + 2.4)
-    h = header_h + content_h + pad
+    pad_x = 10
+    title_size = 12
+    lines = wrap(title, bold, title_size, w - 2 * pad_x)
+    h = 14 + len(lines) * (title_size + 3)
     y_bottom = y_top - h
 
-    draw_round_rect(c, x, y_bottom, w, h, white, BORDER, 8)
-
     c.setFillColor(accent)
-    c.roundRect(x, y_top - header_h, w, header_h, 8, fill=1, stroke=0)
-    c.rect(x, y_top - header_h, w, 10, fill=1, stroke=0)
-
-    badge_r = 8.5
-    bx = x + pad + badge_r
-    by = y_top - header_h / 2
-    c.setFillColor(white)
-    c.circle(bx, by, badge_r, fill=1, stroke=0)
-    c.setFillColor(accent)
-    c.setFont(bold, 9.5)
-    c.drawCentredString(bx, by - 3.2, badge_text)
+    c.setStrokeColor(accent)
+    c.setLineWidth(1.5)
+    c.roundRect(x, y_bottom, w, h, 6, fill=1, stroke=0)
 
     c.setFillColor(white)
     c.setFont(bold, title_size)
-    ty = y_top - 9
-    for i, line in enumerate(title_wrapped):
-        indent = 26 if i == 0 else 10
-        c.drawString(x + pad + indent, ty - title_size, line)
-        ty -= title_size + 2.4
-
-    y = y_top - header_h - 6
-    c.setFillColor(DARK)
-    c.setFont(body, body_size)
-    for lines in content_blocks:
-        for line in lines:
-            c.drawString(x + pad, y - body_size, line)
-            y -= body_size + 2.6
-        y -= 3
-
+    ty = y_top - 10
+    for line in lines:
+        c.drawCentredString(x + w / 2, ty - title_size, line)
+        ty -= title_size + 3
     return y_bottom, x + w / 2
 
 
-def page_header(c, page_w, page_h, fonts):
-    _, bold = fonts
+def draw_questions_block(c, x, y_top, w, items, fonts, title="Вопросы / тезисы"):
+    """
+    Блок под уровнем: список вопросов/тезисов.
+    items: list of strings
+    Returns y_bottom
+    """
+    body, bold = fonts
+    pad = 8
+    title_size = 8
+    body_size = 8
+    max_w = w - 2 * pad - 10
+
+    prepared = []
+    content_h = 6 + title_size + 4
+    for item in items:
+        lines = wrap("• " + item, body, body_size, max_w)
+        prepared.append(lines)
+        content_h += len(lines) * (body_size + 2.4) + 3
+
+    h = content_h + pad
+    y_bottom = y_top - h
+
+    c.setFillColor(LIGHT)
+    c.setStrokeColor(BORDER)
+    c.setLineWidth(0.8)
+    c.roundRect(x, y_bottom, w, h, 5, fill=1, stroke=1)
+
+    c.setFillColor(TEAL)
+    c.setFont(bold, title_size)
+    c.drawString(x + pad, y_top - title_size - 4, title)
+
+    y = y_top - title_size - 10
+    c.setFillColor(DARK)
+    c.setFont(body, body_size)
+    for lines in prepared:
+        for line in lines:
+            c.drawString(x + pad, y - body_size, line)
+            y -= body_size + 2.4
+        y -= 2
+
+    return y_bottom
+
+
+def draw_branch_block(c, x, y_top, w, rows, fonts, title="Если клиент говорит → что говорим → куда дальше"):
+    """
+    Таблица-навигатор под уровнем.
+    rows: list of (client, say, next_step)
+    """
+    body, bold = fonts
+    pad = 6
+    title_size = 8
+    cell_size = 7.2
+    col_w = [(w - 2 * pad) * 0.28, (w - 2 * pad) * 0.42, (w - 2 * pad) * 0.30]
+
+    # measure
+    prepared = []
+    content_h = 8 + title_size + 6
+    # header row
+    headers = ["Клиент говорит", "Что говорим", "Дальше"]
+    header_lines = [wrap(h, bold, cell_size, col_w[i] - 4) for i, h in enumerate(headers)]
+    header_h = max(len(hl) for hl in header_lines) * (cell_size + 2) + 4
+    content_h += header_h + 2
+
+    for client, say, nxt in rows:
+        cells = [
+            wrap(client, body, cell_size, col_w[0] - 4),
+            wrap(say, body, cell_size, col_w[1] - 4),
+            wrap(nxt, body, cell_size, col_w[2] - 4),
+        ]
+        rh = max(len(x) for x in cells) * (cell_size + 2) + 4
+        prepared.append((cells, rh))
+        content_h += rh
+
+    h = content_h + pad
+    y_bottom = y_top - h
+
+    c.setFillColor(YELLOW)
+    c.setStrokeColor(BORDER)
+    c.setLineWidth(0.8)
+    c.roundRect(x, y_bottom, w, h, 5, fill=1, stroke=1)
+
+    c.setFillColor(ORANGE)
+    c.setFont(bold, title_size)
+    c.drawString(x + pad, y_top - title_size - 3, title)
+
+    y = y_top - title_size - 8
+
+    # header
+    c.setFillColor(HexColor("#F3D9C0"))
+    c.rect(x + pad, y - header_h, w - 2 * pad, header_h, fill=1, stroke=0)
     c.setFillColor(NAVY)
-    c.rect(0, page_h - 14 * mm, page_w, 14 * mm, fill=1, stroke=0)
+    c.setFont(bold, cell_size)
+    cx = x + pad
+    for i, hl in enumerate(header_lines):
+        yy = y - 3
+        for line in hl:
+            c.drawString(cx + 2, yy - cell_size, line)
+            yy -= cell_size + 2
+        cx += col_w[i]
+    y -= header_h
+
+    # rows
+    for idx, (cells, rh) in enumerate(prepared):
+        if idx % 2 == 0:
+            c.setFillColor(white)
+        else:
+            c.setFillColor(HexColor("#FFFBF3"))
+        c.rect(x + pad, y - rh, w - 2 * pad, rh, fill=1, stroke=0)
+        # separators
+        c.setStrokeColor(BORDER)
+        c.setLineWidth(0.4)
+        c.line(x + pad, y - rh, x + w - pad, y - rh)
+
+        c.setFillColor(DARK)
+        c.setFont(body, cell_size)
+        cx = x + pad
+        for i, cell_lines in enumerate(cells):
+            yy = y - 3
+            for line in cell_lines:
+                c.drawString(cx + 2, yy - cell_size, line)
+                yy -= cell_size + 2
+            cx += col_w[i]
+        y -= rh
+
+    return y_bottom
+
+
+def new_page(c, page_w, page_h, fonts, page_num, total, continue_flow=False):
+    body, bold = fonts
+    c.setFillColor(NAVY)
+    c.rect(0, page_h - 16 * mm, page_w, 16 * mm, fill=1, stroke=0)
     c.setFillColor(white)
-    c.setFont(bold, 12)
-    c.drawString(12 * mm, page_h - 9 * mm, "Скрипт клиентов без ИТС — блок-схема звонка")
+    c.setFont(bold, 13)
+    c.drawCentredString(page_w / 2, page_h - 10 * mm, "Скрипт клиентов без ИТС")
+    c.setFont(body, 8)
+    c.drawCentredString(page_w / 2, page_h - 14 * mm, "блок-схема звонка")
 
-
-def page_footer(c, page_w, n, total, fonts):
-    body, _ = fonts
     c.setFillColor(GRAY)
     c.setFont(body, 8)
-    c.drawCentredString(page_w / 2, 6 * mm, f"{n} / {total}")
+    c.drawCentredString(page_w / 2, 8 * mm, f"{page_num} / {total}")
 
-
-def flow_strip(c, page_w, fonts, active=None):
-    _, bold = fonts
-    labels = [
-        (1, "Открытие"),
-        (2, "Инфоповод"),
-        (3, "По ответам"),
-        (4, "Углубление"),
-        (5, "Предложение"),
-        (6, "Возражения"),
-    ]
-    margin = 14 * mm
-    usable = page_w - 2 * margin
-    y = 13 * mm
-    step = usable / (len(labels) - 1)
-    for i, (num, lab) in enumerate(labels):
-        x = margin + i * step
-        on = active is None or num in active
-        c.setFillColor(TEAL if on else GRAY)
-        c.circle(x, y + 9, 5.5, fill=1, stroke=0)
-        c.setFillColor(white)
-        c.setFont(bold, 7.5)
-        c.drawCentredString(x, y + 6.2, str(num))
-        c.setFillColor(NAVY if on else GRAY)
-        c.setFont(bold, 6.5)
-        c.drawCentredString(x, y - 2, lab)
-        if i < len(labels) - 1:
-            c.setStrokeColor(ARROW if on else GRAY)
-            c.setFillColor(ARROW if on else GRAY)
-            c.setLineWidth(1.5)
-            c.line(x + 7, y + 9, x + step - 7, y + 9)
-            path = c.beginPath()
-            path.moveTo(x + step - 7, y + 9)
-            path.lineTo(x + step - 12, y + 9 - 3)
-            path.lineTo(x + step - 12, y + 9 + 3)
-            path.close()
-            c.drawPath(path, fill=1, stroke=0)
+    if continue_flow:
+        # small note that flow continues
+        c.setFillColor(TEAL)
+        c.setFont(bold, 8)
+        c.drawCentredString(page_w / 2, page_h - 20 * mm, "↓ продолжение схемы")
 
 
 def build():
     fonts = setup_fonts()
-    page_w, page_h = landscape(A4)
-    c = canvas.Canvas(OUT, pagesize=landscape(A4))
+    body, bold = fonts
+    page_w, page_h = A4  # portrait — вертикальная схема
+    c = canvas.Canvas(OUT, pagesize=A4)
 
-    margin = 11 * mm
-    top = page_h - 20 * mm
-    usable = page_w - 2 * margin
-    gap = 16 * mm
-    col_w = (usable - gap) / 2
-    left_x = margin
-    right_x = margin + col_w + gap
+    margin_x = 18 * mm
+    box_w = page_w - 2 * margin_x
+    cx = page_w / 2
+    total_pages = 3
 
-    # ========== PAGE 1: 1 → 2 ==========
-    page_header(c, page_w, page_h, fonts)
-    page_footer(c, page_w, 1, 3, fonts)
-    flow_strip(c, page_w, fonts, active={1, 2})
+    # ===================== PAGE 1 =====================
+    new_page(c, page_w, page_h, fonts, 1, total_pages)
+    y = page_h - 24 * mm
 
-    stage_card(
+    # Title label like "Вечер" in the sketch
+    c.setFillColor(NAVY)
+    c.setFont(bold, 11)
+    c.drawCentredString(cx, y, "Звонок клиенту без ИТС")
+    y -= 10 * mm
+
+    # Н — начало
+    draw_circle_node(c, cx, y - 7, 8, "Н", fonts, TEAL)
+    y -= 7 + 8
+    draw_arrow_v(c, cx, y, y - 8 * mm)
+    y -= 8 * mm
+
+    # --- Уровень 1: Открытие ---
+    y, _ = draw_level_box(c, margin_x, y, box_w, "1. Открытие", fonts, TEAL)
+    draw_arrow_v(c, cx, y, y - 4 * mm)
+    y -= 4 * mm
+    y = draw_questions_block(
         c,
-        left_x,
-        top,
-        col_w,
-        1,
-        "Открытие",
+        margin_x + 6 * mm,
+        y,
+        box_w - 12 * mm,
         [
             "Добрый день! [Имя], компания [Название]. Удобно сейчас на пару минут?",
         ],
         fonts,
-        TEAL,
+        "Что говорим",
     )
+    draw_arrow_v(c, cx, y, y - 7 * mm)
+    y -= 7 * mm
 
-    stage_card(
+    # --- Уровень 2: Инфоповод ---
+    y, _ = draw_level_box(c, margin_x, y, box_w, "2. Инфоповод", fonts, TEAL)
+    draw_arrow_v(c, cx, y, y - 4 * mm)
+    y -= 4 * mm
+    y = draw_questions_block(
         c,
-        right_x,
-        top,
-        col_w,
-        2,
-        "Инфоповод",
+        margin_x + 6 * mm,
+        y,
+        box_w - 12 * mm,
         [
             "Вы подключали ЭДО, из других продуктов ничего не брали. Хочу уточнить — как у вас учёт организован, есть 1С?",
         ],
         fonts,
-        TEAL,
+        "Что говорим / спрашиваем",
     )
+    draw_arrow_v(c, cx, y, y - 7 * mm)
+    y -= 7 * mm
 
-    draw_arrow_right(
-        c,
-        left_x + col_w + 2,
-        right_x - 2,
-        top - 28 * mm,
-        "этап 1 → этап 2",
-        fonts,
+    # --- Уровень 3 header, table starts ---
+    y, _ = draw_level_box(
+        c, margin_x, y, box_w, "3. Навигатор по ответам клиента", fonts, BLUE
     )
+    draw_arrow_v(c, cx, y, y - 4 * mm)
+    y -= 4 * mm
 
-    # Down arrow hint to page 2
-    c.setFillColor(TEAL)
-    c.setFont("BodyBold", 9)
-    c.drawCentredString(page_w / 2, 22 * mm, "далее → этап 3. Навигатор по ответам клиента")
-
-    c.showPage()
-
-    # ========== PAGE 2: stage 3 navigator ==========
-    page_header(c, page_w, page_h, fonts)
-    page_footer(c, page_w, 2, 3, fonts)
-    flow_strip(c, page_w, fonts, active={3})
-
-    # Full width navigator card
-    stage_card(
-        c,
-        margin,
-        top,
-        usable,
-        3,
-        "Навигатор по ответам клиента",
-        [
-            "«Да, есть 1С» → «В каком формате: локально или облако? Сопровождение есть?» → переходи к этапу 4 «Углубление».",
-            "«1С: Бухгалтерия / УТ / другая конфигурация» → «Поняла, спасибо. А обновления кто делает?» → 2–3 вопроса из этапа 4 → затем этап 5, предложение ИТС.",
-            "«1С в облаке» → «А вот когда возникают вопросы, вы решаете их с помощью своих программистов или куда-то обращаетесь?» Слушаем ответ. «Поняла вас. В двух словах: мы официальный партнёр 1С более 30 лет, работаем по всей России. У нас опытные специалисты. Предлагаю рассмотреть условия нашего сопровождения.» → этап 5.",
-            "«Нет 1С / Excel / другая программа» → «Поняла. А бухгалтерию сами ведёте или на аутсорсе?» Уточни потребность. Если аутсорс — спроси, кто отвечает за учёт.",
-            "«Не знаю / уточню» → «А кто у вас за это отвечает? Может, с ним поговорить?» Запиши контакт ЛПР → завершай.",
-            "«Всё устраивает, ничего не надо» → «Рада слышать! А сопровождение есть? Часто при сбое теряют время и деньги.» Если нет сопровождения → предложи продукт и ИТС. Если есть → оставь контакты.",
-            "«Дорого» → «ИТС от Х руб — дешевле одного вызова специалиста» → отправь коммерческое предложение на почту.",
-            "«Пришлите на почту» → «Конечно отправлю. А вы сами принимаете решение или с кем-то согласуете? Как вам в целом моё предложение?» Запиши почту и роль → договорись о следующем контакте.",
-            "«Подумаю» → «Хорошо. Пришлю материал. Как вам в целом моё предложение?» Отработай возражение, предложи встречу, зафиксируй дату.",
-            "«Нет» (отказ) → «Спасибо за честность. Если что, мы на связи. Давайте предложение направлю, ознакомитесь, и позже свяжусь?» Заверши звонок, сохрани контакт, отправь коммерческое предложение.",
-        ],
-        fonts,
-        BLUE,
-    )
+    # First half of navigator rows (fit on page 1)
+    rows_p1 = [
+        (
+            "«Да, есть 1С»",
+            "«В каком формате: локально или облако? Сопровождение есть?»",
+            "→ уровень 4 «Углубление»",
+        ),
+        (
+            "«1С: Бухгалтерия / УТ / другая»",
+            "«Поняла, спасибо. А обновления кто делает?»",
+            "→ 2–3 вопроса уровня 4 → уровень 5",
+        ),
+        (
+            "«1С в облаке»",
+            "«Когда возникают вопросы — решаете со своими программистами или куда-то обращаетесь?» Слушаем. «Мы официальный партнёр 1С более 30 лет, работаем по всей России. Предлагаю рассмотреть условия сопровождения.»",
+            "→ уровень 5 «Предложение»",
+        ),
+        (
+            "«Нет 1С / Excel / другая программа»",
+            "«Поняла. А бухгалтерию сами ведёте или на аутсорсе?»",
+            "Уточни потребность; если аутсорс — кто отвечает за учёт",
+        ),
+    ]
+    y = draw_branch_block(c, margin_x + 4 * mm, y, box_w - 8 * mm, rows_p1, fonts)
 
     c.setFillColor(TEAL)
-    c.setFont("BodyBold", 9)
-    c.drawCentredString(
-        page_w / 2,
-        22 * mm,
-        "если подтвердили 1С → этап 4 «Углубление» → этап 5 «Предложение»",
-    )
-
+    c.setFont(bold, 8)
+    c.drawCentredString(cx, 14 * mm, "↓ продолжение на следующей странице")
     c.showPage()
 
-    # ========== PAGE 3: 4 → 5, then objections ==========
-    page_header(c, page_w, page_h, fonts)
-    page_footer(c, page_w, 3, 3, fonts)
-    flow_strip(c, page_w, fonts, active={4, 5, 6})
+    # ===================== PAGE 2 =====================
+    new_page(c, page_w, page_h, fonts, 2, total_pages, continue_flow=True)
+    y = page_h - 26 * mm
 
-    yb4, _ = stage_card(
+    # continuation arrow from previous
+    draw_circle_node(c, cx, y - 5, 5, "↓", fonts, GRAY)
+    y -= 5 + 5
+    draw_arrow_v(c, cx, y, y - 6 * mm)
+    y -= 6 * mm
+
+    c.setFillColor(BLUE)
+    c.setFont(bold, 9)
+    c.drawCentredString(cx, y, "уровень 3 — продолжение")
+    y -= 5 * mm
+
+    rows_p2 = [
+        (
+            "«Не знаю / уточню»",
+            "«А кто у вас за это отвечает? Может, с ним поговорить?»",
+            "Запиши контакт ЛПР → завершай",
+        ),
+        (
+            "«Всё устраивает, ничего не надо»",
+            "«Рада слышать! А сопровождение есть? Часто при сбое теряют время и деньги.»",
+            "Нет сопровождения → уровень 5; есть → оставь контакты",
+        ),
+        (
+            "«Дорого»",
+            "«ИТС от Х руб — дешевле одного вызова специалиста»",
+            "Отправь коммерческое предложение",
+        ),
+        (
+            "«Пришлите на почту»",
+            "«Конечно отправлю. А вы сами принимаете решение или с кем-то согласуете? Как вам в целом моё предложение?»",
+            "Почта + роль → следующий контакт",
+        ),
+        (
+            "«Подумаю»",
+            "«Хорошо. Пришлю материал. Как вам в целом моё предложение?»",
+            "Отработай возражение → предложи встречу → дата",
+        ),
+        (
+            "«Нет» (отказ)",
+            "«Спасибо за честность. Если что, мы на связи. Давайте предложение направлю, ознакомитесь, и позже свяжусь?»",
+            "Заверши звонок, сохрани контакт, отправь КП",
+        ),
+    ]
+    y = draw_branch_block(c, margin_x + 4 * mm, y, box_w - 8 * mm, rows_p2, fonts)
+    draw_arrow_v(c, cx, y, y - 8 * mm)
+    y -= 8 * mm
+
+    # --- Уровень 4 ---
+    y, _ = draw_level_box(
+        c, margin_x, y, box_w, "4. Углубление (если работает в 1С)", fonts, TEAL
+    )
+    draw_arrow_v(c, cx, y, y - 4 * mm)
+    y -= 4 * mm
+    y = draw_questions_block(
         c,
-        left_x,
-        top,
-        col_w,
-        4,
-        "Углубление (если работает в 1С)",
+        margin_x + 6 * mm,
+        y,
+        box_w - 12 * mm,
         [
             "Обновления кто делает — свой специалист или ищете со стороны?",
             "Бывает, что программа работает не так, как надо, или вопросы возникают?",
             "Пользуетесь сопровождением? Как решаете вопросы?",
         ],
         fonts,
-        TEAL,
+        "Вопросы для выявления боли",
     )
+    draw_arrow_v(c, cx, y, y - 8 * mm)
+    y -= 8 * mm
 
-    yb5, _ = stage_card(
+    # --- Уровень 5 ---
+    y, _ = draw_level_box(c, margin_x, y, box_w, "5. Предложение", fonts, ORANGE)
+    draw_arrow_v(c, cx, y, y - 4 * mm)
+    y -= 4 * mm
+    y = draw_questions_block(
         c,
-        right_x,
-        top,
-        col_w,
-        5,
-        "Предложение",
+        margin_x + 6 * mm,
+        y,
+        box_w - 12 * mm,
         [
-            "Нет сопровождения / ИТС → ИТС — официальная подписка 1С: обновления, консультации, сервисы.",
-            "Локальная 1С + интерес к облаку → 1С:Фреш — облако из браузера, без установок.",
+            "Нет сопровождения / ИТС → предложить ИТС: официальная подписка 1С (обновления, консультации, сервисы).",
+            "Локальная 1С + интерес к облаку → предложить 1С:Фреш: облако из браузера, без установок.",
             "Уже всё есть → оставить контакты: «если что-то понадобится».",
         ],
         fonts,
-        ORANGE,
+        "Что предложить по ситуации",
     )
 
-    draw_arrow_right(
+    c.setFillColor(TEAL)
+    c.setFont(bold, 8)
+    c.drawCentredString(cx, 14 * mm, "↓ возражения и завершение — на следующей странице")
+    c.showPage()
+
+    # ===================== PAGE 3 =====================
+    new_page(c, page_w, page_h, fonts, 3, total_pages, continue_flow=True)
+    y = page_h - 26 * mm
+
+    draw_circle_node(c, cx, y - 5, 5, "↓", fonts, GRAY)
+    y -= 5 + 5
+    draw_arrow_v(c, cx, y, y - 6 * mm)
+    y -= 6 * mm
+
+    # --- Уровень 6 ---
+    y, _ = draw_level_box(c, margin_x, y, box_w, "6. Отработка возражений", fonts, ORANGE)
+    draw_arrow_v(c, cx, y, y - 4 * mm)
+    y -= 4 * mm
+
+    obj_rows = [
+        (
+            "«У нас уже всё есть»",
+            "«А сопровождение есть? Часто программа есть, а поддержки нет — и при сбое теряют время.»",
+            "Уточни → если нет ИТС, предложи",
+        ),
+        (
+            "«Не нужно»",
+            "«А что сейчас закрывает эту задачу?»",
+            "Выясни альтернативу → покажи отличие",
+        ),
+        (
+            "«Дорого»",
+            "«ИТС от Х руб — дешевле одного вызова специалиста + 1С:Напарник + сервисы.»",
+            "Предложи встречу по демонстрации",
+        ),
+        (
+            "«Пришлите на почту»",
+            "«Конечно отправлю. А вы сами принимаете решение или с кем-то согласуете? Как вам в целом моё предложение?»",
+            "Определи ЛПР → следующий контакт",
+        ),
+        (
+            "«Подумаю»",
+            "«Хорошо. Пришлю материал. Как вам в целом моё предложение?»",
+            "Отработай → предложи встречу → дата",
+        ),
+    ]
+    y = draw_branch_block(
         c,
-        left_x + col_w + 2,
-        right_x - 2,
-        top - 35 * mm,
-        "этап 4 → этап 5",
+        margin_x + 4 * mm,
+        y,
+        box_w - 8 * mm,
+        obj_rows,
         fonts,
+        title="Возражение → ответ → что делать дальше",
     )
+    draw_arrow_v(c, cx, y, y - 8 * mm)
+    y -= 8 * mm
 
-    # Objections below
-    bottom_top = min(yb4, yb5) - 12 * mm
-    draw_arrow_down(
-        c,
-        page_w / 2,
-        min(yb4, yb5) - 2,
-        bottom_top + 2,
-        "этап 5 → этап 6",
-        fonts,
+    # --- Уровень 7: фиксация результата ---
+    y, _ = draw_level_box(
+        c, margin_x, y, box_w, "7. Фиксация результата звонка", fonts, NAVY
     )
-
-    stage_card(
+    draw_arrow_v(c, cx, y, y - 4 * mm)
+    y -= 4 * mm
+    y = draw_questions_block(
         c,
-        margin,
-        bottom_top,
-        usable,
-        6,
-        "Отработка возражений",
+        margin_x + 6 * mm,
+        y,
+        box_w - 12 * mm,
         [
-            "«У нас уже всё есть» → «А сопровождение есть? Часто программа есть, а поддержки нет — и при сбое теряют время.» Уточни → если нет ИТС, предложи.",
-            "«Не нужно» → «А что сейчас закрывает эту задачу?» Выясни альтернативу → покажи отличие.",
-            "«Дорого» → «ИТС от Х руб — это дешевле одного вызова специалиста + решение вопросов с помощью 1С:Напарник + сервисы.» Предложи встречу по демонстрации.",
-            "«Пришлите на почту» → «Конечно отправлю. А вы сами принимаете решение или с кем-то согласуете? Как вам в целом моё предложение?» Определи ЛПР → назначь следующий контакт.",
-            "«Подумаю» → «Хорошо. Пришлю материал. Как вам в целом моё предложение?» Отработай возражение, предложи встречу, зафиксируй дату.",
+            "Договорились о следующем шаге: встреча / перезвон / коммерческое предложение?",
+            "Зафиксированы почта, роль ЛПР, дата следующего контакта?",
+            "Комментарий сохранён в системе учёта?",
         ],
         fonts,
-        ORANGE,
+        "Что проверить перед завершением",
     )
+    draw_arrow_v(c, cx, y, y - 10 * mm)
+    y -= 10 * mm
+
+    # К — конец
+    draw_circle_node(c, cx, y - 8, 8, "К", fonts, NAVY)
+    y -= 8 + 12
+    c.setFillColor(GRAY)
+    c.setFont(body, 8)
+    c.drawCentredString(cx, y, "конец звонка")
+
+    # Legend of levels at very bottom
+    y -= 12 * mm
+    c.setFillColor(NAVY)
+    c.setFont(bold, 8)
+    c.drawCentredString(cx, y, "Цепочка уровней:")
+    y -= 5 * mm
+    c.setFont(body, 7.5)
+    c.setFillColor(DARK)
+    chain = "Н → 1 Открытие → 2 Инфоповод → 3 Навигатор → 4 Углубление → 5 Предложение → 6 Возражения → 7 Фиксация → К"
+    for line in wrap(chain, body, 7.5, box_w - 10 * mm):
+        c.drawCentredString(cx, y, line)
+        y -= 10
 
     c.showPage()
     c.save()
