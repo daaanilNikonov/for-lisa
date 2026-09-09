@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Недельный отчёт · Карта дня · Форус</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="report-page">
+    <div class="atmosphere" aria-hidden="true">
+      <div class="orb orb-a"></div>
+      <div class="orb orb-b"></div>
+      <div class="grid-fade"></div>
+    </div>
+
+    <header class="topbar">
+      <a class="brand" href="/karta-dnya" aria-label="Форус — карта дня">
+        <img
+          class="brand-logo"
+          src="/assets/brand/logo-forus-light.png"
+          alt="форус"
+          width="120"
+          height="42"
+        />
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">Недельный отчёт</span>
+      </a>
+      <nav class="topnav">
+        <a href="/karta-dnya">← К карте дня</a>
+      </nav>
+    </header>
+
+    <main class="report-main">
+      <section class="panel report-card">
+        <div class="report-toolbar">
+          <div>
+            <p class="eyebrow">ГК Форус · отчёт</p>
+            <h1 id="reportTitle">Недельный отчёт</h1>
+            <p class="panel-sub" id="reportPeriod"></p>
+          </div>
+          <div class="report-actions">
+            <a class="btn btn-primary" id="downloadPdf" href="#">Скачать PDF</a>
+            <button type="button" class="btn btn-ghost" id="printBtn">Печать</button>
+          </div>
+        </div>
+
+        <div id="reportError" class="form-hint is-hidden"></div>
+
+        <div class="report-summary" id="reportSummary"></div>
+
+        <h2 class="dash-title">Перечень задач</h2>
+        <div class="table-wrap">
+          <table class="kpi-table" id="reportTasks">
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Задача</th>
+                <th>План = факт</th>
+                <th>Перенос</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <h2 class="dash-title">Перенесено</h2>
+        <p class="panel-sub" id="transferSum"></p>
+        <div id="reportTransfers" class="transfers-list"></div>
+      </section>
+    </main>
+
+    <script>
+      (() => {
+        const params = new URLSearchParams(location.search);
+        const managerId = params.get("managerId");
+        const weekStart = params.get("weekStart") || params.get("from") || "";
+        const title = document.getElementById("reportTitle");
+        const period = document.getElementById("reportPeriod");
+        const summary = document.getElementById("reportSummary");
+        const tbody = document.querySelector("#reportTasks tbody");
+        const transfersEl = document.getElementById("reportTransfers");
+        const transferSum = document.getElementById("transferSum");
+        const downloadPdf = document.getElementById("downloadPdf");
+        const errEl = document.getElementById("reportError");
+
+        function showError(msg) {
+          errEl.textContent = msg;
+          errEl.classList.remove("is-hidden");
+        }
+
+        if (!managerId) {
+          showError("Не выбран сотрудник. Вернитесь на карту дня и сформируйте отчёт.");
+          return;
+        }
+
+        const qs = new URLSearchParams({ managerId });
+        if (weekStart) qs.set("weekStart", weekStart);
+        downloadPdf.href = `/api/reports/week.pdf?${qs.toString()}`;
+
+        fetch(`/api/reports/week?${qs.toString()}`)
+          .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
+          .then(({ ok, d }) => {
+            if (!ok) throw new Error(d.error || "Не удалось загрузить отчёт");
+            const report = d.report;
+            title.textContent = `Отчёт · ${report.managerName}`;
+            period.textContent = `${report.weekStart} — ${report.weekEnd}`;
+            const s = report.summary;
+            summary.innerHTML = `
+              <div class="stat"><b>${s.tasksDone}</b><span>выполнено полностью</span></div>
+              <div class="stat"><b>${s.tasksPartial}</b><span>частично</span></div>
+              <div class="stat"><b>${s.tasksTotal}</b><span>всего задач</span></div>
+              <div class="stat"><b>${s.transferredCount}</b><span>перенесено задач</span></div>
+              <div class="stat"><b>${s.transferredAmount}</b><span>сумма переноса</span></div>
+              <div class="stat"><b>${s.conversion}%</b><span>конверсия ед.</span></div>`;
+
+            tbody.innerHTML = "";
+            if (!report.taskLines.length) {
+              tbody.innerHTML = `<tr><td colspan="4" class="muted">За неделю задач нет</td></tr>`;
+            } else {
+              report.taskLines.forEach((row) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td></td><td></td><td></td><td></td>`;
+                tr.children[0].textContent = row.date;
+                tr.children[1].textContent = row.text;
+                tr.children[2].textContent = row.line.includes(": ")
+                  ? row.line.split(": ").slice(1).join(": ")
+                  : row.line;
+                tr.children[3].textContent = row.transferred
+                  ? `${row.transferAmount} → ${row.transferTo}`
+                  : "—";
+                if (row.done) tr.children[2].classList.add("good");
+                else if (row.doneCount > 0) tr.children[2].classList.add("mid");
+                tbody.appendChild(tr);
+              });
+            }
+
+            transferSum.textContent = `Перенесено задач: ${s.transferredCount}, сумма остатков: ${s.transferredAmount}`;
+            transfersEl.innerHTML = "";
+            if (!report.transfers.length) {
+              transfersEl.innerHTML = `<div class="archive-empty">Переносов за неделю нет</div>`;
+            } else {
+              report.transfers.forEach((tr) => {
+                const item = document.createElement("div");
+                item.className = "transfer-item";
+                item.innerHTML = `<strong></strong><span></span><em></em>`;
+                item.querySelector("strong").textContent = tr.fromDate;
+                item.querySelector("span").textContent =
+                  `${tr.text}: остаток ${tr.amount} ${tr.unit || ""}`.trim();
+                item.querySelector("em").textContent = `→ ${tr.toDate}`;
+                transfersEl.appendChild(item);
+              });
+            }
+          })
+          .catch((err) => showError(err.message));
+
+        document.getElementById("printBtn").addEventListener("click", () => window.print());
+      })();
+    </script>
+  </body>
+</html>
