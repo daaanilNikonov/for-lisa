@@ -331,7 +331,7 @@ def example_block(s, width: float):
         f"{fmt(33600)} (лицензия) + {fmt(base_pkg)} (пакет без админа) = "
         f"<font color='#1B7FAF'><b>{fmt(33600 + base_pkg)}</b></font>"
         f"&nbsp;&nbsp;·&nbsp;&nbsp;с администратором клиента: пакет {fmt(discounted)} "
-        f"(-50%), итого <font color='#1B7FAF'><b>{fmt(33600 + discounted)}</b></font>"
+        f"(скидка 50%), итого <font color='#1B7FAF'><b>{fmt(33600 + discounted)}</b></font>"
     )
     t = Table([[Paragraph(text, s["example"])]], colWidths=[width])
     t.setStyle(
