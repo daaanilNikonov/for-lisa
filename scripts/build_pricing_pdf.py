@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Generate a client-facing pricing PDF for 1С:Кабинет сотрудника (КЭДО)."""
+"""
+Visualize the proposed pricing-block scheme for 1С:Кабинет сотрудника (КЭДО).
+
+Scheme:
+  Formula → ШАГ 1 (лицензии) → ШАГ 2 (пакеты × формат внедрения) → пояснения → пример
+
+Prices from the client screenshot.
+"""
 
 from __future__ import annotations
 
@@ -24,7 +31,6 @@ from reportlab.platypus import (
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "presentation" / "Стоимость_пакетов_Кабинет_сотрудника.pdf"
 
-# ГК Форус brand + package accents from product leaflet
 BLUE = HexColor("#26A6E0")
 BLUE_DARK = HexColor("#1B7FAF")
 NEAR_BLACK = HexColor("#1A1A1A")
@@ -38,18 +44,12 @@ CYAN = HexColor("#5BB8C9")
 CYAN_BG = HexColor("#EEF8FA")
 CYAN_HEAD = HexColor("#7BC8D6")
 LICENSE_HEAD = HexColor("#4A4A4A")
-ROW_ALT = HexColor("#F7F7F7")
+STEP_BG = HexColor("#E8F6FC")
 
 FONT_REG = "NotoSans"
 FONT_BOLD = "NotoSans-Bold"
-
 pdfmetrics.registerFont(TTFont(FONT_REG, "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"))
 pdfmetrics.registerFont(TTFont(FONT_BOLD, "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf"))
-
-
-def fmt(n: int) -> str:
-    return f"{n:,}".replace(",", " ") + " ₽"
-
 
 LICENSE = [
     (10, 3360),
@@ -63,22 +63,21 @@ LICENSE = [
     (500, 144000),
 ]
 
-# (start_admin, start_full, support_admin, support_full)
-PACKAGES = {
-    10: (7000, 15000, 30000, 60000),
-    25: (7000, 15000, 30000, 60000),
-    50: (7000, 15000, 30000, 60000),
-    75: (7000, 15000, 30000, 60000),
-    100: (7000, 15000, 30000, 60000),
-    200: (7000, 15000, 30000, 60000),
-    300: (7500, 17500, 35000, 75000),
-    400: (7500, 17500, 35000, 75000),
-    500: (8000, 20000, 40000, 90000),
-}
+# Screenshot prices collapsed where identical
+PACKAGE_TIERS = [
+    # label, start_admin, start_full, support_admin, support_full
+    ("до 200", 7000, 15000, 30000, 60000),
+    ("300–400", 7500, 17500, 35000, 75000),
+    ("500", 8000, 20000, 40000, 90000),
+]
+
+
+def fmt(n: int) -> str:
+    return f"{n:,}".replace(",", " ") + " ₽"
 
 
 class AccentBar(Flowable):
-    def __init__(self, width, height=3, color=BLUE):
+    def __init__(self, width, height=3.2, color=BLUE):
         super().__init__()
         self.width = width
         self.height = height
@@ -86,242 +85,233 @@ class AccentBar(Flowable):
 
     def draw(self):
         self.canv.setFillColor(self.color)
-        self.canv.roundRect(0, 0, self.width, self.height, 1.5, fill=1, stroke=0)
+        self.canv.roundRect(0, 0, self.width, self.height, 1.4, fill=1, stroke=0)
 
 
-def styles():
+class StepBadge(Flowable):
+    def __init__(self, text: str):
+        super().__init__()
+        self.text = text
+        self.width = 48
+        self.height = 16
+
+    def draw(self):
+        c = self.canv
+        c.setFillColor(BLUE)
+        c.roundRect(0, 0, self.width, self.height, 8, fill=1, stroke=0)
+        c.setFillColor(white)
+        c.setFont(FONT_BOLD, 7.5)
+        c.drawCentredString(self.width / 2, 4.5, self.text)
+
+
+def make_styles():
     return {
-        "title": ParagraphStyle(
-            "title",
-            fontName=FONT_BOLD,
-            fontSize=22,
-            textColor=NEAR_BLACK,
-            leading=26,
-            alignment=TA_LEFT,
-            spaceAfter=2,
+        "eyebrow": ParagraphStyle(
+            "eyebrow", fontName=FONT_REG, fontSize=9, textColor=GRAY, leading=11, spaceAfter=1
         ),
-        "subtitle": ParagraphStyle(
-            "subtitle",
-            fontName=FONT_REG,
-            fontSize=10,
-            textColor=GRAY,
-            leading=14,
-            spaceAfter=6,
+        "title": ParagraphStyle(
+            "title", fontName=FONT_BOLD, fontSize=18, textColor=NEAR_BLACK, leading=22, spaceAfter=1
         ),
         "formula": ParagraphStyle(
             "formula",
             fontName=FONT_BOLD,
-            fontSize=11,
+            fontSize=10.5,
             textColor=BLUE_DARK,
-            leading=15,
+            leading=13,
             alignment=TA_CENTER,
         ),
-        "h2": ParagraphStyle(
-            "h2",
-            fontName=FONT_BOLD,
-            fontSize=11,
-            textColor=NEAR_BLACK,
-            leading=15,
-            spaceBefore=0,
-            spaceAfter=0,
+        "step_title": ParagraphStyle(
+            "step_title", fontName=FONT_BOLD, fontSize=10.5, textColor=NEAR_BLACK, leading=13
         ),
-        "how": ParagraphStyle(
-            "how",
-            fontName=FONT_REG,
-            fontSize=9,
-            textColor=GRAY,
-            leading=12,
-        ),
-        "note": ParagraphStyle(
-            "note",
-            fontName=FONT_REG,
-            fontSize=8,
-            textColor=NEAR_BLACK,
-            leading=11,
-        ),
-        "note_muted": ParagraphStyle(
-            "note_muted",
-            fontName=FONT_REG,
-            fontSize=7.5,
-            textColor=GRAY,
-            leading=10,
-        ),
-        "cell": ParagraphStyle(
-            "cell",
-            fontName=FONT_REG,
-            fontSize=8.5,
-            textColor=NEAR_BLACK,
-            leading=11,
-            alignment=TA_CENTER,
-        ),
-        "cell_bold": ParagraphStyle(
-            "cell_bold",
-            fontName=FONT_BOLD,
-            fontSize=9,
-            textColor=NEAR_BLACK,
-            leading=11,
-            alignment=TA_CENTER,
+        "step_sub": ParagraphStyle(
+            "step_sub", fontName=FONT_REG, fontSize=8, textColor=GRAY, leading=10
         ),
         "th": ParagraphStyle(
-            "th",
-            fontName=FONT_BOLD,
-            fontSize=8,
-            textColor=white,
-            leading=10,
-            alignment=TA_CENTER,
+            "th", fontName=FONT_BOLD, fontSize=7.5, textColor=white, leading=9, alignment=TA_CENTER
         ),
         "th_dark": ParagraphStyle(
             "th_dark",
             fontName=FONT_BOLD,
             fontSize=7.5,
             textColor=NEAR_BLACK,
+            leading=9,
+            alignment=TA_CENTER,
+        ),
+        "cell": ParagraphStyle(
+            "cell",
+            fontName=FONT_REG,
+            fontSize=8,
+            textColor=NEAR_BLACK,
             leading=10,
             alignment=TA_CENTER,
         ),
-        "example": ParagraphStyle(
-            "example",
-            fontName=FONT_REG,
-            fontSize=9,
+        "cell_b": ParagraphStyle(
+            "cell_b",
+            fontName=FONT_BOLD,
+            fontSize=8.5,
             textColor=NEAR_BLACK,
-            leading=13,
+            leading=10,
+            alignment=TA_CENTER,
+        ),
+        "pkg": ParagraphStyle(
+            "pkg",
+            fontName=FONT_BOLD,
+            fontSize=8.5,
+            textColor=NEAR_BLACK,
+            leading=11,
             alignment=TA_LEFT,
+        ),
+        "note": ParagraphStyle(
+            "note", fontName=FONT_REG, fontSize=7.5, textColor=NEAR_BLACK, leading=10
+        ),
+        "muted": ParagraphStyle(
+            "muted", fontName=FONT_REG, fontSize=7, textColor=GRAY, leading=9
+        ),
+        "example": ParagraphStyle(
+            "example", fontName=FONT_REG, fontSize=8.5, textColor=NEAR_BLACK, leading=11
         ),
         "footer": ParagraphStyle(
             "footer",
             fontName=FONT_REG,
-            fontSize=7.5,
+            fontSize=7,
             textColor=GRAY,
-            leading=10,
+            leading=9,
             alignment=TA_CENTER,
         ),
     }
 
 
-def header_block(s, content_width):
-    elems = [
-        Paragraph("1С:Кабинет сотрудника · КЭДО", s["subtitle"]),
-        Paragraph("Стоимость пакетов", s["title"]),
-        AccentBar(content_width, 3.5, BLUE),
-        Spacer(1, 8),
-    ]
-    formula = Table(
+def step_header(s, badge: str, title: str, subtitle: str, width: float):
+    inner = Table(
         [
             [
-                Paragraph(
-                    "Итого для клиента = лицензия на сервис (за год) + выбранный пакет запуска КЭДО",
-                    s["formula"],
-                )
+                StepBadge(badge),
+                [Paragraph(title, s["step_title"]), Paragraph(subtitle, s["step_sub"])],
             ]
         ],
-        colWidths=[content_width],
+        colWidths=[54, width - 70],
     )
-    formula.setStyle(
+    inner.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), HexColor("#E8F6FC")),
-                ("BOX", (0, 0), (-1, -1), 1.2, BLUE),
-                ("TOPPADDING", (0, 0), (-1, -1), 8),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-                ("LEFTPADDING", (0, 0), (-1, -1), 10),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ("LEFTPADDING", (1, 0), (1, 0), 8),
             ]
         )
     )
-    how = Paragraph(
-        "Как выбрать: 1) найдите строку по числу сотрудников → 2) возьмите лицензию → "
-        "3) добавьте пакет «Старт» или «Старт + сопровождение» и формат внедрения.",
-        s["how"],
+    wrap = Table([[inner]], colWidths=[width])
+    wrap.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), STEP_BG),
+                ("BOX", (0, 0), (-1, -1), 0.8, BLUE),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+            ]
+        )
     )
-    elems += [formula, Spacer(1, 6), how, Spacer(1, 8)]
-    return elems
+    return wrap
 
 
-def unified_table(s, content_width):
-    """One row = one scenario: employees | license | Start×2 | Support×2."""
-    col_emps = 20 * mm
-    col_lic = 32 * mm
-    rest = content_width - col_emps - col_lic
-    col_pkg = rest / 4
-
-    th = s["th"]
-    th_d = s["th_dark"]
-    empty = Paragraph("", th)
-
-    top = [
-        Paragraph("Кол-во<br/>сотрудников", th),
-        Paragraph("Лицензия<br/>на сервис / год", th),
-        Paragraph("Старт КЭДО", th_d),
-        empty,
-        Paragraph("Старт + сопровождение КЭДО", th_d),
-        empty,
+def license_table(s, width: float):
+    n = len(LICENSE)
+    label_w = 30 * mm
+    col_w = (width - label_w) / n
+    head = [Paragraph("Сотрудники", s["th"])] + [Paragraph(str(c), s["th"]) for c, _ in LICENSE]
+    row = [Paragraph("Стоимость за год", s["th_dark"])] + [
+        Paragraph(fmt(p), s["cell_b"]) for _, p in LICENSE
     ]
-    sub = [
-        empty,
-        empty,
-        Paragraph("С вашим<br/>администратором", th_d),
-        Paragraph("С нашим полным<br/>внедрением", th_d),
-        Paragraph("С вашим<br/>администратором", th_d),
-        Paragraph("С нашим полным<br/>внедрением", th_d),
+    t = Table([head, row], colWidths=[label_w] + [col_w] * n)
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), LICENSE_HEAD),
+                ("BACKGROUND", (0, 1), (0, 1), SOFT),
+                ("GRID", (0, 0), (-1, -1), 0.4, LINE),
+                ("BOX", (0, 0), (-1, -1), 1, HexColor("#BDBDBD")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 1),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 1),
+            ]
+        )
+    )
+    return t
+
+
+def package_matrix(s, width: float):
+    name_w = 48 * mm
+    tier_w = 22 * mm
+    half = (width - name_w - tier_w) / 2
+
+    data = [
+        [
+            Paragraph("Пакет", s["th"]),
+            Paragraph("Сотрудники", s["th"]),
+            Paragraph("С вашим администратором", s["th_dark"]),
+            Paragraph("С нашим полным внедрением", s["th_dark"]),
+        ]
     ]
 
-    data = [top, sub]
-    for count, price in LICENSE:
-        sa, sf, sua, suf = PACKAGES[count]
+    for i, (label, sa, sf, _a, _b) in enumerate(PACKAGE_TIERS):
         data.append(
             [
-                Paragraph(str(count), s["cell_bold"]),
-                Paragraph(fmt(price), s["cell_bold"]),
+                Paragraph("Старт КЭДО", s["pkg"]) if i == 0 else Paragraph("", s["pkg"]),
+                Paragraph(label, s["cell_b"]),
                 Paragraph(fmt(sa), s["cell"]),
                 Paragraph(fmt(sf), s["cell"]),
+            ]
+        )
+    for i, (label, _a, _b, sua, suf) in enumerate(PACKAGE_TIERS):
+        data.append(
+            [
+                Paragraph("Старт + сопровождение КЭДО", s["pkg"]) if i == 0 else Paragraph("", s["pkg"]),
+                Paragraph(label, s["cell_b"]),
                 Paragraph(fmt(sua), s["cell"]),
                 Paragraph(fmt(suf), s["cell"]),
             ]
         )
 
-    t = Table(
-        data,
-        colWidths=[col_emps, col_lic, col_pkg, col_pkg, col_pkg, col_pkg],
-        repeatRows=2,
+    t = Table(data, colWidths=[name_w, tier_w, half, half])
+    t.setStyle(
+        TableStyle(
+            [
+                ("SPAN", (0, 1), (0, 3)),
+                ("SPAN", (0, 4), (0, 6)),
+                ("BACKGROUND", (0, 0), (1, 0), LICENSE_HEAD),
+                ("BACKGROUND", (2, 0), (3, 0), HexColor("#E6E6E6")),
+                ("BACKGROUND", (0, 1), (0, 3), YELLOW_HEAD),
+                ("BACKGROUND", (1, 1), (3, 3), YELLOW_BG),
+                ("BACKGROUND", (0, 4), (0, 6), CYAN_HEAD),
+                ("BACKGROUND", (1, 4), (3, 6), CYAN_BG),
+                ("BACKGROUND", (1, 2), (3, 2), white),
+                ("BACKGROUND", (1, 5), (3, 5), white),
+                ("GRID", (0, 0), (-1, -1), 0.4, LINE),
+                ("BOX", (0, 0), (-1, -1), 1, HexColor("#BDBDBD")),
+                ("LINEABOVE", (0, 4), (-1, 4), 1.1, CYAN),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
     )
-
-    style_cmds = [
-        ("SPAN", (2, 0), (3, 0)),
-        ("SPAN", (4, 0), (5, 0)),
-        ("SPAN", (0, 0), (0, 1)),
-        ("SPAN", (1, 0), (1, 1)),
-        ("BACKGROUND", (0, 0), (1, 1), LICENSE_HEAD),
-        ("BACKGROUND", (2, 0), (3, 0), YELLOW_HEAD),
-        ("BACKGROUND", (2, 1), (3, 1), YELLOW),
-        ("BACKGROUND", (4, 0), (5, 0), CYAN_HEAD),
-        ("BACKGROUND", (4, 1), (5, 1), CYAN),
-        ("GRID", (0, 0), (-1, -1), 0.45, LINE),
-        ("BOX", (0, 0), (-1, -1), 1, HexColor("#BDBDBD")),
-        ("LINEBEFORE", (2, 0), (2, -1), 1.2, YELLOW),
-        ("LINEBEFORE", (4, 0), (4, -1), 1.2, CYAN),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("TOPPADDING", (0, 0), (-1, 1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, 1), 6),
-        ("TOPPADDING", (0, 2), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 2), (-1, -1), 5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-        ("BACKGROUND", (2, 2), (3, -1), YELLOW_BG),
-        ("BACKGROUND", (4, 2), (5, -1), CYAN_BG),
-    ]
-
-    for i in range(2, len(data)):
-        if (i - 2) % 2 == 1:
-            style_cmds.append(("BACKGROUND", (0, i), (1, i), ROW_ALT))
-
-    t.setStyle(TableStyle(style_cmds))
     return t
 
 
-def explanations(s, content_width):
-    gap = 4 * mm
-    half = (content_width - gap) / 2
+def explanations(s, width: float):
+    gap = 3 * mm
+    half = (width - gap) / 2
     left = Paragraph(
         "<b>С вашим администратором</b><br/>"
         "Клиент выделяет администратора 1С: настройка сервиса и ЭП, "
@@ -331,25 +321,25 @@ def explanations(s, content_width):
     right = Paragraph(
         "<b>С нашим полным внедрением</b><br/>"
         "Подрядчик выполняет все работы по запуску. "
-        "Выделять администратора со стороны клиента не требуется.",
+        "Свой администратор со стороны клиента не нужен.",
         s["note"],
     )
-    box_style = TableStyle(
+    box = TableStyle(
         [
             ("BACKGROUND", (0, 0), (-1, -1), SOFT),
-            ("BOX", (0, 0), (-1, -1), 0.8, LINE),
-            ("LINEBEFORE", (0, 0), (0, 0), 3, BLUE),
-            ("TOPPADDING", (0, 0), (-1, -1), 8),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-            ("LEFTPADDING", (0, 0), (-1, -1), 10),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("BOX", (0, 0), (-1, -1), 0.7, LINE),
+            ("LINEBEFORE", (0, 0), (0, 0), 2.5, BLUE),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
         ]
     )
-    left_box = Table([[left]], colWidths=[half])
-    left_box.setStyle(box_style)
-    right_box = Table([[right]], colWidths=[half])
-    right_box.setStyle(box_style)
-    row = Table([[left_box, "", right_box]], colWidths=[half, gap, half])
+    a = Table([[left]], colWidths=[half])
+    a.setStyle(box)
+    b = Table([[right]], colWidths=[half])
+    b.setStyle(box)
+    row = Table([[a, "", b]], colWidths=[half, gap, half])
     row.setStyle(
         TableStyle(
             [
@@ -364,22 +354,22 @@ def explanations(s, content_width):
     return row
 
 
-def example_block(s, content_width):
+def example_block(s, width: float):
     text = (
-        "<b>Пример расчёта:</b> 100 сотрудников + «Старт КЭДО» с вашим администратором&nbsp;— "
+        "<b>Пример:</b> 100 сотрудников + «Старт КЭДО» с вашим администратором = "
         f"{fmt(33600)} (лицензия) + {fmt(7000)} (пакет) = "
         f"<font color='#1B7FAF'><b>{fmt(40600)}</b></font>"
     )
-    t = Table([[Paragraph(text, s["example"])]], colWidths=[content_width])
+    t = Table([[Paragraph(text, s["example"])]], colWidths=[width])
     t.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), HexColor("#E8F6FC")),
+                ("BACKGROUND", (0, 0), (-1, -1), STEP_BG),
                 ("BOX", (0, 0), (-1, -1), 1, BLUE),
-                ("TOPPADDING", (0, 0), (-1, -1), 8),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-                ("LEFTPADDING", (0, 0), (-1, -1), 12),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
             ]
         )
     )
@@ -388,50 +378,88 @@ def example_block(s, content_width):
 
 def build():
     page = landscape(A4)
-    margin = 14 * mm
-    content_width = page[0] - 2 * margin
-    s = styles()
+    margin = 11 * mm
+    width = page[0] - 2 * margin
+    s = make_styles()
 
     doc = SimpleDocTemplate(
         str(OUT),
         pagesize=page,
         leftMargin=margin,
         rightMargin=margin,
-        topMargin=11 * mm,
-        bottomMargin=9 * mm,
-        title="Стоимость пакетов — 1С:Кабинет сотрудника",
+        topMargin=8 * mm,
+        bottomMargin=7 * mm,
+        title="Стоимость пакетов — схема блока цен",
         author="ГК Форус",
     )
 
-    story = []
-    story += header_block(s, content_width)
-    story.append(unified_table(s, content_width))
-    story.append(Spacer(1, 5))
-    story.append(
-        Paragraph(
-            "Лицензии без НДС (ПО включено в реестр российского ПО). "
-            "Цены — типовой функционал облачного решения для одного юридического лица.",
-            s["note_muted"],
+    story = [
+        Paragraph("1С:Кабинет сотрудника · КЭДО", s["eyebrow"]),
+        Paragraph("Стоимость пакетов", s["title"]),
+        AccentBar(width),
+        Spacer(1, 5),
+    ]
+
+    formula = Table(
+        [
+            [
+                Paragraph(
+                    "Итого = лицензия на сервис (за год) + выбранный пакет запуска КЭДО",
+                    s["formula"],
+                )
+            ]
+        ],
+        colWidths=[width],
+    )
+    formula.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), STEP_BG),
+                ("BOX", (0, 0), (-1, -1), 1.2, BLUE),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ]
         )
     )
-    story.append(Spacer(1, 8))
-    story.append(
+    story += [formula, Spacer(1, 6)]
+
+    story += [
+        step_header(
+            s,
+            "ШАГ 1",
+            "Лицензия на сервис",
+            "Выберите стоимость по числу сотрудников (за год, без НДС)",
+            width,
+        ),
+        Spacer(1, 4),
+        license_table(s, width),
+        Spacer(1, 2),
         Paragraph(
-            "Формат внедрения (одинаково для обоих пакетов):",
-            s["how"],
-        )
-    )
-    story.append(Spacer(1, 4))
-    story.append(explanations(s, content_width))
-    story.append(Spacer(1, 8))
-    story.append(example_block(s, content_width))
-    story.append(Spacer(1, 6))
-    story.append(
+            "Лицензии без НДС (ПО в реестре российского ПО). Типовой облачный функционал, одно юридическое лицо.",
+            s["muted"],
+        ),
+        Spacer(1, 6),
+        step_header(
+            s,
+            "ШАГ 2",
+            "Пакет запуска КЭДО",
+            "Выберите пакет и формат внедрения. Цены зависят от числа сотрудников.",
+            width,
+        ),
+        Spacer(1, 4),
+        package_matrix(s, width),
+        Spacer(1, 5),
+        explanations(s, width),
+        Spacer(1, 5),
+        example_block(s, width),
+        Spacer(1, 4),
         Paragraph(
             "ГК Форус · 1С:Кабинет сотрудника · актуальные цены уточняйте у менеджера",
             s["footer"],
-        )
-    )
+        ),
+    ]
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     doc.build(story)
