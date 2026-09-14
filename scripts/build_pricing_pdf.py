@@ -63,12 +63,13 @@ LICENSE = [
     (500, 144000),
 ]
 
-# Screenshot prices collapsed where identical
+# Base package prices = без администратора клиента (полное внедрение).
+# С администратором от клиента — скидка 50% от этих цен.
 PACKAGE_TIERS = [
-    # label, start_admin, start_full, support_admin, support_full
-    ("до 200", 7000, 15000, 30000, 60000),
-    ("300–400", 7500, 17500, 35000, 75000),
-    ("500", 8000, 20000, 40000, 90000),
+    # label, start (no admin), support (no admin)
+    ("до 200", 15000, 60000),
+    ("300–400", 17500, 75000),
+    ("500", 20000, 90000),
 ]
 
 
@@ -248,124 +249,89 @@ def license_table(s, width: float):
 
 
 def package_matrix(s, width: float):
-    """Packages as columns (transposed): Старт | Старт + сопровождение."""
-    format_w = 48 * mm
-    tier_w = 24 * mm
-    half = (width - format_w - tier_w) / 2
+    """Packages as columns; one base price (без админа клиента)."""
+    tier_w = 36 * mm
+    half = (width - tier_w) / 2
 
     data = [
         [
-            Paragraph("Формат внедрения", s["th"]),
             Paragraph("Сотрудники", s["th"]),
             Paragraph("Старт КЭДО", s["th_dark"]),
             Paragraph("Старт + сопровождение КЭДО", s["th_dark"]),
         ]
     ]
 
-    # Rows: your admin × tiers, then full implementation × tiers
-    for i, (label, sa, _sf, sua, _suf) in enumerate(PACKAGE_TIERS):
+    for i, (label, start, support) in enumerate(PACKAGE_TIERS):
         data.append(
             [
-                Paragraph("С вашим администратором", s["pkg"]) if i == 0 else Paragraph("", s["pkg"]),
                 Paragraph(label, s["cell_b"]),
-                Paragraph(fmt(sa), s["cell"]),
-                Paragraph(fmt(sua), s["cell"]),
-            ]
-        )
-    for i, (label, _sa, sf, _sua, suf) in enumerate(PACKAGE_TIERS):
-        data.append(
-            [
-                Paragraph("С нашим полным внедрением", s["pkg"]) if i == 0 else Paragraph("", s["pkg"]),
-                Paragraph(label, s["cell_b"]),
-                Paragraph(fmt(sf), s["cell"]),
-                Paragraph(fmt(suf), s["cell"]),
+                Paragraph(fmt(start), s["cell"]),
+                Paragraph(fmt(support), s["cell"]),
             ]
         )
 
-    t = Table(data, colWidths=[format_w, tier_w, half, half])
+    t = Table(data, colWidths=[tier_w, half, half])
+    style = [
+        ("BACKGROUND", (0, 0), (0, 0), LICENSE_HEAD),
+        ("BACKGROUND", (1, 0), (1, 0), YELLOW_HEAD),
+        ("BACKGROUND", (2, 0), (2, 0), CYAN_HEAD),
+        ("BACKGROUND", (1, 1), (1, -1), YELLOW_BG),
+        ("BACKGROUND", (2, 1), (2, -1), CYAN_BG),
+        ("GRID", (0, 0), (-1, -1), 0.4, LINE),
+        ("BOX", (0, 0), (-1, -1), 1, HexColor("#BDBDBD")),
+        ("LINEBEFORE", (1, 0), (1, -1), 1.1, YELLOW),
+        ("LINEBEFORE", (2, 0), (2, -1), 1.1, CYAN),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+    ]
+    for r in range(1, len(data)):
+        if r % 2 == 0:
+            style.append(("BACKGROUND", (0, r), (0, r), SOFT))
+            style.append(("BACKGROUND", (1, r), (1, r), white))
+            style.append(("BACKGROUND", (2, r), (2, r), white))
+        else:
+            style.append(("BACKGROUND", (0, r), (0, r), white))
+
+    t.setStyle(TableStyle(style))
+    return t
+
+
+def discount_note(s, width: float):
+    text = (
+        "<b>Цены в таблице — без администратора со стороны клиента</b> "
+        "(работы по запуску выполняет подрядчик).<br/>"
+        "<b>Если администратора выделяет клиент — скидка 50%</b> на стоимость выбранного пакета."
+    )
+    t = Table([[Paragraph(text, s["note"])]], colWidths=[width])
     t.setStyle(
         TableStyle(
             [
-                ("SPAN", (0, 1), (0, 3)),
-                ("SPAN", (0, 4), (0, 6)),
-                ("BACKGROUND", (0, 0), (1, 0), LICENSE_HEAD),
-                ("BACKGROUND", (2, 0), (2, 0), YELLOW_HEAD),
-                ("BACKGROUND", (3, 0), (3, 0), CYAN_HEAD),
-                ("BACKGROUND", (0, 1), (1, 3), SOFT),
-                ("BACKGROUND", (0, 4), (1, 6), SOFT),
-                ("BACKGROUND", (2, 1), (2, 6), YELLOW_BG),
-                ("BACKGROUND", (3, 1), (3, 6), CYAN_BG),
-                ("BACKGROUND", (2, 2), (2, 2), white),
-                ("BACKGROUND", (3, 2), (3, 2), white),
-                ("BACKGROUND", (2, 5), (2, 5), white),
-                ("BACKGROUND", (3, 5), (3, 5), white),
-                ("GRID", (0, 0), (-1, -1), 0.4, LINE),
-                ("BOX", (0, 0), (-1, -1), 1, HexColor("#BDBDBD")),
-                ("LINEABOVE", (0, 4), (-1, 4), 1.0, LINE),
-                ("LINEBEFORE", (2, 0), (2, -1), 1.1, YELLOW),
-                ("LINEBEFORE", (3, 0), (3, -1), 1.1, CYAN),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("LEFTPADDING", (0, 0), (-1, -1), 5),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("BACKGROUND", (0, 0), (-1, -1), SOFT),
+                ("BOX", (0, 0), (-1, -1), 0.8, LINE),
+                ("LINEBEFORE", (0, 0), (0, 0), 3, BLUE),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
             ]
         )
     )
     return t
 
 
-def explanations(s, width: float):
-    gap = 3 * mm
-    half = (width - gap) / 2
-    left = Paragraph(
-        "<b>С вашим администратором</b><br/>"
-        "Клиент выделяет администратора 1С: настройка сервиса и ЭП, "
-        "базовая поддержка сотрудников. Подрядчик помогает на старте.",
-        s["note"],
-    )
-    right = Paragraph(
-        "<b>С нашим полным внедрением</b><br/>"
-        "Подрядчик выполняет все работы по запуску. "
-        "Свой администратор со стороны клиента не нужен.",
-        s["note"],
-    )
-    box = TableStyle(
-        [
-            ("BACKGROUND", (0, 0), (-1, -1), SOFT),
-            ("BOX", (0, 0), (-1, -1), 0.7, LINE),
-            ("LINEBEFORE", (0, 0), (0, 0), 2.5, BLUE),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-        ]
-    )
-    a = Table([[left]], colWidths=[half])
-    a.setStyle(box)
-    b = Table([[right]], colWidths=[half])
-    b.setStyle(box)
-    row = Table([[a, "", b]], colWidths=[half, gap, half])
-    row.setStyle(
-        TableStyle(
-            [
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                ("TOPPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ]
-        )
-    )
-    return row
-
-
 def example_block(s, width: float):
+    base_pkg = 15000
+    discounted = base_pkg // 2
     text = (
-        "<b>Пример:</b> 100 сотрудников + «Старт КЭДО» с вашим администратором = "
-        f"{fmt(33600)} (лицензия) + {fmt(7000)} (пакет) = "
-        f"<font color='#1B7FAF'><b>{fmt(40600)}</b></font>"
+        "<b>Пример:</b> 100 сотрудников + «Старт КЭДО» = "
+        f"{fmt(33600)} (лицензия) + {fmt(base_pkg)} (пакет без админа) = "
+        f"<font color='#1B7FAF'><b>{fmt(33600 + base_pkg)}</b></font>"
+        f"&nbsp;&nbsp;·&nbsp;&nbsp;с администратором клиента: пакет {fmt(discounted)} "
+        f"(-50%), итого <font color='#1B7FAF'><b>{fmt(33600 + discounted)}</b></font>"
     )
     t = Table([[Paragraph(text, s["example"])]], colWidths=[width])
     t.setStyle(
@@ -452,13 +418,13 @@ def build():
             s,
             "ШАГ 2",
             "Пакет запуска КЭДО",
-            "Выберите пакет и формат внедрения. Цены зависят от числа сотрудников.",
+            "Цены без администратора клиента. При своём администраторе — скидка 50%.",
             width,
         ),
         Spacer(1, 4),
         package_matrix(s, width),
         Spacer(1, 5),
-        explanations(s, width),
+        discount_note(s, width),
         Spacer(1, 5),
         example_block(s, width),
         Spacer(1, 4),
