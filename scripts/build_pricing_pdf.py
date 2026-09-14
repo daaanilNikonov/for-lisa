@@ -248,55 +248,62 @@ def license_table(s, width: float):
 
 
 def package_matrix(s, width: float):
-    name_w = 48 * mm
-    tier_w = 22 * mm
-    half = (width - name_w - tier_w) / 2
+    """Packages as columns (transposed): Старт | Старт + сопровождение."""
+    format_w = 48 * mm
+    tier_w = 24 * mm
+    half = (width - format_w - tier_w) / 2
 
     data = [
         [
-            Paragraph("Пакет", s["th"]),
+            Paragraph("Формат внедрения", s["th"]),
             Paragraph("Сотрудники", s["th"]),
-            Paragraph("С вашим администратором", s["th_dark"]),
-            Paragraph("С нашим полным внедрением", s["th_dark"]),
+            Paragraph("Старт КЭДО", s["th_dark"]),
+            Paragraph("Старт + сопровождение КЭДО", s["th_dark"]),
         ]
     ]
 
-    for i, (label, sa, sf, _a, _b) in enumerate(PACKAGE_TIERS):
+    # Rows: your admin × tiers, then full implementation × tiers
+    for i, (label, sa, _sf, sua, _suf) in enumerate(PACKAGE_TIERS):
         data.append(
             [
-                Paragraph("Старт КЭДО", s["pkg"]) if i == 0 else Paragraph("", s["pkg"]),
+                Paragraph("С вашим администратором", s["pkg"]) if i == 0 else Paragraph("", s["pkg"]),
                 Paragraph(label, s["cell_b"]),
                 Paragraph(fmt(sa), s["cell"]),
-                Paragraph(fmt(sf), s["cell"]),
+                Paragraph(fmt(sua), s["cell"]),
             ]
         )
-    for i, (label, _a, _b, sua, suf) in enumerate(PACKAGE_TIERS):
+    for i, (label, _sa, sf, _sua, suf) in enumerate(PACKAGE_TIERS):
         data.append(
             [
-                Paragraph("Старт + сопровождение КЭДО", s["pkg"]) if i == 0 else Paragraph("", s["pkg"]),
+                Paragraph("С нашим полным внедрением", s["pkg"]) if i == 0 else Paragraph("", s["pkg"]),
                 Paragraph(label, s["cell_b"]),
-                Paragraph(fmt(sua), s["cell"]),
+                Paragraph(fmt(sf), s["cell"]),
                 Paragraph(fmt(suf), s["cell"]),
             ]
         )
 
-    t = Table(data, colWidths=[name_w, tier_w, half, half])
+    t = Table(data, colWidths=[format_w, tier_w, half, half])
     t.setStyle(
         TableStyle(
             [
                 ("SPAN", (0, 1), (0, 3)),
                 ("SPAN", (0, 4), (0, 6)),
                 ("BACKGROUND", (0, 0), (1, 0), LICENSE_HEAD),
-                ("BACKGROUND", (2, 0), (3, 0), HexColor("#E6E6E6")),
-                ("BACKGROUND", (0, 1), (0, 3), YELLOW_HEAD),
-                ("BACKGROUND", (1, 1), (3, 3), YELLOW_BG),
-                ("BACKGROUND", (0, 4), (0, 6), CYAN_HEAD),
-                ("BACKGROUND", (1, 4), (3, 6), CYAN_BG),
-                ("BACKGROUND", (1, 2), (3, 2), white),
-                ("BACKGROUND", (1, 5), (3, 5), white),
+                ("BACKGROUND", (2, 0), (2, 0), YELLOW_HEAD),
+                ("BACKGROUND", (3, 0), (3, 0), CYAN_HEAD),
+                ("BACKGROUND", (0, 1), (1, 3), SOFT),
+                ("BACKGROUND", (0, 4), (1, 6), SOFT),
+                ("BACKGROUND", (2, 1), (2, 6), YELLOW_BG),
+                ("BACKGROUND", (3, 1), (3, 6), CYAN_BG),
+                ("BACKGROUND", (2, 2), (2, 2), white),
+                ("BACKGROUND", (3, 2), (3, 2), white),
+                ("BACKGROUND", (2, 5), (2, 5), white),
+                ("BACKGROUND", (3, 5), (3, 5), white),
                 ("GRID", (0, 0), (-1, -1), 0.4, LINE),
                 ("BOX", (0, 0), (-1, -1), 1, HexColor("#BDBDBD")),
-                ("LINEABOVE", (0, 4), (-1, 4), 1.1, CYAN),
+                ("LINEABOVE", (0, 4), (-1, 4), 1.0, LINE),
+                ("LINEBEFORE", (2, 0), (2, -1), 1.1, YELLOW),
+                ("LINEBEFORE", (3, 0), (3, -1), 1.1, CYAN),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("ALIGN", (1, 0), (-1, -1), "CENTER"),
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
