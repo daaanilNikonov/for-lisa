@@ -45,6 +45,10 @@ CYAN_BG = HexColor("#EEF8FA")
 CYAN_HEAD = HexColor("#7BC8D6")
 LICENSE_HEAD = HexColor("#4A4A4A")
 STEP_BG = HexColor("#E8F6FC")
+ACCENT = HexColor("#E07A2F")
+ACCENT_DARK = HexColor("#C45F18")
+ACCENT_BG = HexColor("#FFF1E6")
+ACCENT_SOFT = HexColor("#FFE4CC")
 
 FONT_REG = "NotoSans"
 FONT_BOLD = "NotoSans-Bold"
@@ -164,6 +168,38 @@ def make_styles():
         ),
         "note": ParagraphStyle(
             "note", fontName=FONT_REG, fontSize=7.5, textColor=NEAR_BLACK, leading=10
+        ),
+        "discount_title": ParagraphStyle(
+            "discount_title",
+            fontName=FONT_BOLD,
+            fontSize=12,
+            textColor=ACCENT_DARK,
+            leading=15,
+            alignment=TA_LEFT,
+        ),
+        "discount_body": ParagraphStyle(
+            "discount_body",
+            fontName=FONT_REG,
+            fontSize=8.5,
+            textColor=NEAR_BLACK,
+            leading=11,
+            alignment=TA_LEFT,
+        ),
+        "discount_badge": ParagraphStyle(
+            "discount_badge",
+            fontName=FONT_BOLD,
+            fontSize=18,
+            textColor=white,
+            leading=22,
+            alignment=TA_CENTER,
+        ),
+        "discount_badge_sub": ParagraphStyle(
+            "discount_badge_sub",
+            fontName=FONT_BOLD,
+            fontSize=7.5,
+            textColor=white,
+            leading=9,
+            alignment=TA_CENTER,
         ),
         "muted": ParagraphStyle(
             "muted", fontName=FONT_REG, fontSize=7, textColor=GRAY, leading=9
@@ -301,26 +337,76 @@ def package_matrix(s, width: float):
 
 
 def discount_note(s, width: float):
-    text = (
-        "<b>Цены в таблице — без администратора со стороны клиента</b> "
-        "(работы по запуску выполняет подрядчик).<br/>"
-        "<b>Если администратора выделяет клиент — скидка 50%</b> на стоимость выбранного пакета."
+    """Eye-catching promo block for the 50% client-admin discount."""
+    badge_w = 42 * mm
+    gap = 0
+    text_w = width - badge_w - gap
+
+    badge = Table(
+        [
+            [Paragraph("-50%", s["discount_badge"])],
+            [Paragraph("НА ПАКЕТ", s["discount_badge_sub"])],
+        ],
+        colWidths=[badge_w],
+        rowHeights=[22, 12],
     )
-    t = Table([[Paragraph(text, s["note"])]], colWidths=[width])
-    t.setStyle(
+    badge.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), SOFT),
-                ("BOX", (0, 0), (-1, -1), 0.8, LINE),
-                ("LINEBEFORE", (0, 0), (0, 0), 3, BLUE),
-                ("TOPPADDING", (0, 0), (-1, -1), 8),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-                ("LEFTPADDING", (0, 0), (-1, -1), 10),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                ("BACKGROUND", (0, 0), (-1, -1), ACCENT),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("TOPPADDING", (0, 0), (0, 0), 10),
+                ("BOTTOMPADDING", (0, 0), (0, 0), 0),
+                ("TOPPADDING", (0, 1), (0, 1), 0),
+                ("BOTTOMPADDING", (0, 1), (0, 1), 10),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
             ]
         )
     )
-    return t
+
+    copy = [
+        Paragraph("Скидка при своём администраторе", s["discount_title"]),
+        Spacer(1, 3),
+        Paragraph(
+            "Цены в таблице — <b>без администратора клиента</b> "
+            "(запуск выполняет подрядчик).<br/>"
+            "Если администратора выделяете <b>вы</b> — стоимость выбранного пакета "
+            "<font color='#C45F18'><b>ниже наполовину</b></font>.",
+            s["discount_body"],
+        ),
+    ]
+    text_box = Table([[copy]], colWidths=[text_w - 8])
+    text_box.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), ACCENT_BG),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 12),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+            ]
+        )
+    )
+
+    row = Table([[badge, text_box]], colWidths=[badge_w, text_w])
+    row.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ("BOX", (0, 0), (-1, -1), 2, ACCENT),
+                ("BACKGROUND", (0, 0), (0, 0), ACCENT),
+                ("BACKGROUND", (1, 0), (1, 0), ACCENT_BG),
+            ]
+        )
+    )
+    return row
 
 
 def example_block(s, width: float):
@@ -418,12 +504,12 @@ def build():
             s,
             "ШАГ 2",
             "Пакет запуска КЭДО",
-            "Цены без администратора клиента. При своём администраторе — скидка 50%.",
+            "Выберите пакет. В таблице — базовая стоимость без администратора клиента.",
             width,
         ),
         Spacer(1, 4),
         package_matrix(s, width),
-        Spacer(1, 5),
+        Spacer(1, 6),
         discount_note(s, width),
         Spacer(1, 5),
         example_block(s, width),
