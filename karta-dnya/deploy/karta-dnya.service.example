@@ -1,0 +1,16 @@
+[Unit]
+Description=Forus Karta dnya
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/karta-dnya
+Environment=PORT=3847
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+User=www-data
+
+[Install]
+WantedBy=multi-user.target
