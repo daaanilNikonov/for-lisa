@@ -15,7 +15,7 @@ from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
 ROOT = Path(__file__).resolve().parents[1]
-TEMPLATE = ROOT / "Презентация ГК Форус темный шаблон 16х9 (1).pptx"
+TEMPLATE = ROOT / "для презентаций по кабинету сотрудника" / "Презентация ГК Форус темный шаблон 16х9 (1).pptx"
 OUT = ROOT / "presentation" / "Продвижение_1С_Кабинет_сотрудника.pptx"
 ICONS = ROOT / "presentation" / "assets" / "icons"
 
