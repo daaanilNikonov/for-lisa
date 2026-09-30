@@ -6,26 +6,27 @@
 <title>Экспресс-профиль кадровых процессов</title>
 <style>
   :root {
-    --bg: #eef3f8;
+    --bg: #FFF8E7;
     --card: #ffffff;
-    --ink: #1a2b3c;
-    --muted: #5b6b7c;
-    --accent: #1f7a9a;
-    --accent-2: #0f5f78;
-    --soft: #d7e8ef;
-    --line: #d9e2ec;
-    --ok: #1f7a4d;
+    --ink: #395F75;
+    --muted: #6A8494;
+    --accent: #FECF68;
+    --accent-2: #E5B44A;
+    --soft: #FEE2A4;
+    --line: #E7E6E6;
+    --ok: #00715D;
+    --ink-dark: #2C4A5B;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     min-height: 100vh;
-    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
     color: var(--ink);
     background:
-      radial-gradient(1200px 500px at 10% -10%, #d7eef7 0%, transparent 60%),
-      radial-gradient(900px 400px at 100% 0%, #e8f2e9 0%, transparent 55%),
-      linear-gradient(180deg, #eef3f8, #e7edf4);
+      radial-gradient(1000px 420px at 0% 0%, #FEE2A4 0%, transparent 55%),
+      radial-gradient(900px 400px at 100% 0%, #FFF1CC 0%, transparent 50%),
+      linear-gradient(180deg, #FFF8E7, #FFFFFF);
   }
   .shell {
     max-width: 720px;
@@ -40,8 +41,14 @@
     color: var(--muted);
     font-size: 14px;
   }
-  .brand strong { color: var(--accent-2); font-size: 16px; }
-  .card {
+  .brand strong { color: var(--ink); font-size: 16px; }
+  .card { position: relative; overflow: hidden; }
+  .card::before {
+    content: "";
+    position: absolute; left: 0; right: 0; top: 0; height: 8px;
+    background: var(--accent);
+  }
+  .card-oldignore {
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 22px;
@@ -59,7 +66,7 @@
     display: block;
     height: 100%;
     width: 0;
-    background: linear-gradient(90deg, var(--accent), #3aa3c5);
+    background: linear-gradient(90deg, var(--accent), #FEE2A4);
     transition: width .25s ease;
   }
   .step-label { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
@@ -71,7 +78,7 @@
   button.option {
     text-align: left;
     border: 1px solid var(--line);
-    background: #f8fbfd;
+    background: #ffffff;
     border-radius: 14px;
     padding: 14px 16px;
     font-size: 16px;
@@ -79,11 +86,11 @@
     cursor: pointer;
     transition: .15s ease;
   }
-  button.option:hover { border-color: var(--accent); background: #f1f9fc; }
+  button.option:hover { border-color: var(--accent); background: #FFF8E7; }
   button.option.selected {
     border-color: var(--accent);
-    background: #e7f5fa;
-    box-shadow: inset 0 0 0 1px var(--accent);
+    background: #FEE2A4;
+    box-shadow: inset 0 0 0 2px var(--accent);
   }
   .actions {
     display: flex;
@@ -98,17 +105,17 @@
     font-size: 15px;
     cursor: pointer;
   }
-  .btn.primary { background: var(--accent); color: #fff; }
-  .btn.primary:hover { background: var(--accent-2); }
+  .btn.primary { background: var(--accent); color: var(--ink-dark); font-weight: 700; }
+  .btn.primary:hover { background: var(--accent-2); color: var(--ink-dark); }
   .btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
   .result-box {
-    background: #f3faf6;
-    border: 1px solid #cfe8d8;
+    background: #FFF8E7;
+    border: 2px solid #FECF68;
     border-radius: 16px;
     padding: 16px;
     margin: 16px 0 8px;
   }
-  .result-box h3 { margin: 0 0 8px; color: var(--ok); font-size: 18px; }
+  .result-box h3 { margin: 0 0 8px; color: var(--ink); font-size: 18px; }
   .result-box p { margin: 0; color: var(--muted); line-height: 1.5; }
   .note {
     margin-top: 14px;
