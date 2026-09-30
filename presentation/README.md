@@ -25,3 +25,10 @@ python3 scripts/build_presentation.py
 ```
 
 Требуется: `python-pptx`, исходный шаблон Форус в корне репозитория.
+
+## Отчёт КС — сентябрь 2026
+
+- [`Отчёт_Кабинет_сотрудника_сентябрь_2026.pptx`](./Отчёт_Кабинет_сотрудника_сентябрь_2026.pptx)
+- ASCII-копия: [`KS_Report_September_2026.pptx`](./KS_Report_September_2026.pptx)
+- Источник: `КС аналитика (4).xlsx` (только сентябрь) + KPI менеджеров
+- Сборка: `python3 scripts/build_ks_september_report.py`
