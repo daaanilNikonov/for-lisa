@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Вертикальная блок-схема холодного звонка «Блиц-запись»
-Новый заход: бесплатный Старт + самостоятельная онлайн-запись.
-Формат: Н → уровни со стрелками → К, вопросы под каждым уровнем.
+Вертикальная блок-схема: холодный звонок «Блиц-запись» — ветка «Дикиди».
+Н → уровни → развилка → К
 """
 
 from reportlab.lib.pagesizes import A4
@@ -21,8 +20,10 @@ NAVY = HexColor("#1B3A4B")
 TEAL = HexColor("#2A9D8F")
 ORANGE = HexColor("#E76F51")
 BLUE = HexColor("#3D7EA6")
+GREEN = HexColor("#2D6A4F")
 LIGHT = HexColor("#F0F4F5")
 YELLOW = HexColor("#FFF6E8")
+SOFT_ORANGE = HexColor("#FCE8E2")
 BORDER = HexColor("#B8C2CA")
 DARK = HexColor("#243038")
 GRAY = HexColor("#6B7680")
@@ -64,10 +65,33 @@ def draw_arrow_v(c, x, y_from, y_to):
     c.drawPath(path, fill=1, stroke=0)
 
 
+def draw_diamond(c, cx, cy, w, h, text, fonts):
+    """Ромб-развилка. cy — центр. Возвращает y_bottom."""
+    body, bold = fonts
+    path = c.beginPath()
+    path.moveTo(cx, cy + h / 2)
+    path.lineTo(cx + w / 2, cy)
+    path.lineTo(cx, cy - h / 2)
+    path.lineTo(cx - w / 2, cy)
+    path.close()
+    c.setFillColor(YELLOW)
+    c.setStrokeColor(ORANGE)
+    c.setLineWidth(1.4)
+    c.drawPath(path, fill=1, stroke=1)
+    c.setFillColor(NAVY)
+    c.setFont(bold, 8.5)
+    lines = wrap(text, bold, 8.5, w * 0.62)
+    ty = cy + (len(lines) * 10) / 2 - 2
+    for line in lines:
+        c.drawCentredString(cx, ty - 8.5, line)
+        ty -= 10.5
+    return cy - h / 2
+
+
 def draw_level(c, x, y_top, w, title, fonts, accent=TEAL):
     _, bold = fonts
     pad = 10
-    size = 12
+    size = 11.5
     lines = wrap(title, bold, size, w - 2 * pad)
     h = 14 + len(lines) * (size + 3)
     y_bottom = y_top - h
@@ -82,13 +106,12 @@ def draw_level(c, x, y_top, w, title, fonts, accent=TEAL):
     return y_bottom
 
 
-def draw_questions(c, x, y_top, w, items, fonts, caption="Что говорим / спрашиваем"):
+def draw_questions(c, x, y_top, w, items, fonts, caption="Что говорим / спрашиваем", fill=LIGHT):
     body, bold = fonts
     pad = 8
     cap_size = 8
     body_size = 8.2
     max_w = w - 2 * pad - 8
-
     prepared = []
     content_h = 8 + cap_size + 4
     for item in items:
@@ -97,16 +120,13 @@ def draw_questions(c, x, y_top, w, items, fonts, caption="Что говорим 
         content_h += len(lines) * (body_size + 2.3) + 3
     h = content_h + pad
     y_bottom = y_top - h
-
-    c.setFillColor(LIGHT)
+    c.setFillColor(fill)
     c.setStrokeColor(BORDER)
     c.setLineWidth(0.8)
     c.roundRect(x, y_bottom, w, h, 5, fill=1, stroke=1)
-
     c.setFillColor(TEAL)
     c.setFont(bold, cap_size)
     c.drawString(x + pad, y_top - cap_size - 4, caption)
-
     y = y_top - cap_size - 10
     c.setFillColor(DARK)
     c.setFont(body, body_size)
@@ -118,83 +138,19 @@ def draw_questions(c, x, y_top, w, items, fonts, caption="Что говорим 
     return y_bottom
 
 
-def draw_branch_table(c, x, y_top, w, rows, fonts, title="Если клиент говорит → что говорим → куда дальше"):
-    body, bold = fonts
-    pad = 6
-    title_size = 8
-    cell = 7.2
-    col_w = [(w - 2 * pad) * 0.28, (w - 2 * pad) * 0.44, (w - 2 * pad) * 0.28]
-
-    prepared = []
-    content_h = 8 + title_size + 6
-    headers = ["Клиент говорит", "Что говорим", "Дальше"]
-    header_lines = [wrap(h, bold, cell, col_w[i] - 4) for i, h in enumerate(headers)]
-    header_h = max(len(hl) for hl in header_lines) * (cell + 2) + 4
-    content_h += header_h + 2
-
-    for a, b, d in rows:
-        cells = [
-            wrap(a, body, cell, col_w[0] - 4),
-            wrap(b, body, cell, col_w[1] - 4),
-            wrap(d, body, cell, col_w[2] - 4),
-        ]
-        rh = max(len(x) for x in cells) * (cell + 2) + 4
-        prepared.append((cells, rh))
-        content_h += rh
-
-    h = content_h + pad
-    y_bottom = y_top - h
-    c.setFillColor(YELLOW)
-    c.setStrokeColor(BORDER)
-    c.setLineWidth(0.8)
-    c.roundRect(x, y_bottom, w, h, 5, fill=1, stroke=1)
-
-    c.setFillColor(ORANGE)
-    c.setFont(bold, title_size)
-    c.drawString(x + pad, y_top - title_size - 3, title)
-
-    y = y_top - title_size - 8
-    c.setFillColor(HexColor("#F3D9C0"))
-    c.rect(x + pad, y - header_h, w - 2 * pad, header_h, fill=1, stroke=0)
-    c.setFillColor(NAVY)
-    c.setFont(bold, cell)
-    cx = x + pad
-    for i, hl in enumerate(header_lines):
-        yy = y - 3
-        for line in hl:
-            c.drawString(cx + 2, yy - cell, line)
-            yy -= cell + 2
-        cx += col_w[i]
-    y -= header_h
-
-    for idx, (cells, rh) in enumerate(prepared):
-        c.setFillColor(white if idx % 2 == 0 else HexColor("#FFFBF3"))
-        c.rect(x + pad, y - rh, w - 2 * pad, rh, fill=1, stroke=0)
-        c.setStrokeColor(BORDER)
-        c.setLineWidth(0.4)
-        c.line(x + pad, y - rh, x + w - pad, y - rh)
-        c.setFillColor(DARK)
-        c.setFont(body, cell)
-        cx = x + pad
-        for i, cell_lines in enumerate(cells):
-            yy = y - 3
-            for line in cell_lines:
-                c.drawString(cx + 2, yy - cell, line)
-                yy -= cell + 2
-            cx += col_w[i]
-        y -= rh
-    return y_bottom
-
-
 def page_head(c, page_w, page_h, fonts, n, total, cont=False):
     body, bold = fonts
     c.setFillColor(NAVY)
     c.rect(0, page_h - 16 * mm, page_w, 16 * mm, fill=1, stroke=0)
     c.setFillColor(white)
     c.setFont(bold, 12)
-    c.drawCentredString(page_w / 2, page_h - 7.5 * mm, "Блиц-запись — блок-схема холодного звонка")
+    c.drawCentredString(page_w / 2, page_h - 7.5 * mm, "Блиц-запись — блок-схема (ветка «Дикиди»)")
     c.setFont(body, 8)
-    c.drawCentredString(page_w / 2, page_h - 12.5 * mm, "бесплатный Старт · самостоятельная онлайн-запись · демонстрация")
+    c.drawCentredString(
+        page_w / 2,
+        page_h - 12.5 * mm,
+        "бесплатный сервис · уточнение проблем · хранение в Иркутске · демонстрация",
+    )
     c.setFillColor(GRAY)
     c.drawCentredString(page_w / 2, 7 * mm, f"{n} / {total}")
     if cont:
@@ -208,11 +164,10 @@ def build():
     body, bold = fonts
     page_w, page_h = A4
     c = canvas.Canvas(OUT, pagesize=A4)
-
     margin = 16 * mm
     box_w = page_w - 2 * margin
     cx = page_w / 2
-    total = 3
+    total = 2
 
     # ========== PAGE 1 ==========
     page_head(c, page_w, page_h, fonts, 1, total)
@@ -220,13 +175,13 @@ def build():
 
     c.setFillColor(NAVY)
     c.setFont(bold, 11)
-    c.drawCentredString(cx, y, "Холодный звонок по «Блиц-записи»")
+    c.drawCentredString(cx, y, "Холодный звонок: клиент на «Дикиди»")
     y -= 9 * mm
 
     draw_circle(c, cx, y - 7, 8, "Н", fonts, TEAL)
-    y -= 7 + 8
-    draw_arrow_v(c, cx, y, y - 7 * mm)
-    y -= 7 * mm
+    y -= 15
+    draw_arrow_v(c, cx, y, y - 6 * mm)
+    y -= 6 * mm
 
     # Level 1
     y = draw_level(
@@ -238,69 +193,131 @@ def build():
         fonts,
         TEAL,
     )
-    draw_arrow_v(c, cx, y, y - 4 * mm)
-    y -= 4 * mm
+    draw_arrow_v(c, cx, y, y - 3.5 * mm)
+    y -= 3.5 * mm
     y = draw_questions(
         c,
-        margin + 5 * mm,
+        margin + 4 * mm,
         y,
-        box_w - 10 * mm,
+        box_w - 8 * mm,
         [
-            "Добрый день! Меня зовут [имя], я из компании «Форус». Мы предлагаем вам посотрудничать с нами и бесплатно установить наше новое приложение для самостоятельной онлайн-записи клиентов. Оно интегрируется куда угодно: 2ГИС, ваш сайт или социальные сети. С кем могу обсудить вопрос сотрудничества?",
-            "Если не ЛПР: с кем лучше обсудить запись клиентов и расписание? Как обратиться и когда перезвонить?",
-            "Если ЛПР: у вас есть две-три минуты? Хочу коротко показать идею и уточнить, как у вас сейчас устроена запись.",
+            "Здравствуйте! Меня зовут [имя], группа компаний «Форус». Мы автоматизируем бизнес и онлайн-запись.",
+            "Звоню по вопросу сотрудничества: предлагаем бесплатный сервис для онлайн-записи клиентов.",
+            "Подскажите, чем вы сейчас пользуетесь?",
         ],
         fonts,
     )
-    draw_arrow_v(c, cx, y, y - 7 * mm)
-    y -= 7 * mm
+    draw_arrow_v(c, cx, y, y - 6 * mm)
+    y -= 6 * mm
 
-    # Level 2
-    y = draw_level(c, margin, y, box_w, "2. Короткий рассказ про сервис", fonts, TEAL)
-    draw_arrow_v(c, cx, y, y - 4 * mm)
-    y -= 4 * mm
+    # Level 2 - answer Dikidi
+    y = draw_level(
+        c,
+        margin,
+        y,
+        box_w,
+        "2. Ответ клиента: «Дикиди» — уточняющий вопрос",
+        fonts,
+        BLUE,
+    )
+    draw_arrow_v(c, cx, y, y - 3.5 * mm)
+    y -= 3.5 * mm
     y = draw_questions(
         c,
-        margin + 5 * mm,
+        margin + 4 * mm,
         y,
-        box_w - 10 * mm,
+        box_w - 8 * mm,
         [
-            "«Блиц-запись» — сервис для самостоятельной онлайн-записи. Клиент сам выбирает услугу и время с сайта, из 2ГИС, Яндекс Карт или соцсетей.",
-            "Можно начать бесплатно на тарифе «Старт»: календарь, онлайн-запись, прайс, до пяти сотрудников — без абонентской платы.",
-            "Если нужно больше — подключаете только нужные инструменты или берёте полный тариф.",
-            "Переход: расскажите, пожалуйста, как у вас сейчас записываются клиенты?",
+            "Понял(а) вас! Многие клиенты сейчас замечают проблемы с сервисом.",
+            "Подскажите, вы ещё не сталкивались?",
         ],
         fonts,
+        "Что говорим",
     )
-    draw_arrow_v(c, cx, y, y - 7 * mm)
-    y -= 7 * mm
+    draw_arrow_v(c, cx, y, y - 6 * mm)
+    y -= 6 * mm
 
-    # Level 3
-    y = draw_level(c, margin, y, box_w, "3. Сбор потребности", fonts, BLUE)
-    draw_arrow_v(c, cx, y, y - 4 * mm)
-    y -= 4 * mm
-    y = draw_questions(
+    # Diamond
+    y_before_diamond = y
+    diamond_h = 28 * mm
+    diamond_w = 72 * mm
+    cy_d = y - diamond_h / 2
+    draw_diamond(c, cx, cy_d, diamond_w, diamond_h, "Сталкивались с проблемами в «Дикиди»?", fonts)
+    y = cy_d - diamond_h / 2
+
+    # Two branches side by side below diamond
+    gap = 6 * mm
+    col_w = (box_w - gap) / 2
+    left_x = margin
+    right_x = margin + col_w + gap
+    branch_top = y - 8 * mm
+
+    # arrows to branches
+    c.setStrokeColor(ORANGE)
+    c.setFillColor(ORANGE)
+    c.setLineWidth(1.5)
+    # left fork
+    c.line(cx - 8, y, left_x + col_w / 2, branch_top + 2)
+    c.setFont(bold, 8)
+    c.drawString(left_x + 4, branch_top + 4, "ДА →")
+    # right fork
+    c.setStrokeColor(GREEN)
+    c.setFillColor(GREEN)
+    c.line(cx + 8, y, right_x + col_w / 2, branch_top + 2)
+    c.drawRightString(right_x + col_w - 4, branch_top + 4, "← НЕТ")
+
+    # Left branch - problems
+    y_left = draw_level(
+        c, left_x, branch_top, col_w, "2А. Проблемы есть", fonts, ORANGE
+    )
+    y_left = draw_questions(
         c,
-        margin + 5 * mm,
-        y,
-        box_w - 10 * mm,
+        left_x + 2 * mm,
+        y_left - 3 * mm,
+        col_w - 4 * mm,
         [
-            "Клиенты чаще звонят, пишут в мессенджеры, приходят из соцсетей — или уже есть онлайн-запись?",
-            "Кто этим занимается — вы, администратор или мастер?",
-            "Чем пользуетесь: тетрадь, таблица, «Юклиентс», «Дикиди»? Что нравится и что мешает?",
-            "Бывает, что в час пик не дозваниваются и запись пропадает?",
-            "Могут ли клиенты записаться сами с сайта, 2ГИС, соцсетей — или всё через администратора?",
-            "Напоминаете о визите? Насколько болезненны неявки?",
-            "Что в записи и расписании больше всего отнимает время или нервы?",
-            "Повтор: сейчас у вас [как записывают], мешает [боль], важно [цель]. Верно?",
+            "Очень жаль. Из-за текущих обстоятельств малый бизнес страдает.",
+            "Мы можем предложить помощь и решить вашу проблему с записью.",
+            "→ переходим к рассказу про бесплатный сервис",
         ],
         fonts,
-        "Вопросы",
+        "Что говорим",
+        SOFT_ORANGE,
     )
+
+    # Right branch - no problems
+    y_right = draw_level(
+        c, right_x, branch_top, col_w, "2Б. Проблем нет", fonts, GREEN
+    )
+    y_right = draw_questions(
+        c,
+        right_x + 2 * mm,
+        y_right - 3 * mm,
+        col_w - 4 * mm,
+        [
+            "Приятно слышать, что всё хорошо!",
+            "Буду благодарен(на) за обратную связь.",
+            "Какими блоками пользуетесь в «Дикиди»?",
+            "Что нравится больше всего?",
+            "→ затем мягко к бесплатному сервису",
+        ],
+        fonts,
+        "Что говорим / спрашиваем",
+        HexColor("#E8F5E9"),
+    )
+
+    merge_y = min(y_left, y_right) - 4 * mm
+    c.setStrokeColor(TEAL)
+    c.setFillColor(TEAL)
+    c.setLineWidth(1.5)
+    c.line(left_x + col_w / 2, y_left, left_x + col_w / 2, merge_y + 6)
+    c.line(right_x + col_w / 2, y_right, right_x + col_w / 2, merge_y + 6)
+    c.line(left_x + col_w / 2, merge_y + 6, right_x + col_w / 2, merge_y + 6)
+    draw_arrow_v(c, cx, merge_y + 6, merge_y - 2 * mm)
 
     c.setFillColor(TEAL)
     c.setFont(bold, 8)
-    c.drawCentredString(cx, 13 * mm, "↓ продолжение на следующей странице")
+    c.drawCentredString(cx, 13 * mm, "↓ обе ветки → рассказ про сервис (след. страница)")
     c.showPage()
 
     # ========== PAGE 2 ==========
@@ -308,174 +325,83 @@ def build():
     y = page_h - 26 * mm
     draw_circle(c, cx, y - 5, 5, "↓", fonts, GRAY)
     y -= 10
-    draw_arrow_v(c, cx, y, y - 6 * mm)
-    y -= 6 * mm
+    draw_arrow_v(c, cx, y, y - 5 * mm)
+    y -= 5 * mm
 
-    # Level 4
     y = draw_level(
-        c, margin, y, box_w, "4. Рассказ о сервисе под боль клиента", fonts, TEAL
-    )
-    draw_arrow_v(c, cx, y, y - 4 * mm)
-    y -= 4 * mm
-    y = draw_questions(
         c,
-        margin + 5 * mm,
+        margin,
         y,
-        box_w - 10 * mm,
-        [
-            "Теряют заявки / много звонков → клиент сам записывается с сайта, 2ГИС, карт и соцсетей; заявка сразу в календарь.",
-            "Не готовы платить сразу → тариф «Старт» 0 ₽/мес: календарь, онлайн-запись, прайс, до 5 сотрудников, 1 филиал.",
-            "Путаница в расписании → всё в одном месте, нельзя задвоить запись; на «Управлении» — графики и загрузка.",
-            "Нужна база и возврат клиентов → на «Старте» база есть; история, выгрузка и лояльность — в модулях или в «Управлении».",
-            "Нужен запуск под ключ и бренд → «Премиум»: менеджер, брендирование, витрина, каналы привлечения, аналитика из 2ГИС и соцсетей.",
-        ],
+        box_w,
+        "3. Рассказ про бесплатный сервис «Блиц-запись»",
         fonts,
-        "Какой тезис берём",
+        TEAL,
     )
-    draw_arrow_v(c, cx, y, y - 7 * mm)
-    y -= 7 * mm
-
-    # Level 5 tariffs mini
-    y = draw_level(c, margin, y, box_w, "5. Тарифы (коротко, если спросили)", fonts, ORANGE)
-    draw_arrow_v(c, cx, y, y - 4 * mm)
-    y -= 4 * mm
+    draw_arrow_v(c, cx, y, y - 3.5 * mm)
+    y -= 3.5 * mm
     y = draw_questions(
         c,
-        margin + 5 * mm,
+        margin + 4 * mm,
         y,
-        box_w - 10 * mm,
+        box_w - 8 * mm,
         [
-            "Формула КП: начните бесплатно, подключайте только нужные инструменты или получите все возможности в одном тарифе.",
-            "«Старт» — 0 ₽/мес.",
-            "Модули к «Старту» — аналитика, график, зарплата, полная база, Telegram-бот, лояльность.",
-            "«Управление» — 1 900 ₽/мес при оплате за год (22 800 ₽/год) или 2 100 ₽ помесячно. Экономия за год — 2 400 ₽.",
-            "«Премиум» — 2 067 ₽/мес при оплате за год (24 800 ₽/год) или 2 300 ₽ помесячно.",
-        ],
-        fonts,
-        "Ориентиры по цене",
-    )
-    draw_arrow_v(c, cx, y, y - 7 * mm)
-    y -= 7 * mm
-
-    # Level 6 demo
-    y = draw_level(c, margin, y, box_w, "6. Приглашение на демонстрацию", fonts, ORANGE)
-    draw_arrow_v(c, cx, y, y - 4 * mm)
-    y -= 4 * mm
-    y = draw_questions(
-        c,
-        margin + 5 * mm,
-        y,
-        box_w - 10 * mm,
-        [
-            "Давайте я просто покажу, как это выглядит. За 15–20 минут пройдёмся по онлайн-записи, календарю и бесплатному старту. Когда удобнее: завтра до обеда или после? Или во вторник / в среду?",
-            "Если «надо подумать»: понимаю. Поэтому и предлагаю короткую демонстрацию — особенно бесплатный «Старт». Давайте 15 минут на [день]?",
-            "Фиксация: куда отправить ссылку — почта или мессенджер? [дата], [время], демонстрация «Блиц-запись». Напомню за день и за час.",
+            "Самостоятельная онлайн-запись: клиент выбирает услугу и время сам.",
+            "Тариф «Старт» — 0 ₽ в месяц: календарь, онлайн-запись, прайс, до пяти сотрудников.",
+            "Данные хранятся в Иркутске — рядом поддержка группы компаний «Форус».",
+            "Подключается к 2ГИС, сайту и социальным сетям.",
+            "Уточнить: сколько сотрудников в записи? Где сейчас стоит онлайн-запись?",
         ],
         fonts,
     )
-
-    c.setFillColor(TEAL)
-    c.setFont(bold, 8)
-    c.drawCentredString(cx, 13 * mm, "↓ возражения и завершение — на следующей странице")
-    c.showPage()
-
-    # ========== PAGE 3 ==========
-    page_head(c, page_w, page_h, fonts, 3, total, cont=True)
-    y = page_h - 26 * mm
-    draw_circle(c, cx, y - 5, 5, "↓", fonts, GRAY)
-    y -= 10
     draw_arrow_v(c, cx, y, y - 6 * mm)
     y -= 6 * mm
 
     y = draw_level(
-        c, margin, y, box_w, "7. Если демонстрацию сейчас не ставят", fonts, NAVY
+        c, margin, y, box_w, "4. Приглашение на демонстрацию", fonts, ORANGE
     )
-    draw_arrow_v(c, cx, y, y - 4 * mm)
-    y -= 4 * mm
+    draw_arrow_v(c, cx, y, y - 3.5 * mm)
+    y -= 3.5 * mm
     y = draw_questions(
         c,
-        margin + 5 * mm,
+        margin + 4 * mm,
         y,
-        box_w - 10 * mm,
+        box_w - 8 * mm,
         [
-            "Хорошо, настаивать не буду. Зафиксирую, что важно: [боль]. Могу скинуть описание тарифов — там есть бесплатный «Старт» — и созвониться [день / время]. Какая почта удобнее?",
+            "Давайте покажу, как это выглядит рядом с тем, к чему вы привыкли в «Дикиди».",
+            "15–20 минут: онлайн-запись и бесплатный старт.",
+            "Когда удобнее: завтра до обеда или после? / вторник или среда?",
+            "Если «не хотим менять»: сравните без обязательств, особенно бесплатный «Старт».",
+            "Фиксация: почта или мессенджер, дата, время; напомнить за день и за час.",
         ],
         fonts,
     )
-    draw_arrow_v(c, cx, y, y - 7 * mm)
-    y -= 7 * mm
+    draw_arrow_v(c, cx, y, y - 6 * mm)
+    y -= 6 * mm
 
-    y = draw_level(c, margin, y, box_w, "8. Отработка возражений → снова к демонстрации", fonts, ORANGE)
-    draw_arrow_v(c, cx, y, y - 4 * mm)
-    y -= 4 * mm
-    y = draw_branch_table(
-        c,
-        margin + 3 * mm,
-        y,
-        box_w - 6 * mm,
-        [
-            (
-                "«Некогда»",
-                "15 минут демонстрации в удобное время. Утро или вечер?",
-                "→ слот на демо",
-            ),
-            (
-                "«Всё устраивает»",
-                "Можно начать бесплатно и сравнить с тем, как сейчас принимают запись.",
-                "→ демо",
-            ),
-            (
-                "«Уже есть сервис»",
-                "Не спорим. У нас можно с 0 ₽ и только нужные модули. Покажу разницу.",
-                "→ демо",
-            ),
-            (
-                "«Дорого / платно»",
-                "«Старт» — 0 ₽/мес. Полный тариф — от 1 900 ₽/мес при оплате за год.",
-                "→ демо / КП",
-            ),
-            (
-                "«Нет сайта»",
-                "Сайт не обязателен: 2ГИС, карты, соцсети, ссылка в мессенджере.",
-                "→ демо",
-            ),
-            (
-                "«Пришлите на почту»",
-                "Отправлю. Что больнее — звонки, неявки или цена? И сразу 15 минут на просмотр.",
-                "→ письмо + слот",
-            ),
-            (
-                "«Надо посоветоваться»",
-                "Пригласим партнёра/администратора сразу на демонстрацию.",
-                "→ демо вдвоём",
-            ),
-        ],
-        fonts,
+    y = draw_level(
+        c, margin, y, box_w, "5. Если демо не ставят / возражения", fonts, NAVY
     )
-    draw_arrow_v(c, cx, y, y - 8 * mm)
-    y -= 8 * mm
-
-    y = draw_level(c, margin, y, box_w, "9. Фиксация результата звонка", fonts, NAVY)
-    draw_arrow_v(c, cx, y, y - 4 * mm)
-    y -= 4 * mm
+    draw_arrow_v(c, cx, y, y - 3.5 * mm)
+    y -= 3.5 * mm
     y = draw_questions(
         c,
-        margin + 5 * mm,
+        margin + 4 * mm,
         y,
-        box_w - 10 * mm,
+        box_w - 8 * mm,
         [
-            "Есть следующий шаг: демонстрация / перезвон / коммерческое предложение?",
-            "Зафиксированы почта или мессенджер, роль ЛПР, дата?",
-            "Комментарий сохранён в CRM?",
+            "Скинуть описание с бесплатным «Стартом» + конкретная дата перезвона.",
+            "«Всё устраивает» → запасной вариант на случай сбоев, можно параллельно и бесплатно.",
+            "«Страшно переезжать» → помогаем с настройкой, данные в Иркутске, демо без обязательства уходить.",
+            "«Уже оплатили Дикиди» → подключить «Старт» параллельно до конца оплаченного периода.",
         ],
         fonts,
-        "Что проверить",
+        "Что говорим",
     )
-    draw_arrow_v(c, cx, y, y - 10 * mm)
-    y -= 10 * mm
+    draw_arrow_v(c, cx, y, y - 9 * mm)
+    y -= 9 * mm
 
     draw_circle(c, cx, y - 8, 8, "К", fonts, NAVY)
-    y -= 8 + 12
+    y -= 20
     c.setFillColor(GRAY)
     c.setFont(body, 8)
     c.drawCentredString(cx, y, "конец звонка")
@@ -483,12 +409,12 @@ def build():
     y -= 12 * mm
     c.setFillColor(NAVY)
     c.setFont(bold, 8)
-    c.drawCentredString(cx, y, "Цепочка уровней:")
+    c.drawCentredString(cx, y, "Цепочка:")
     y -= 5 * mm
     c.setFillColor(DARK)
     c.setFont(body, 7.2)
-    chain = "Н → 1 Контакт → 2 Рассказ → 3 Потребность → 4 Презентация → 5 Тарифы → 6 Демонстрация → 7/8 Возражения → 9 Фиксация → К"
-    for line in wrap(chain, body, 7.2, box_w - 8 * mm):
+    chain = "Н → 1 Заход → 2 «Дикиди?» → развилка (проблемы / всё ок) → 3 Бесплатный сервис + Иркутск → 4 Демонстрация → К"
+    for line in wrap(chain, body, 7.2, box_w - 6 * mm):
         c.drawCentredString(cx, y, line)
         y -= 10
 
