@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <script>
+      (function () {
+        var h = location.hostname || "";
+        var preview =
+          h.includes("jsdelivr.net") ||
+          h.includes("htmlpreview") ||
+          h.includes("github.io");
+        if (preview) {
+          var b = document.createElement("base");
+          b.href =
+            "https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/audit-landing-55dd/audit-landing/";
+          document.head.insertBefore(b, document.head.firstChild);
+        }
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Аудит кадровых процессов · ГК Форус</title>
+    <meta
+      name="description"
+      content="Пройдите аудит кадровых процессов ГК Форус и получите код сценария демонстрации 1С:Кабинет сотрудника."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-wash" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#top">
+        <img
+          class="brand-logo"
+          src="assets/brand/logo-forus.png"
+          alt="форус"
+          width="120"
+          height="42"
+        />
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">1С:Кабинет сотрудника</span>
+      </a>
+      <nav class="topnav">
+        <a href="#quiz">Аудит</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="top">
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <p class="eyebrow">ГК Форус · аудит для HR и зарплаты</p>
+            <h1>Аудит кадровых процессов</h1>
+            <p class="hero-lead">
+              10 коротких вопросов — и вы получите список точек роста плюс код
+              сценария демонстрации 1С:Кабинет сотрудника.
+            </p>
+            <div class="hero-cta">
+              <a class="btn btn-primary" href="#quiz">Начать аудит</a>
+            </div>
+          </div>
+          <aside class="hero-aside">
+            <div class="hero-scenarios">
+              <p class="hero-scenarios-kicker">результат аудита</p>
+              <div class="hero-scenarios-stat">
+                <span class="hero-scenarios-num">10</span>
+                <span class="hero-scenarios-word">вопросов</span>
+              </div>
+              <p class="hero-scenarios-note">
+                Находки по процессам + код сценария демо (С1–С6) для менеджера
+              </p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="quiz-section" id="quiz">
+        <div class="quiz-shell">
+          <div class="quiz-progress" aria-hidden="true">
+            <div class="quiz-progress-bar" id="progressBar"></div>
+          </div>
+          <p class="quiz-step" id="quizStep">Вопрос 1 из 10</p>
+          <div id="quizCard" class="quiz-card"></div>
+          <div class="quiz-nav">
+            <button type="button" class="btn btn-ghost" id="btnBack" disabled>
+              Назад
+            </button>
+            <button type="button" class="btn btn-primary" id="btnNext" disabled>
+              Далее
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="result-section is-hidden" id="result" aria-live="polite">
+        <div class="result-shell">
+          <p class="eyebrow">Итог аудита</p>
+
+          <div class="scenario-code-panel" id="scenarioCodePanel">
+            <div class="scenario-code-label">Код сценария демо</div>
+            <div class="scenario-code" id="scenarioCode">С2</div>
+            <p class="scenario-title" id="scenarioTitle">—</p>
+            <p class="scenario-summary" id="scenarioSummary"></p>
+            <p class="scenario-demo-hint" id="scenarioDemoHint"></p>
+            <button type="button" class="btn btn-ghost btn-small" id="btnCopyCode">
+              Скопировать код
+            </button>
+          </div>
+
+          <div class="audit-block">
+            <h2 class="result-title">Что показал аудит</h2>
+            <ul class="audit-list" id="auditList"></ul>
+            <p class="audit-empty is-hidden" id="auditEmpty">
+              Критичных разрывов не видно — контур уже близко к цифре. На демо
+              покажем, как усилить единый кабинет.
+            </p>
+          </div>
+
+          <div class="result-actions">
+            <button type="button" class="btn btn-primary" id="btnShowLead">
+              Оставить заявку на демо
+            </button>
+            <button type="button" class="btn btn-ghost" id="btnRestart">
+              Пройти ещё раз
+            </button>
+          </div>
+
+          <div class="lead-after-result is-hidden" id="leadPanel">
+            <div class="section-head">
+              <h2>Заявка на демонстрацию</h2>
+              <p>
+                Анкета уйдёт в Google Form вместе с кодом сценария
+                <strong id="leadScenarioHint">С2</strong>.
+              </p>
+            </div>
+            <form class="lead-form" id="leadForm">
+              <label>
+                ФИО / имя
+                <input id="leadName" name="name" autocomplete="name" required />
+              </label>
+              <label>
+                Компания
+                <input id="leadCompany" name="company" autocomplete="organization" />
+              </label>
+              <label>
+                Телефон
+                <input
+                  id="leadPhone"
+                  name="phone"
+                  type="tel"
+                  inputmode="tel"
+                  autocomplete="tel"
+                  placeholder="+7 900 123-45-67"
+                  required
+                />
+              </label>
+              <label>
+                ИНН
+                <input
+                  id="leadInn"
+                  name="inn"
+                  inputmode="numeric"
+                  placeholder="10 или 12 цифр"
+                  required
+                />
+              </label>
+              <p class="lead-position-hint" id="leadHint"></p>
+              <div class="lead-actions">
+                <button type="submit" class="btn btn-primary" id="btnSubmitLead">
+                  Отправить заявку
+                </button>
+                <a
+                  class="btn btn-ghost"
+                  id="btnOpenGoogle"
+                  href="#"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Открыть Google Form
+                </a>
+              </div>
+              <p class="lead-status" id="leadStatus" role="status"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-brand">
+        <img
+          src="assets/brand/logo-forus.png"
+          alt="форус"
+          width="100"
+          height="36"
+        />
+        <span>1С:Кабинет сотрудника</span>
+      </div>
+      <p>Аудит кадровых процессов · ГК Форус</p>
+    </footer>
+
+    <script src="scripts-data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
