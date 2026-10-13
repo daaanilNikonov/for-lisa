@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Аудит кадровых процессов · ГК Форус</title>
+    <meta
+      name="description"
+      content="Пройдите аудит кадровых процессов ГК Форус и получите код сценария демонстрации 1С:Кабинет сотрудника."
+    />
+    <script>
+      /* Превью (htmlpreview/jsDelivr) ломает относительные script src —
+         грузим CSS/JS явно с CDN. На своём домене — относительные пути. */
+      (function () {
+        var h = location.hostname || "";
+        var preview =
+          h.includes("jsdelivr.net") ||
+          h.includes("htmlpreview") ||
+          h.includes("github.io") ||
+          h.includes("githack.com");
+        var CDN =
+          "https://cdn.jsdelivr.net/gh/daaanilNikonov/for-lisa@cursor/audit-landing-55dd/audit-landing/";
+        var base = preview ? CDN : "";
+        window.AUDIT_ASSET_BASE = base;
+
+        window.auditLoadStyle = function (href) {
+          var l = document.createElement("link");
+          l.rel = "stylesheet";
+          l.href = base + href;
+          document.head.appendChild(l);
+        };
+        window.auditLoadScript = function (src) {
+          return new Promise(function (resolve, reject) {
+            var s = document.createElement("script");
+            s.src = base + src;
+            s.async = false;
+            s.onload = resolve;
+            s.onerror = function () {
+              reject(new Error("Не загрузился " + s.src));
+            };
+            document.head.appendChild(s);
+          });
+        };
+
+        if (preview) {
+          var b = document.createElement("base");
+          b.href = CDN;
+          document.head.insertBefore(b, document.head.firstChild);
+        }
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      window.auditLoadStyle("styles.css");
+    </script>
+  </head>
+  <body>
+    <div class="bg-wash" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#top">
+        <img
+          class="brand-logo"
+          id="brandLogo"
+          src="assets/brand/logo-forus.png"
+          alt="форус"
+          width="120"
+          height="42"
+        />
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">1С:Кабинет сотрудника</span>
+      </a>
+      <nav class="topnav">
+        <a href="#quiz">Аудит</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="top">
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <p class="eyebrow">ГК Форус · аудит для HR и зарплаты</p>
+            <h1>Аудит кадровых процессов</h1>
+            <p class="hero-lead">
+              10 коротких вопросов — и вы получите список точек роста плюс код
+              сценария демонстрации 1С:Кабинет сотрудника.
+            </p>
+            <div class="hero-cta">
+              <a class="btn btn-primary" href="#quiz">Начать аудит</a>
+            </div>
+          </div>
+          <aside class="hero-aside">
+            <div class="hero-scenarios">
+              <p class="hero-scenarios-kicker">результат аудита</p>
+              <div class="hero-scenarios-stat">
+                <span class="hero-scenarios-num">10</span>
+                <span class="hero-scenarios-word">вопросов</span>
+              </div>
+              <p class="hero-scenarios-note">
+                Находки по процессам + код сценария демо (С1–С6) для менеджера
+              </p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="quiz-section" id="quiz">
+        <div class="quiz-shell">
+          <div class="quiz-progress" aria-hidden="true">
+            <div class="quiz-progress-bar" id="progressBar"></div>
+          </div>
+          <p class="quiz-step" id="quizStep">Вопрос 1 из 10</p>
+          <div id="quizCard" class="quiz-card">
+            <p class="quiz-loading" id="quizLoading">Загрузка вопросов…</p>
+          </div>
+          <div class="quiz-nav">
+            <button type="button" class="btn btn-ghost" id="btnBack" disabled>
+              Назад
+            </button>
+            <button type="button" class="btn btn-primary" id="btnNext" disabled>
+              Далее
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="result-section is-hidden" id="result" aria-live="polite">
+        <div class="result-shell">
+          <p class="eyebrow">Итог аудита</p>
+
+          <div class="scenario-code-panel" id="scenarioCodePanel">
+            <div class="scenario-code-label">Код сценария демо</div>
+            <div class="scenario-code" id="scenarioCode">С2</div>
+            <p class="scenario-title" id="scenarioTitle">—</p>
+            <p class="scenario-summary" id="scenarioSummary"></p>
+            <p class="scenario-demo-hint" id="scenarioDemoHint"></p>
+            <button type="button" class="btn btn-ghost btn-small" id="btnCopyCode">
+              Скопировать код
+            </button>
+          </div>
+
+          <div class="audit-block">
+            <h2 class="result-title">Что показал аудит</h2>
+            <ul class="audit-list" id="auditList"></ul>
+            <p class="audit-empty is-hidden" id="auditEmpty">
+              Критичных разрывов не видно — контур уже близко к цифре. На демо
+              покажем, как усилить единый кабинет.
+            </p>
+          </div>
+
+          <div class="result-actions">
+            <button type="button" class="btn btn-primary" id="btnShowLead">
+              Оставить заявку на демо
+            </button>
+            <button type="button" class="btn btn-ghost" id="btnRestart">
+              Пройти ещё раз
+            </button>
+          </div>
+
+          <div class="lead-after-result is-hidden" id="leadPanel">
+            <div class="section-head">
+              <h2>Заявка на демонстрацию</h2>
+              <p>
+                Анкета уйдёт в Google Form вместе с кодом сценария
+                <strong id="leadScenarioHint">С2</strong>.
+              </p>
+            </div>
+            <form class="lead-form" id="leadForm">
+              <label>
+                ФИО / имя
+                <input id="leadName" name="name" autocomplete="name" required />
+              </label>
+              <label>
+                Компания
+                <input id="leadCompany" name="company" autocomplete="organization" />
+              </label>
+              <label>
+                Телефон
+                <input
+                  id="leadPhone"
+                  name="phone"
+                  type="tel"
+                  inputmode="tel"
+                  autocomplete="tel"
+                  placeholder="+7 900 123-45-67"
+                  required
+                />
+              </label>
+              <label>
+                ИНН
+                <input
+                  id="leadInn"
+                  name="inn"
+                  inputmode="numeric"
+                  placeholder="10 или 12 цифр"
+                  required
+                />
+              </label>
+              <p class="lead-position-hint" id="leadHint"></p>
+              <div class="lead-actions">
+                <button type="submit" class="btn btn-primary" id="btnSubmitLead">
+                  Отправить заявку
+                </button>
+                <a
+                  class="btn btn-ghost"
+                  id="btnOpenGoogle"
+                  href="#"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Открыть Google Form
+                </a>
+              </div>
+              <p class="lead-status" id="leadStatus" role="status"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-brand">
+        <img
+          id="footerLogo"
+          src="assets/brand/logo-forus.png"
+          alt="форус"
+          width="100"
+          height="36"
+        />
+        <span>1С:Кабинет сотрудника</span>
+      </div>
+      <p>Аудит кадровых процессов · ГК Форус</p>
+    </footer>
+
+    <script>
+      (function () {
+        var base = window.AUDIT_ASSET_BASE || "";
+        if (base) {
+          ["brandLogo", "footerLogo"].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el && el.getAttribute("src")) {
+              el.src = base + el.getAttribute("src").replace(/^\//, "");
+            }
+          });
+        }
+        var loading = document.getElementById("quizLoading");
+        window
+          .auditLoadScript("scripts-data.js")
+          .then(function () {
+            return window.auditLoadScript("app.js");
+          })
+          .catch(function (err) {
+            if (loading) {
+              loading.textContent =
+                "Не удалось загрузить вопросы. Откройте архив локально или обновите страницу (Ctrl+Shift+R).";
+            }
+            console.error(err);
+          });
+      })();
+    </script>
+  </body>
+</html>
