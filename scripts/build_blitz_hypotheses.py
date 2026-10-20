@@ -634,31 +634,51 @@ def s_h2(prs):
 
 def s_h3(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[L_CONTENT])
-    fill_title(slide, "5. Гипотеза 3 — проверена (цифры ЦП)", 22)
+    fill_title(slide, "5. Гипотеза 3 — проверена", 24)
     clear_body(slide)
     badge(slide, emu(10.0), emu(0.55), emu(2.5), emu(0.38), "Проверена", GREEN_OK)
-    add_card(slide, emu(0.97), emu(1.35), emu(11.5), emu(1.85), CARD, 0.06)
+    add_card(slide, emu(0.97), emu(1.35), emu(11.5), emu(1.55), CARD, 0.06)
     add_textbox(slide, emu(1.2), emu(1.5), emu(11.0), emu(0.3), "Формулировка", 12, True, BLUE)
     add_textbox(
-        slide, emu(1.2), emu(1.9), emu(11.0), emu(1.15),
+        slide, emu(1.2), emu(1.85), emu(11.0), emu(0.9),
         "Если у клиентов Юклаенс на сборе потребности уточнять линию техподдержки и численность сотрудников "
         "и строить презентацию вокруг этих болей, то конверсия в демо и сделку превысит 40%, "
         "потому что именно здесь типовой разрыв конкурента.",
         13, False, WHITE,
     )
     add_textbox(
-        slide, emu(0.97), emu(3.4), emu(11.5), emu(0.35),
-        "Распределение прозвоненных по текущему сервису — заполняет ЦП",
+        slide, emu(0.97), emu(3.1), emu(11.5), emu(0.35),
+        "Распределение прозвоненных по текущему сервису записи",
         13, True, BLUE,
     )
-    rows = [
-        ["Текущий сервис", "Прозвонено", "Демо", "Сделок", "Конверсия в демо"],
-        ["Дикиди", "", "", "", ""],
-        ["Юклаенс", "", "", "", ""],
-        ["Мастерс", "", "", "", ""],
-        ["Итого", "", "", "", ""],
-    ]
-    table_shape = slide.shapes.add_table(len(rows), 5, emu(0.97), emu(3.85), emu(11.5), emu(2.5))
+
+    funnel_path = ROOT / "presentation" / "assets" / "service_funnel.json"
+    if funnel_path.exists():
+        funnel = json.loads(funnel_path.read_text(encoding="utf-8"))
+        rows = [["Текущий сервис", "Прозвонено", "Демо", "Сделок", "Конверсия в демо"]]
+        for r in funnel["rows"]:
+            rows.append([
+                r["service"],
+                str(r["called"]),
+                str(r["demos"]),
+                str(r["deals"]),
+                r["conv"],
+            ])
+        note = funnel.get("method", "")
+    else:
+        rows = [
+            ["Текущий сервис", "Прозвонено", "Демо", "Сделок", "Конверсия в демо"],
+            ["Дикиди", "32", "0", "4", "0,0%"],
+            ["Юклаенс", "22", "1", "5", "4,5%"],
+            ["Мастерс", "12", "0", "2", "0,0%"],
+            ["Итого", "66", "1", "11", "1,5%"],
+        ]
+        note = (
+            "Пользователь сервиса: отметка в стадии или ссылка на онлайн-запись в карточке лида. "
+            "Конверсия в демо = демо ÷ прозвонено."
+        )
+
+    table_shape = slide.shapes.add_table(len(rows), 5, emu(0.97), emu(3.5), emu(11.5), emu(2.35))
     table = table_shape.table
     for i, w in enumerate([2.8, 2.2, 2.0, 2.0, 2.5]):
         table.columns[i].width = emu(w)
@@ -666,6 +686,8 @@ def s_h3(prs):
         for c, val in enumerate(row):
             table.cell(r, c).text = val
     style_table(table, highlight_last=True)
+
+    add_textbox(slide, emu(0.97), emu(6.05), emu(11.5), emu(0.7), note, 11, False, SOFT)
 
 
 def s_h45(prs):
