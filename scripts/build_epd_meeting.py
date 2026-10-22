@@ -274,12 +274,12 @@ def build_goal(prs):
 def build_agenda(prs):
     slide = slide_title(prs, "Повестка", "Как идём по встрече")
     items = [
-        ("01", "Анализ конкурентов", "Гурков", False),
+        ("01", "Анализ конкурентов", "Гурков · выжимка реестра", True),
         ("02", "Актуальный анализ целевой аудитории", "Блохина, Юнусова", True),
         ("03", "Генераторы трафика: определение и критерии", "весь состав", False),
         ("04", "Формирование УТП для обоих направлений", "весь состав", False),
         ("05", "Анализ отвалов и проблем сервиса", "весь состав", False),
-        ("06", "Обновлённая стратегия рекламной кампании", "Лопатенко, Блохина, Юнусова, Савинская, Крутиков", False),
+        ("06", "Обновлённая стратегия рекламной кампании", "Лопатенко, Блохина, Юнусова, Савинская, Крутиков", True),
         ("07", "Дальнейшие шаги развития", "весь состав", False),
         ("08", "Зоны ответственности по ведению проекта", "весь состав", False),
     ]
@@ -299,12 +299,11 @@ def build_agenda(prs):
             anchor=MSO_ANCHOR.MIDDLE,
             margin=0.0,
         )
-        note = "материалы на следующих слайдах" if ready else owner
         add_text(
             slide, left + emu(0.78), top + emu(0.1), col_w - emu(0.96), card_h - emu(0.16),
             [
                 (title, 13, True, INK, 0, 0),
-                (note, 11, False, NAVY if ready else MUTED, 2, 0),
+                (owner, 11, False, NAVY if ready else MUTED, 2, 0),
             ],
             anchor=MSO_ANCHOR.MIDDLE,
             margin=0.02,
@@ -595,6 +594,250 @@ def build_reading(prs):
     return slide
 
 
+def build_competitors(prs):
+    slide = slide_title(prs, "Анализ конкурентов", "Гурков  ·  реестр операторов ИС ЭПД")
+    cards = [
+        (
+            "01",
+            "Цена входа",
+            "Бесплатно только ЭПД Лайт: нет модуля 1С и мобильного приложения. Платный минимум — DropCat, 4\u00a0500\u00a0₽ за\u00a01\u00a0000 титулов. Контур — 6\u00a0500, Сбер — 7\u00a0000.",
+        ),
+        (
+            "02",
+            "1С-ЭПД",
+            "5\u00a0000\u00a0₽ за\u00a01\u00a0000 титулов и 250\u00a0000\u00a0₽ за\u00a0100\u00a0000. На большом пакете дешевле Контура и Доки, на одном уровне с Такскомом. Веб-версии нет, только 1С:Фреш. API есть.",
+        ),
+        (
+            "03",
+            "Доки",
+            "Тот же оператор, Калуга Астрал. Веб, 1С и мобильное есть, API нет. Пакета на\u00a01\u00a0000 титулов нет. С\u00a05\u00a0000 титулов дороже 1С-ЭПД: 24\u00a0500 против 22\u00a0500.",
+        ),
+        (
+            "04",
+            "Чем берут другие",
+            "Контур — Диадок и TMS, партнёры OZON и DPD. DropCat — Госключ и тест на 100 дней. Saby — УКЭП в телефоне и Деловые линии. Сбер — ГигаЧат.",
+        ),
+    ]
+    card_w, card_h = emu(5.85), emu(2.15)
+    gap_x, gap_y = emu(0.2), emu(0.16)
+    left0, top0 = emu(0.72), emu(1.55)
+    for i, (num, title, body) in enumerate(cards):
+        col, row = i % 2, i // 2
+        left = left0 + col * (card_w + gap_x)
+        top = top0 + row * (card_h + gap_y)
+        add_shape(slide, left, top, card_w, card_h, WHITE, corner=0.08, line=LINE)
+        add_shape(slide, left, top, emu(0.08), card_h, GOLD if i == 1 else NAVY)
+        add_text(
+            slide, left + emu(0.28), top + emu(0.16), emu(1.1), emu(0.32),
+            [(num, 14, True, GOLD_DEEP)],
+        )
+        add_text(
+            slide, left + emu(1.15), top + emu(0.14), card_w - emu(1.4), emu(0.36),
+            [(title, 16, True, INK)],
+        )
+        add_text(
+            slide, left + emu(0.28), top + emu(0.62), card_w - emu(0.5), emu(1.4),
+            [(body, 13, False, MUTED)],
+        )
+    return slide
+
+
+def build_competitor_prices(prs):
+    slide = slide_title(
+        prs,
+        "Цены пакетов, ₽ в год",
+        "Гурков  ·  1С-ЭПД и ближайшие операторы",
+    )
+    headers = ("Сервис", "1 000 титулов", "100 000 титулов", "Чем отличается")
+    rows = [
+        ("1С-ЭПД", "5 000", "250 000", "Модуль 1С и API. Веб только во Фреше", True),
+        ("Доки", "нет в реестре", "320 000", "Веб есть, API нет. Тот же оператор", True),
+        ("Контур.Логистика", "6 500", "400 000", "Диадок, TMS, тест 30 дней", False),
+        ("DropCat", "4 500", "200 000", "Госключ, тест 100 дней и 100 документов", False),
+        ("Такском", "5 000", "250 000", "Тот же ценовой коридор, что у 1С-ЭПД", False),
+        ("Saby", "5 000", "индивидуально", "УКЭП в телефоне, Деловые линии", False),
+        ("Сбер2B", "7 000", "индивидуально", "ГигаЧат, экспедиторские документы", False),
+        ("ЭПД Лайт", "бесплатно", "бесплатно", "Нет модуля 1С и мобильного приложения", False),
+    ]
+    widths = (emu(2.35), emu(1.85), emu(2.15), emu(5.45))
+    left0, top = emu(0.72), emu(1.52)
+    row_h = emu(0.46)
+    x = left0
+    add_shape(slide, left0, top, sum(widths, emu(0)), row_h, NAVY)
+    for header, width in zip(headers, widths):
+        add_text(
+            slide, x + emu(0.08), top, width - emu(0.1), row_h,
+            [(header, 11, True, WHITE)],
+            anchor=MSO_ANCHOR.MIDDLE, margin=0.02,
+        )
+        x += width
+    for i, (name, p1, p2, diff, ours) in enumerate(rows):
+        y = top + row_h + i * row_h
+        fill = PALE if ours else (WHITE if i % 2 == 0 else CARD)
+        add_shape(slide, left0, y, sum(widths, emu(0)), row_h, fill)
+        x = left0
+        for text, width, bold in (
+            (name, widths[0], True),
+            (p1, widths[1], ours),
+            (p2, widths[2], ours),
+            (diff, widths[3], False),
+        ):
+            add_text(
+                slide, x + emu(0.08), y, width - emu(0.12), row_h,
+                [(text, 12, bold, INK if bold else MUTED)],
+                anchor=MSO_ANCHOR.MIDDLE, margin=0.0,
+            )
+            x += width
+    add_text(
+        slide, emu(0.74), emu(6.05), emu(11.7), emu(0.36),
+        [(
+            "Источник — реестр операторов ИС ЭПД. LeraData только с индивидуальными ценами. АТИ-Доки и НТЦ СТЭК в файле без характеристик.",
+            11, False, MUTED,
+        )],
+    )
+    return slide
+
+
+def build_campaign_frame(prs):
+    slide = slide_title(
+        prs,
+        "Рекламная кампания на перевозчиков",
+        "Гипотезы  ·  Лопатенко, Блохина, Юнусова, Савинская, Крутиков",
+    )
+    steps = [
+        ("1", "Сегмент", "Уже в законе, верит в отсрочку до марта или ещё не работает."),
+        ("2", "Где показываем", "Реклама по запросам, визитам сайтов и софта."),
+        ("3", "Что объясняем", "Почему, зачем и на каких условиях переходить."),
+        ("4", "Целевое действие", "В схеме не заполнено: его фиксируем на встрече."),
+    ]
+    left, top0 = emu(0.72), emu(1.52)
+    card_w, card_h, gap = emu(7.35), emu(0.9), emu(0.1)
+    for i, (num, title, body) in enumerate(steps):
+        top = top0 + i * (card_h + gap)
+        add_shape(slide, left, top, card_w, card_h, WHITE, corner=0.1, line=LINE)
+        add_text(
+            slide, left + emu(0.16), top, emu(0.5), card_h,
+            [(num, 18, True, GOLD_DEEP)],
+            anchor=MSO_ANCHOR.MIDDLE, margin=0.0,
+        )
+        add_text(
+            slide, left + emu(0.7), top + emu(0.1), card_w - emu(0.9), emu(0.32),
+            [(title, 14, True, INK)],
+        )
+        add_text(
+            slide, left + emu(0.7), top + emu(0.42), card_w - emu(0.9), emu(0.4),
+            [(body, 12, False, MUTED)],
+        )
+
+    panel = emu(8.25)
+    add_shape(slide, panel, top0, emu(4.35), emu(3.9), NAVY, corner=0.06)
+    add_text(
+        slide, panel + emu(0.24), top0 + emu(0.16), emu(3.9), emu(0.55),
+        [
+            ("Кастдев · Витя", 14, True, WHITE),
+            ("что выясняем до креатива", 11, False, RGBColor(0xD6, 0xE4, 0xEC), 2),
+        ],
+    )
+    questions = [
+        "Как пришёл к ЭТрН и на что опирался, выбирая оператора.",
+        "Крупный заказчик сказал или выбирал сам.",
+        "Если сказал — какая выгода выбрать именно этого оператора.",
+        "Почему перешёл на ЭПД.",
+        "Знает ли, что закон уже в силе. Постановление — не отсрочка.",
+    ]
+    y = top0 + emu(0.9)
+    for i, question in enumerate(questions):
+        add_text(
+            slide, panel + emu(0.24), y, emu(0.35), emu(0.5),
+            [(str(i + 1), 12, True, GOLD)],
+        )
+        add_text(
+            slide, panel + emu(0.55), y, emu(3.55), emu(0.55),
+            [(question, 11, False, WHITE)],
+        )
+        y += emu(0.56)
+    add_shape(slide, emu(0.72), emu(5.55), emu(11.9), emu(0.7), PALE, corner=0.08)
+    add_text(
+        slide, emu(0.95), emu(5.62), emu(11.4), emu(0.55),
+        [(
+            "Ограничение схемы: страница сейчас настроена на отправителя, не на перевозчика.",
+            14, True, NAVY,
+        )],
+        anchor=MSO_ANCHOR.MIDDLE,
+    )
+    return slide
+
+
+def build_campaign_segments(prs):
+    slide = slide_title(
+        prs,
+        "Три сегмента перевозчиков",
+        "Гипотезы кампании",
+    )
+    add_text(
+        slide, emu(0.72), emu(1.42), emu(11.8), emu(0.36),
+        [(
+            "На схеме сегмент один: перевозчик между DNS и покупателем-юриком.",
+            13, False, MUTED,
+        )],
+    )
+    cards = [
+        (
+            "Гипотеза 1а",
+            "Уже работает и знает, что закон вступил в силу",
+            [
+                ("Почему", "Выгодная цена. На УСН можно без 1С."),
+                ("Зачем", "Крупный заказчик может не дать заказы."),
+                ("Важно", "На дороге перевозчика не штрафуют. Это не значит, что закон перенесли."),
+            ],
+        ),
+        (
+            "Гипотеза 1б",
+            "Знает закон, но считает, что его отсрочили до марта",
+            [
+                ("Почему", "Закон уже действует. На схеме: штрафы более 3–5 раз без ЭТрН."),
+                ("Зачем", "Тот же риск потерять заказы крупного заказчика."),
+                ("Важно", "Отсутствие штрафа на дороге закон не переносит."),
+            ],
+        ),
+        (
+            "Гипотеза 2",
+            "Ещё не работает. Хочет заказы крупного заказчика",
+            [
+                ("Оффер", "Как пройти требования, почему сейчас, а не в марте, кейс, цена, как подключить."),
+                ("Почему", "Выгодная цена. На УСН можно без 1С."),
+                ("Зачем", "Не попасть под требования по ЭТрН и ЭДО и остаться без заказов."),
+            ],
+        ),
+    ]
+    left0, top = emu(0.72), emu(1.86)
+    card_w, card_h, gap = emu(3.86), emu(4.2), emu(0.18)
+    for i, (label, title, blocks) in enumerate(cards):
+        left = left0 + i * (card_w + gap)
+        add_shape(slide, left, top, card_w, card_h, WHITE, corner=0.06, line=LINE)
+        add_shape(slide, left, top, card_w, emu(0.08), GOLD if i == 2 else NAVY)
+        add_text(
+            slide, left + emu(0.2), top + emu(0.2), card_w - emu(0.4), emu(0.28),
+            [(label, 12, True, GOLD_DEEP)],
+        )
+        add_text(
+            slide, left + emu(0.2), top + emu(0.5), card_w - emu(0.4), emu(0.95),
+            [(title, 14, True, INK)],
+        )
+        y = top + emu(1.55)
+        for head, body in blocks:
+            add_text(
+                slide, left + emu(0.2), y, card_w - emu(0.4), emu(0.24),
+                [(head, 12, True, NAVY)],
+            )
+            add_text(
+                slide, left + emu(0.2), y + emu(0.24), card_w - emu(0.4), emu(0.7),
+                [(body, 12, False, MUTED)],
+            )
+            y += emu(0.85)
+    return slide
+
+
 def build_close(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[L_CLOSE])
     for ph in slide.placeholders:
@@ -636,7 +879,8 @@ def build():
     build_goal(prs)
     build_agenda(prs)
 
-    build_discussion(prs, "01", "Анализ конкурентов", "Гурков")
+    build_competitors(prs)
+    build_competitor_prices(prs)
 
     build_discussion(
         prs, "02", "Актуальный анализ целевой аудитории", "Блохина, Юнусова"
@@ -664,12 +908,8 @@ def build():
         "Анализ отвалов и проблем сервиса",
         "весь состав",
     )
-    build_discussion(
-        prs,
-        "06",
-        "Обновлённая стратегия рекламной кампании: гипотезы",
-        "Лопатенко, Блохина, Юнусова, Савинская, Крутиков",
-    )
+    build_campaign_frame(prs)
+    build_campaign_segments(prs)
     build_discussion(prs, "07", "Дальнейшие шаги развития", "весь состав")
     build_discussion(
         prs, "08", "Зоны ответственности по ведению проекта", "весь состав"
