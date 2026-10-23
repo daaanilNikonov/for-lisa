@@ -1,0 +1,19 @@
+{
+  "rows": 9020,
+  "with_inn": 7944,
+  "unique_inn": 7318,
+  "sschr": 1564,
+  "okved": 2365,
+  "target_okved": 2302,
+  "ge22": 351,
+  "hot": 349,
+  "okved_only": 1955,
+  "ge22_only": 2,
+  "ge50": 164,
+  "prio1": 347,
+  "target_base": 2306,
+  "pot_hot": 1172640,
+  "pot_okved_only": 6568800,
+  "pot_ge22_only": 6720,
+  "rows_with_inn": 7944
+}
