@@ -1,0 +1,65 @@
+{
+  "managers": [
+    {
+      "id": "mgr-1",
+      "name": "Блохина Елизавета",
+      "createdAt": "2026-08-14T00:00:00.000Z"
+    },
+    {
+      "id": "mgr-2",
+      "name": "Оглоблина Софья",
+      "createdAt": "2026-08-14T00:00:00.000Z"
+    },
+    {
+      "id": "mgr-3",
+      "name": "Кургузов Данил",
+      "createdAt": "2026-08-14T00:00:00.000Z"
+    },
+    {
+      "id": "mgr-4",
+      "name": "Юнусова Юлиана",
+      "createdAt": "2026-08-14T00:00:00.000Z"
+    },
+    {
+      "id": "mgr-5",
+      "name": "Новый сотрудник",
+      "createdAt": "2026-09-03T08:23:57.838Z"
+    }
+  ],
+  "forms": [],
+  "boards": {
+    "mgr-1": [],
+    "mgr-2": [],
+    "mgr-3": [],
+    "mgr-4": [],
+    "mgr-5": []
+  },
+  "kpiDefs": [
+    {
+      "id": "kpi-calls",
+      "name": "Успешные звонки",
+      "defaultTarget": 20,
+      "unit": "звонков"
+    },
+    {
+      "id": "kpi-demos",
+      "name": "Демонстрации",
+      "defaultTarget": 2,
+      "unit": "демо"
+    },
+    {
+      "id": "kpi-leads",
+      "name": "Обработанные лиды",
+      "defaultTarget": 15,
+      "unit": "лидов"
+    }
+  ],
+  "monthlyKpis": {
+    "mgr-1": {},
+    "mgr-2": {},
+    "mgr-3": {},
+    "mgr-4": {},
+    "mgr-5": {}
+  },
+  "transfers": []
+}
