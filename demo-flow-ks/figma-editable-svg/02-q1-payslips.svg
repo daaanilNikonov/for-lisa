@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200" fill="none">
+  <title>Вопрос 1 из 7</title>
+  <!-- Editable Figma import: drag this SVG onto the canvas. Text and shapes become layers. -->
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="900" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEF3F8"/>
+      <stop offset="1" stop-color="#E7EDF4"/>
+    </linearGradient>
+    <linearGradient id="barGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#1F7A9A"/>
+      <stop offset="1" stop-color="#3AA3C5"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#1A2B3C" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+  <rect width="900" height="1200" fill="url(#bgGrad)"/>
+  <circle cx="90" cy="40" r="220" fill="#D7EEF7" opacity="0.7"/>
+  <circle cx="820" cy="80" r="180" fill="#E8F2E9" opacity="0.8"/>
+  <text x="90" y="70" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" fill="#0F5F78">1С:Кабинет сотрудника</text>
+  <text x="610" y="70" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="14" fill="#5B6B7C">Экспресс-профиль · 5 минут</text>
+  <g filter="url(#shadow)">
+    <rect x="90" y="120" width="720" height="920" rx="22" fill="#FFFFFF" stroke="#D9E2EC"/>
+  </g>
+  <rect x="130" y="150" width="640" height="8" rx="4" fill="#D7E8EF"/>
+  <rect x="130" y="150" width="89" height="8" rx="4" fill="url(#barGrad)"/>
+  <text x="130" y="185" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="13" fill="#5B6B7C">Вопрос 1 из 7</text>
+  <text x="130" y="240" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" fill="#1A2B3C">Как сейчас сотрудники получают</text>
+  <text x="130" y="275" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" fill="#1A2B3C">расчётные листки?</text>
+  <text x="130" y="315" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#5B6B7C">Выберите один вариант — это поможет понять, с чего начать демонстрацию.</text>
+  <g>
+    <rect x="130" y="350" width="640" height="56" rx="14" fill="#E7F5FA" stroke="#1F7A9A"/>
+    <text x="152" y="384" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" fill="#1A2B3C">На бумаге, в конвертах или лично</text>
+  </g>
+  <g>
+    <rect x="130" y="418" width="640" height="56" rx="14" fill="#F8FBFD" stroke="#D9E2EC"/>
+    <text x="152" y="452" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" fill="#1A2B3C">Почтой, в мессенджерах или без подтверждения</text>
+  </g>
+  <g>
+    <rect x="130" y="486" width="640" height="56" rx="14" fill="#F8FBFD" stroke="#D9E2EC"/>
+    <text x="152" y="520" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" fill="#1A2B3C">Уже через личный кабинет</text>
+  </g>
+  <g>
+    <rect x="130" y="574" width="120" height="48" rx="12" fill="#FFFFFF" stroke="#D9E2EC"/>
+    <text x="190.0" y="604" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" fill="#5B6B7C">Назад</text>
+  </g>
+  <g>
+    <rect x="270" y="574" width="120" height="48" rx="12" fill="#1F7A9A"/>
+    <text x="330.0" y="604" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15" font-weight="600" fill="#FFFFFF">Далее</text>
+  </g>
+
+</svg>

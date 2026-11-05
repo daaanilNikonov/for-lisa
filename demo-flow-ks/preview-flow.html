@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<title>Сценарий демо 1С:Кабинет сотрудника</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { font-family: "Segoe UI", system-ui, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
+  header { padding: 28px 40px 8px; }
+  h1 { margin: 0 0 8px; font-size: 28px; color: #38bdf8; }
+  p { margin: 0 0 16px; color: #94a3b8; max-width: 900px; }
+  .wrap { padding: 8px 24px 40px; }
+  .card { background: #1e293b; border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+  h2 { color: #f8fafc; font-size: 18px; margin: 0 0 16px; }
+  .mermaid { background: #fff; border-radius: 12px; padding: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { border-bottom: 1px solid #334155; padding: 10px 12px; text-align: left; vertical-align: top; }
+  th { color: #38bdf8; }
+  code { background: #0f172a; padding: 2px 6px; border-radius: 4px; color: #7dd3fc; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Новый сценарий демо «1С:Кабинет сотрудника»</h1>
+  <p>Экспресс-профиль кадровых процессов → демо по потребностям → закрытие менеджером. XMind: <code>Демо_1С_Кабинет_сотрудника_карта.xmind</code></p>
+</header>
+<div class="wrap">
+  <div class="card">
+    <h2>Общий поток</h2>
+    <div class="mermaid">
+flowchart LR
+  A[Приглашение нужных людей] --> B[Экспресс-профиль<br/>7 вопросов]
+  B --> C[Сборка сценария<br/>специалистом]
+  C --> D[Демо по блокам<br/>20–25 мин]
+  D --> E[Менеджер: сомнения<br/>и решение]
+    </div>
+  </div>
+  <div class="card">
+    <h2>Если ответил так → показываем это</h2>
+    <div class="mermaid">
+flowchart TB
+  Q1[Q1 Расчётки] -->|бумага / мессенджеры| R[Блок R: расчётки + ознакомление]
+  Q2[Q2 Отвлечения кадров] -->|справки| S[Блок S: справки]
+  Q2 -->|отпуска / заявления| O[Блок O: отпуска]
+  Q3[Q3 Удалёнка / филиалы] -->|да| M[Блок M: мобильное подписание]
+  Q4[Q4 Согласования] -->|бумага / чаты| H[Блок H: раздел руководителя]
+  Q5[Q5 Глубина результата] -->|полный КЭДО| K[Блок K: УНЭП / приказы / архив]
+  Q7[Q7 Если на встрече ИТ] -->|ИТ/ИБ| I[Блок I: безопасность в 1С]
+    </div>
+  </div>
+  <div class="card">
+    <h2>7 вопросов экспресс-профиля</h2>
+    <table>
+      <tr><th>#</th><th>Вопрос</th><th>Зачем</th></tr>
+      <tr><td>1</td><td>Как получают расчётные листки?</td><td>Нужен ли блок расчёток и подтверждения</td></tr>
+      <tr><td>2</td><td>Что отвлекает кадры/расчёт чаще всего?</td><td>Приоритет: справки / отпуска / вычеты</td></tr>
+      <tr><td>3</td><td>Есть ли удалёнка, филиалы, вахта?</td><td>Мобильность и «неуловимые»</td></tr>
+      <tr><td>4</td><td>Как согласуют отпуска?</td><td>Раздел руководителя</td></tr>
+      <tr><td>5</td><td>Какой результат хотите: старт / отпуска / полный КЭДО?</td><td>Глубина демо</td></tr>
+      <tr><td>6</td><td>Численность и учётная система?</td><td>Тариф и пакет внедрения</td></tr>
+      <tr><td>7</td><td>Кто влияет на решение?</td><td>Состав ЛПР и акценты финала</td></tr>
+    </table>
+  </div>
+</div>
+<script>mermaid.initialize({startOnLoad:true, theme:'default'});</script>
+</body>
+</html>

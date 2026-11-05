@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Экспресс-профиль кадровых процессов</title>
+<style>
+  :root {
+    --bg: #FFF8E7;
+    --card: #ffffff;
+    --ink: #395F75;
+    --muted: #6A8494;
+    --accent: #FECF68;
+    --accent-2: #E5B44A;
+    --soft: #FEE2A4;
+    --line: #E7E6E6;
+    --ok: #00715D;
+    --ink-dark: #2C4A5B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(1000px 420px at 0% 0%, #FEE2A4 0%, transparent 55%),
+      radial-gradient(900px 400px at 100% 0%, #FFF1CC 0%, transparent 50%),
+      linear-gradient(180deg, #FFF8E7, #FFFFFF);
+  }
+  .shell {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 28px 16px 60px;
+  }
+  .brand {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .brand strong { color: var(--ink); font-size: 16px; }
+  .card { position: relative; overflow: hidden; }
+  .card::before {
+    content: "";
+    position: absolute; left: 0; right: 0; top: 0; height: 8px;
+    background: var(--accent);
+  }
+  .card-oldignore {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    box-shadow: 0 18px 40px rgba(26,43,60,.08);
+    padding: 28px 24px;
+  }
+  .progress {
+    height: 8px;
+    background: var(--soft);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .progress > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--accent), #FEE2A4);
+    transition: width .25s ease;
+  }
+  .step-label { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+  h1 { margin: 0 0 10px; font-size: 28px; line-height: 1.25; }
+  .lead { margin: 0 0 22px; color: var(--muted); font-size: 16px; line-height: 1.5; }
+  .q-title { margin: 0 0 8px; font-size: 24px; line-height: 1.3; }
+  .q-hint { margin: 0 0 18px; color: var(--muted); font-size: 15px; }
+  .options { display: grid; gap: 10px; }
+  button.option {
+    text-align: left;
+    border: 1px solid var(--line);
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 16px;
+    color: var(--ink);
+    cursor: pointer;
+    transition: .15s ease;
+  }
+  button.option:hover { border-color: var(--accent); background: #FFF8E7; }
+  button.option.selected {
+    border-color: var(--accent);
+    background: #FEE2A4;
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    border: 0;
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .btn.primary { background: var(--accent); color: var(--ink-dark); font-weight: 700; }
+  .btn.primary:hover { background: var(--accent-2); color: var(--ink-dark); }
+  .btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .result-box {
+    background: #FFF8E7;
+    border: 2px solid #FECF68;
+    border-radius: 16px;
+    padding: 16px;
+    margin: 16px 0 8px;
+  }
+  .result-box h3 { margin: 0 0 8px; color: var(--ink); font-size: 18px; }
+  .result-box p { margin: 0; color: var(--muted); line-height: 1.5; }
+  .note {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #7a8a9a;
+  }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+  <div class="shell">
+    <div class="brand">
+      <strong>1С:Кабинет сотрудника</strong>
+      <span>Экспресс-профиль · 5 минут</span>
+    </div>
+
+    <div class="card" id="app">
+      <div class="progress"><span id="bar"></span></div>
+      <div class="step-label" id="stepLabel">Старт</div>
+      <div id="screen"></div>
+    </div>
+    <p class="note">Макет страницы-опросника. Можно использовать как образец для сборки в Tilda / Marquiz или открывать как рабочий прототип.</p>
+  </div>
+
+<script>
+const questions = [
+  {
+    id: 'payslips',
+    title: 'Как сейчас сотрудники получают расчётные листки?',
+    hint: 'Выберите один вариант — это поможет понять, с чего начать демонстрацию.',
+    multi: false,
+    options: [
+      { id: 'paper', label: 'На бумаге, в конвертах или лично' },
+      { id: 'messengers', label: 'Почтой, в мессенджерах или без подтверждения' },
+      { id: 'already', label: 'Уже через личный кабинет' }
+    ]
+  },
+  {
+    id: 'pain',
+    title: 'Что сильнее всего отвлекает кадры и расчёт зарплаты?',
+    hint: 'Можно выбрать до двух вариантов.',
+    multi: true,
+    max: 2,
+    options: [
+      { id: 'where_payslip', label: 'Вопросы «где расчётный листок / сколько к выплате»' },
+      { id: 'certs', label: 'Справки: 2-НДФЛ, с места работы' },
+      { id: 'vacation_balance', label: 'Остаток отпуска и вопросы «когда мой отпуск»' },
+      { id: 'requests', label: 'Заявления на отпуск, отгул, отсутствие' },
+      { id: 'personal', label: 'Вычеты и смена личных данных' }
+    ]
+  },
+  {
+    id: 'geo',
+    title: 'Есть ли удалёнка, филиалы, разъездные или вахта?',
+    hint: 'От этого зависит, насколько важным будет мобильное подписание.',
+    multi: false,
+    options: [
+      { id: 'many', label: 'Да, много сотрудников «на расстоянии»' },
+      { id: 'some', label: 'Частично / иногда' },
+      { id: 'office', label: 'Почти все в одном офисе' }
+    ]
+  },
+  {
+    id: 'approve',
+    title: 'Как сейчас согласуют отпуска и отсутствия?',
+    hint: 'Выберите то, что ближе к реальности.',
+    multi: false,
+    options: [
+      { id: 'paper', label: 'Бумага, обходной лист, лично' },
+      { id: 'chats', label: 'Мессенджеры или почта' },
+      { id: 'ok', label: 'Уже удобно, редко проблема' }
+    ]
+  },
+  {
+    id: 'goal',
+    title: 'К какому результату хотите прийти?',
+    hint: 'Это определит глубину демонстрации.',
+    multi: false,
+    options: [
+      { id: 'start', label: 'Быстрый старт: расчётные листки и самообслуживание' },
+      { id: 'vacations', label: 'Отпуска и отсутствия целиком' },
+      { id: 'kedo', label: 'Полноценный кадровый электронный документооборот' }
+    ]
+  },
+  {
+    id: 'scale',
+    title: 'Сколько примерно сотрудников и какая учётная система?',
+    hint: 'Нужно для тарифа и формата внедрения.',
+    multi: false,
+    options: [
+      { id: 's', label: 'До 50 · ЗУП / Бухгалтерия / другое' },
+      { id: 'm', label: '50–200 · ЗУП' },
+      { id: 'l', label: '200+ · ЗУП, ЗКГУ или ERP' }
+    ]
+  },
+  {
+    id: 'decision',
+    title: 'Кто влияет на решение о цифровизации кадровых процессов?',
+    hint: 'Можно выбрать несколько ролей.',
+    multi: true,
+    options: [
+      { id: 'exec', label: 'Руководитель / собственник / финансы' },
+      { id: 'hr', label: 'Главный бухгалтер / руководитель кадров' },
+      { id: 'it', label: 'ИТ / информационная безопасность' }
+    ]
+  }
+];
+
+const answers = {};
+let step = -1; // -1 start, 0..n-1 questions, n result
+
+function selected(qid) {
+  const v = answers[qid];
+  if (!v) return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+function toggleOption(qid, oid, multi, max) {
+  if (!multi) {
+    answers[qid] = oid;
+    render();
+    return;
+  }
+  const cur = new Set(selected(qid));
+  if (cur.has(oid)) cur.delete(oid);
+  else {
+    if (max && cur.size >= max) return;
+    cur.add(oid);
+  }
+  answers[qid] = [...cur];
+  render();
+}
+
+function progressPct() {
+  if (step < 0) return 0;
+  if (step >= questions.length) return 100;
+  return Math.round((step / questions.length) * 100);
+}
+
+function canNext() {
+  if (step < 0) return true;
+  if (step >= questions.length) return true;
+  return selected(questions[step].id).length > 0;
+}
+
+function profileText() {
+  const goal = answers.goal;
+  if (goal === 'vacations') {
+    return {
+      title: 'Вам ближе сценарий «Отпуска под контролем»',
+      text: 'На демонстрации покажем: заявление сотрудника → согласование руководителем → приказ в 1С. Без лишней экскурсии по всему сервису.'
+    };
+  }
+  if (goal === 'kedo') {
+    return {
+      title: 'Вам ближе сценарий «Полный кадровый документооборот»',
+      text: 'На демонстрации сделаем акцент на подписях, приказах, журнале документов и архиве в 1С — плюс ваши самые частые боли из опроса.'
+    };
+  }
+  return {
+    title: 'Вам ближе сценарий «Быстрый старт»',
+    text: 'На демонстрации покажем расчётные листки, самообслуживание сотрудников и то, что сильнее всего отвлекает ваши кадры прямо сейчас.'
+  };
+}
+
+function render() {
+  const bar = document.getElementById('bar');
+  const label = document.getElementById('stepLabel');
+  const screen = document.getElementById('screen');
+  bar.style.width = progressPct() + '%';
+
+  if (step < 0) {
+    label.textContent = 'Старт';
+    screen.innerHTML = `
+      <h1>Соберём ваш кадровый профиль за 5 минут</h1>
+      <p class="lead">Семь коротких вопросов. На демонстрации покажем только то, что важно вашей компании — без лекции «про весь функционал».</p>
+      <div class="actions">
+        <button class="btn primary" onclick="step=0; render()">Начать</button>
+      </div>`;
+    return;
+  }
+
+  if (step >= questions.length) {
+    const p = profileText();
+    label.textContent = 'Готово';
+    screen.innerHTML = `
+      <h1>Ваш экспресс-профиль готов</h1>
+      <div class="result-box">
+        <h3>${p.title}</h3>
+        <p>${p.text}</p>
+      </div>
+      <p class="lead">Отправьте профиль менеджеру — он подготовит демонстрацию под ваши ответы и поможет собрать нужных людей на встречу.</p>
+      <div class="actions">
+        <button class="btn primary" onclick="alert('В боевой версии здесь отправка в CRM / менеджеру и выбор слота встречи')">Отправить профиль и выбрать время</button>
+        <button class="btn ghost" onclick="step=questions.length-1; render()">Назад</button>
+      </div>`;
+    return;
+  }
+
+  const q = questions[step];
+  const sel = new Set(selected(q.id));
+  label.textContent = `Вопрос ${step + 1} из ${questions.length}`;
+  screen.innerHTML = `
+    <h2 class="q-title">${q.title}</h2>
+    <p class="q-hint">${q.hint}</p>
+    <div class="options">
+      ${q.options.map(o => `
+        <button class="option ${sel.has(o.id) ? 'selected' : ''}"
+          onclick='toggleOption(${JSON.stringify(q.id)}, ${JSON.stringify(o.id)}, ${q.multi ? 'true' : 'false'}, ${q.max || 'null'})'>
+          ${o.label}
+        </button>`).join('')}
+    </div>
+    <div class="actions">
+      <button class="btn ghost" onclick="step=step-1; render()">Назад</button>
+      <button class="btn primary" ${canNext() ? '' : 'disabled style="opacity:.5;cursor:not-allowed"'}
+        onclick="if(canNext()){ step=step+1; render(); }">Далее</button>
+    </div>`;
+}
+
+render();
+</script>
+</body>
+</html>
