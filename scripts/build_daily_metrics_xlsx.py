@@ -75,33 +75,38 @@ def slash_format_formula(row: int, first_col: str = "D", last_col: str = "M") ->
     return f'=IF(COUNTA({first_col}{row}:{last_col}{row})=0,"",{joined})'
 
 
-def build(year: int = 2026, month: int = 10) -> Path:
-    wb = Workbook()
-    month_names = {
-        1: "январь",
-        2: "февраль",
-        3: "март",
-        4: "апрель",
-        5: "май",
-        6: "июнь",
-        7: "июль",
-        8: "август",
-        9: "сентябрь",
-        10: "октябрь",
-        11: "ноябрь",
-        12: "декабрь",
-    }
-    sheet_name = f"{month_names[month]} {year}"
-    ws = wb.active
-    ws.title = sheet_name
+MONTH_NAMES = {
+    1: "январь",
+    2: "февраль",
+    3: "март",
+    4: "апрель",
+    5: "май",
+    6: "июнь",
+    7: "июль",
+    8: "август",
+    9: "сентябрь",
+    10: "октябрь",
+    11: "ноябрь",
+    12: "декабрь",
+}
 
-    # Служебный лист со списком баз (для надёжного выпадающего списка)
-    lists = wb.create_sheet("_списки")
-    lists["A1"] = "База"
-    for i, base in enumerate(BASES, 2):
-        lists.cell(i, 1, base)
-    lists.sheet_state = "hidden"
-    wb.defined_names.add(DefinedName(name="СписокБаз", attr_text=f"_списки!$A$2:$A${1 + len(BASES)}"))
+COMMENT_HEADER = "Комментарии по дню"
+
+
+def add_month_sheet(
+    wb: Workbook,
+    *,
+    year: int,
+    month: int,
+    sheet_name: str,
+    include_comments: bool = False,
+    with_demo: bool = False,
+) -> None:
+    """Лист месяца: только пн–пт, метрики нарастающим итогом, итог MAXIFS по базе."""
+    ws = wb.create_sheet(sheet_name)
+    title_label = f"{MONTH_NAMES[month]} {year}"
+    last_col = 15 if include_comments else 14
+    last_letter = get_column_letter(last_col)
 
     header_fill = PatternFill("solid", fgColor="1F4E79")
     header_font = Font(name="Calibri", bold=True, color="FFFFFF", size=11)
@@ -122,28 +127,36 @@ def build(year: int = 2026, month: int = 10) -> Path:
     ok_fill = PatternFill("solid", fgColor="C6EFCE")
     summary_fill = PatternFill("solid", fgColor="D6EAF8")
     locked_fill = PatternFill("solid", fgColor="E7E6E6")
+    comment_header_fill = PatternFill("solid", fgColor="595959")
 
-    ws.merge_cells("A1:N1")
-    ws["A1"] = f"Ежедневные метрики продаж — {sheet_name} (месяц нарастающим итогом)"
+    ws.merge_cells(f"A1:{last_letter}1")
+    ws["A1"] = f"Ежедневные метрики продаж — {title_label} (месяц нарастающим итогом)"
     ws["A1"].font = title_font
     ws["A1"].alignment = Alignment(vertical="center")
 
-    ws.merge_cells("A2:N2")
-    ws["A2"] = (
+    hint = (
         "Только рабочие дни (пн–пт). Сб и вс не заполняются. "
         "В колонке «База» выберите значение из раскрывающегося списка. "
         "Метрики — нарастающий итог с 1-го числа. "
         "Колонка «Формат» собирается автоматически: звонки/ЛПР/квал/ОС/встреча/през/тест/онборд/ЛК/ссылка."
     )
+    if include_comments:
+        hint += " Колонка «Комментарии по дню» — заметки по активности за этот день."
+    ws.merge_cells(f"A2:{last_letter}2")
+    ws["A2"] = hint
     ws["A2"].font = hint_font
     ws["A2"].alignment = left_align
 
     ws.row_dimensions[1].height = 28
-    ws.row_dimensions[2].height = 40
+    ws.row_dimensions[2].height = 48 if include_comments else 40
     ws.row_dimensions[3].height = 8
     ws.row_dimensions[4].height = 58
 
-    for col, text in enumerate(HEADERS, 1):
+    headers = list(HEADERS)
+    if include_comments:
+        headers.append(COMMENT_HEADER)
+
+    for col, text in enumerate(headers, 1):
         cell = ws.cell(4, col, text)
         cell.font = header_font
         cell.alignment = center
@@ -152,8 +165,10 @@ def build(year: int = 2026, month: int = 10) -> Path:
             cell.fill = header_fill
         elif 4 <= col <= 13:
             cell.fill = METRIC_FILLS[col - 4]
-        else:
+        elif col == 14:
             cell.fill = PatternFill("solid", fgColor="833C0C")
+        else:
+            cell.fill = comment_header_fill
 
     widths = {
         "A": 12,
@@ -170,11 +185,12 @@ def build(year: int = 2026, month: int = 10) -> Path:
         "L": 16,
         "M": 14,
         "N": 28,
+        "O": 36,
     }
     for col, w in widths.items():
-        ws.column_dimensions[col].width = w
+        if col <= last_letter:
+            ws.column_dimensions[col].width = w
 
-    # Выпадающий список базы (ссылка на именованный диапазон)
     dv = DataValidation(
         type="list",
         formula1="=СписокБаз",
@@ -207,7 +223,6 @@ def build(year: int = 2026, month: int = 10) -> Path:
         if i % 2 == 1:
             day_cell.fill = alt_fill
 
-        # База — пустая, только выбор из списка
         base_cell = ws.cell(row, 3, None)
         base_cell.alignment = center
         base_cell.border = thin
@@ -226,6 +241,12 @@ def build(year: int = 2026, month: int = 10) -> Path:
         fmt_cell.fill = summary_fill
         fmt_cell.font = Font(name="Calibri", bold=True, size=10)
 
+        if include_comments:
+            comment = ws.cell(row, 15, None)
+            comment.border = thin
+            comment.alignment = left_align
+            comment.fill = input_fill
+
     end_row = start_row + len(days) - 1
     dv.add(f"C{start_row}:C{end_row}")
 
@@ -238,15 +259,15 @@ def build(year: int = 2026, month: int = 10) -> Path:
         CellIsRule(operator="greaterThanOrEqual", formula=["20"], fill=ok_fill),
     )
 
-    # Демо на ближайший будний день к 13.10.2026 (вт 13.10)
-    demo_date = date(year, month, 13)
-    if demo_date.weekday() < 5 and demo_date in days:
-        demo_row = start_row + days.index(demo_date)
-        ws.cell(demo_row, 3, BASES[0])
-        for col, val in enumerate([22, 4, 2, 1, 1, 0, 0, 0, 0, 0], 4):
-            ws.cell(demo_row, col, val)
+    # Пример строки только на октябрьском листе (13.10.2026, вторник).
+    if with_demo:
+        demo_date = date(year, month, 13)
+        if demo_date.weekday() < 5 and demo_date in days:
+            demo_row = start_row + days.index(demo_date)
+            ws.cell(demo_row, 3, BASES[0])
+            for col, val in enumerate([22, 4, 2, 1, 1, 0, 0, 0, 0, 0], 4):
+                ws.cell(demo_row, col, val)
 
-    # Итоги
     sum_row = end_row + 2
     ws.merge_cells(f"A{sum_row}:C{sum_row}")
     ws.cell(sum_row, 1, "ИТОГО по базе (макс. нарастающий за месяц)").font = Font(
@@ -287,7 +308,10 @@ def build(year: int = 2026, month: int = 10) -> Path:
     legend_row = sum_row + 5
     ws.cell(legend_row, 1, "Легенда:").font = Font(bold=True)
     ws.cell(legend_row + 1, 1, "Жёлтые ячейки").fill = input_fill
-    ws.cell(legend_row + 1, 2, "— ввод: база (список) и метрики нарастающим итогом")
+    input_hint = "— ввод: база (список) и метрики нарастающим итогом"
+    if include_comments:
+        input_hint += ", комментарии по дню"
+    ws.cell(legend_row + 1, 2, input_hint)
     ws.cell(legend_row + 2, 1, "Красный").fill = red_fill
     ws.cell(legend_row + 2, 2, "— число звонков меньше 20")
     ws.cell(legend_row + 3, 1, "Зелёный").fill = ok_fill
@@ -298,12 +322,43 @@ def build(year: int = 2026, month: int = 10) -> Path:
     ws.cell(legend_row + 5, 2, "— в таблице нет: базы в выходные не обрабатывают")
 
     ws.freeze_panes = "D5"
-    ws.auto_filter.ref = f"A4:N{end_row}"
+    ws.auto_filter.ref = f"A4:{last_letter}{end_row}"
     ws.print_title_rows = "4:4"
     ws.page_setup.orientation = "landscape"
     ws.page_setup.fitToPage = True
     ws.page_setup.fitToWidth = 1
     ws.page_setup.fitToHeight = 0
+
+
+def build(year: int = 2026) -> Path:
+    wb = Workbook()
+    # Служебный лист со списком баз (для надёжного выпадающего списка)
+    lists = wb.active
+    lists.title = "_списки"
+    lists["A1"] = "База"
+    for i, base in enumerate(BASES, 2):
+        lists.cell(i, 1, base)
+    lists.sheet_state = "hidden"
+    wb.defined_names.add(DefinedName(name="СписокБаз", attr_text=f"_списки!$A$2:$A${1 + len(BASES)}"))
+
+    add_month_sheet(
+        wb,
+        year=year,
+        month=10,
+        sheet_name=f"октябрь {year}",
+        include_comments=False,
+        with_demo=True,
+    )
+    add_month_sheet(
+        wb,
+        year=year,
+        month=11,
+        sheet_name="ноябрь",
+        include_comments=True,
+        with_demo=False,
+    )
+    # Видимые месяцы впереди, служебный список скрыт в конце.
+    wb.move_sheet("_списки", offset=2)
 
     wb.save(OUTPUT)
     return OUTPUT
@@ -314,7 +369,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Сборка ежедневных метрик Excel")
     parser.add_argument("--year", type=int, default=2026)
-    parser.add_argument("--month", type=int, default=10)
     args = parser.parse_args()
-    path = build(args.year, args.month)
+    path = build(args.year)
     print(f"Saved {path}")
