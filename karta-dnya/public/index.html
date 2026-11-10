@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Карта дня · Группа продуктового запуска · Форус</title>
+    <meta
+      name="description"
+      content="Карта дня менеджеров Форус: чеклисты с прогрессом, переносы, стикерпак, аналитика и дашборд KPI."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true">
+      <div class="orb orb-a"></div>
+      <div class="orb orb-b"></div>
+      <div class="grid-fade"></div>
+    </div>
+
+    <header class="topbar">
+      <a class="brand" href="/karta-dnya" aria-label="Форус — карта дня">
+        <img
+          class="brand-logo"
+          src="/assets/brand/logo-forus-light.png"
+          alt="форус"
+          width="120"
+          height="42"
+        />
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product">Группа продуктового запуска</span>
+      </a>
+      <nav class="topnav">
+        <a href="#workspace">Рабочий стол</a>
+        <a href="#analytics">Аналитика</a>
+        <a href="#archive">Архив</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="top">
+        <p class="eyebrow reveal">ГК Форус · внутренний контур</p>
+        <h1 class="reveal delay-1">
+          <span class="brand-hero">форус</span>
+          <span class="hero-title">Карта дня</span>
+        </h1>
+        <p class="hero-lead reveal delay-2">
+          План на неделю, прогресс по факту, перенос остатков и окошко задач на завтра.
+        </p>
+        <p class="hero-date reveal delay-3" id="todayLabel"></p>
+      </section>
+
+      <section class="workspace" id="workspace">
+        <div class="section-head reveal">
+          <div>
+            <h2>Рабочий стол</h2>
+            <p class="panel-sub">Чеклист, доска и стикерпак каждого менеджера</p>
+          </div>
+          <div class="section-actions">
+            <button type="button" class="btn btn-ghost is-hidden" id="renameManagerBtn">Переименовать</button>
+            <button type="button" class="btn btn-primary" id="addManagerBtn">+ Менеджер</button>
+          </div>
+        </div>
+
+        <div class="manager-tabs reveal" id="managerTabs" role="tablist"></div>
+        <div id="overviewView" class="overview-view is-hidden"></div>
+
+        <div id="singleView" class="workbench is-hidden">
+          <div class="panel checklist-panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="checklistTitle">Чеклист менеджера</h2>
+                <p class="panel-sub" id="checklistSub">Задачи на сегодня</p>
+              </div>
+              <div class="phase-tabs phase-tabs-inline" role="tablist">
+                <button type="button" class="phase-tab is-active" id="tabMorning">Утро</button>
+                <button type="button" class="phase-tab" id="tabEvening">Вечер</button>
+              </div>
+            </div>
+            <div class="week-planner" id="weekPlanner" aria-label="План на неделю">
+              <div class="week-planner-head">
+                <div>
+                  <h3 class="week-title">План на неделю</h3>
+                  <p class="panel-sub">
+                    Будни с сегодня · задачи можно ставить на один день, несколько или всю неделю вперёд
+                  </p>
+                </div>
+                <div class="week-head-actions">
+                  <button type="button" class="btn btn-primary btn-sm" id="openWeekTaskPanelBtn">
+                    + Добавить задачи
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="saveWeekBtn">Сохранить план</button>
+                </div>
+              </div>
+
+              <div class="week-days" id="weekDays" role="tablist" aria-label="Рабочие дни"></div>
+
+              <div class="week-view-toggle" role="group" aria-label="Вид чеклиста">
+                <button type="button" class="week-view-btn is-active" data-view="all" id="weekViewAll">
+                  Вся неделя
+                </button>
+                <button type="button" class="week-view-btn" data-view="filled" id="weekViewFilled">
+                  Только с задачами
+                </button>
+              </div>
+
+              <div class="week-checklist" id="weekChecklist"></div>
+              <p class="kpi-setup-banner is-hidden" id="kpiSetupBanner"></p>
+            </div>
+
+            <dialog class="modal" id="weekTaskModal">
+              <form method="dialog" class="modal-card week-task-modal" id="weekTaskForm">
+                <header class="modal-head">
+                  <h3>Добавить задачи</h3>
+                  <button type="button" class="icon-btn" id="weekTaskCloseBtn" aria-label="Закрыть">×</button>
+                </header>
+
+                <label class="field">
+                  <span>Текст задачи</span>
+                  <input type="text" id="weekTaskText" placeholder="Например: 20 успешных звонков" required />
+                </label>
+
+                <div class="week-task-kind" role="radiogroup" aria-label="Тип задачи">
+                  <label><input type="radio" name="weekTaskKind" value="numeric" checked /> С числом</label>
+                  <label><input type="radio" name="weekTaskKind" value="check" /> Сделал / не сделал</label>
+                  <label><input type="radio" name="weekTaskKind" value="kpi" /> KPI</label>
+                </div>
+
+                <div class="week-task-metrics" id="weekTaskMetrics">
+                  <label class="field">
+                    <span>План</span>
+                    <input type="number" id="weekTaskTarget" min="1" step="1" value="1" />
+                  </label>
+                  <label class="field">
+                    <span>Ед.</span>
+                    <input type="text" id="weekTaskUnit" placeholder="звонков" />
+                  </label>
+                </div>
+
+                <fieldset class="week-task-days">
+                  <legend>На какие дни поставить</legend>
+                  <div class="week-task-day-grid" id="weekTaskDayGrid"></div>
+                  <div class="week-task-day-quick">
+                    <button type="button" class="btn btn-ghost btn-sm" id="weekTaskSelectAll">Вся рабочая неделя</button>
+                    <button type="button" class="btn btn-ghost btn-sm" id="weekTaskSelectOne">Только выбранный день</button>
+                  </div>
+                </fieldset>
+
+                <fieldset class="week-task-source">
+                  <legend>Как добавить</legend>
+                  <div class="week-source-toggle" role="radiogroup" aria-label="Источник задачи">
+                    <label class="week-source-option">
+                      <input type="radio" name="weekTaskSource" value="new" checked />
+                      <span>Новая задача</span>
+                    </label>
+                    <label class="week-source-option">
+                      <input type="radio" name="weekTaskSource" value="move" />
+                      <span>Перенести с другого дня</span>
+                    </label>
+                  </div>
+                  <div id="weekTaskMoveWrap" class="week-task-move-wrap is-hidden">
+                    <label class="field">
+                      <span>Какую задачу перенести</span>
+                      <select id="weekTaskMoveFrom">
+                        <option value="">Выберите задачу…</option>
+                      </select>
+                    </label>
+                  </div>
+                </fieldset>
+
+                <footer class="modal-foot">
+                  <button type="button" class="btn btn-ghost" id="weekTaskCancelBtn">Отмена</button>
+                  <button type="submit" class="btn btn-primary" value="ok" id="weekTaskSubmit">Добавить</button>
+                </footer>
+              </form>
+            </dialog>
+
+            <div class="monthly-kpi-box" id="monthlyKpiBox">
+              <div class="week-planner-head">
+                <div>
+                  <h3 class="week-title">KPI на месяц</h3>
+                  <p class="panel-sub" id="monthlyKpiSub">
+                    Установка 3-го числа (в сентябре 2026 — 4-го). Действуют все будни месяца.
+                  </p>
+                </div>
+                <div class="monthly-kpi-actions">
+                  <button type="button" class="btn btn-primary btn-sm" id="addMonthlyKpiBtn">+ Добавить KPI</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="saveMonthlyKpiBtn">Сохранить KPI месяца</button>
+                </div>
+              </div>
+              <div id="monthlyKpiEditor" class="monthly-kpi-editor"></div>
+            </div>
+
+            <div class="day-plan-block">
+              <div class="panel-head">
+                <div>
+                  <h3 class="week-title" id="dayPlanTitle">План выбранного дня</h3>
+                  <p class="panel-sub" id="dayPlanSub">Редактирование и вечернее закрытие — в сам день</p>
+                </div>
+              </div>
+              <div id="tasksEditor" class="tasks-editor"></div>
+              <footer class="panel-foot">
+                <div class="foot-left">
+                  <div class="add-task-menu">
+                    <button type="button" class="btn btn-ghost" id="addTaskBtn">+ В этот день ▾</button>
+                    <div class="add-task-dropdown is-hidden" id="addTaskMenu" role="menu">
+                      <button type="button" data-kind="numeric">С числовым показателем</button>
+                      <button type="button" data-kind="kpi">Обязательные KPI дня</button>
+                      <button type="button" data-kind="check">Без числа (сделал / не сделал)</button>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-primary" id="saveFormBtn">Сохранить утро</button>
+              </footer>
+              <p class="form-hint" id="formHint"></p>
+              <div id="managerStats" class="manager-stats"></div>
+            </div>
+
+            <div class="week-report-box" id="weekReportBox">
+              <div class="week-report-head">
+                <div>
+                  <h3 class="week-title">Недельный отчёт</h3>
+                  <p class="panel-sub">Любая прошедшая неделя · PDF со сводкой и переносами</p>
+                </div>
+              </div>
+              <div class="week-report-controls">
+                <label>
+                  Неделя с
+                  <input type="date" id="reportWeekStart" />
+                </label>
+                <button type="button" class="btn btn-primary btn-sm" id="buildReportBtn">
+                  Сформировать отчёт
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel board-panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="boardTitle">Основные приоритеты в работе</h2>
+                <p class="panel-sub" id="boardSub">Личная доска + зумер-стикерпак</p>
+              </div>
+              <button type="button" class="btn btn-ghost btn-sm" id="addSticker">+ Заметка</button>
+            </div>
+            <div class="sticker-pack" id="stickerPack" aria-label="Стикерпак"></div>
+            <div class="sticker-board" id="stickerBoard" aria-label="Доска приоритетов">
+              <div class="board-hint">Перетащите · клик по стикерпаку — кинуть на доску</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="tomorrow-window" id="tomorrowWindow" hidden>
+        <header class="tomorrow-head">
+          <div>
+            <p class="tomorrow-eyebrow">Задачи на завтрашний день</p>
+            <h3 id="tomorrowTitle">Задачи на завтра</h3>
+          </div>
+          <button type="button" class="icon-btn" id="tomorrowClose" aria-label="Свернуть">−</button>
+        </header>
+        <p class="tomorrow-date" id="tomorrowDate"></p>
+        <ul class="tomorrow-list" id="tomorrowList"></ul>
+        <footer class="tomorrow-foot">
+          <button type="button" class="btn btn-ghost btn-sm" id="tomorrowOpenDay">Открыть завтра</button>
+        </footer>
+      </aside>
+      <button type="button" class="tomorrow-fab is-hidden" id="tomorrowFab" aria-label="Задачи на завтра">
+        <span>Завтра</span>
+        <b id="tomorrowFabCount">0</b>
+      </button>
+
+      <section class="analytics-section" id="analytics">
+        <div class="section-head reveal">
+          <div>
+            <h2>Дашборд активности</h2>
+            <p class="panel-sub">Обязательные KPI, конверсия и динамика менеджеров</p>
+          </div>
+        </div>
+        <div class="dash-grid">
+          <div class="panel">
+            <h3 class="dash-title">Обязательные задачи · сегодня</h3>
+            <div class="table-wrap">
+              <table class="kpi-table" id="kpiTable">
+                <thead>
+                  <tr>
+                    <th>Менеджер</th>
+                    <th>Задача</th>
+                    <th>План</th>
+                    <th>Факт</th>
+                    <th>Конверсия</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="dash-title">Успеваемость · конверсия по дням</h3>
+            <p class="panel-sub">Линии менеджеров: % выполнения обязательных задач</p>
+            <div class="chart-wrap">
+              <canvas id="convChart" width="720" height="320" aria-label="График конверсии"></canvas>
+            </div>
+            <div class="chart-legend" id="chartLegend"></div>
+          </div>
+        </div>
+        <div class="panel analytics-cards" id="analyticsCards"></div>
+        <div class="panel">
+          <h3 class="dash-title">Журнал переносов</h3>
+          <div id="transfersList" class="transfers-list"></div>
+        </div>
+      </section>
+
+      <section class="archive-section" id="archive">
+        <div class="section-head reveal">
+          <div>
+            <h2>Хранилище форм</h2>
+            <p class="panel-sub">Завершённые карты дня с прогрессом и следом переносов</p>
+          </div>
+        </div>
+        <div class="archive-list" id="archiveList"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>ГК Форус</span>
+      <a href="https://www.forus.ru/" target="_blank" rel="noopener noreferrer">forus.ru</a>
+      <span>Карта дня · /karta-dnya</span>
+    </footer>
+
+    <dialog class="modal" id="promptModal">
+      <form method="dialog" class="modal-card modal-card-sm" id="promptForm">
+        <header class="modal-head">
+          <h3 id="promptTitle">Добавить</h3>
+          <button type="submit" class="icon-btn" value="cancel" aria-label="Закрыть">×</button>
+        </header>
+        <label class="field">
+          <span id="promptLabel">Имя</span>
+          <input type="text" id="promptInput" autocomplete="off" required />
+        </label>
+        <footer class="modal-foot">
+          <button type="submit" class="btn btn-ghost" value="cancel">Отмена</button>
+          <button type="submit" class="btn btn-primary" value="ok" id="promptOk">Добавить</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
